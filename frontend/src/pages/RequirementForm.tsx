@@ -3,55 +3,74 @@ import { useNavigate, useParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import AudioCaptureButton from '@/components/AudioCaptureButton'
 import ClientInfoForm from '@/components/ClientInfoForm'
-import ProductRow from '@/components/ProductRow'
+import ProductTable from '@/components/ProductTable'
 import NotesSection from '@/components/NotesSection'
 import FileUploadSection from '@/components/FileUploadSection'
 import { clientService, requirementService } from '@/services'
-import { useDebouncedCallback } from '@/hooks/useDebounce'
 import { useAuthStore } from '@/store/authStore'
 import type { Client, Requirement, RequirementProduct } from '@/types'
 
 const DRAFT_KEY = 'skinovation-draft-requirement'
+const AUTOSAVE_DEBOUNCE_MS = 3000
 
 export default function RequirementForm() {
   const { id } = useParams<{ id?: string }>()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
+  const currentUser = useAuthStore((s) => s.user)
 
   const [client, setClient] = useState<Partial<Client>>({})
   const [requirement, setRequirement] = useState<Requirement | null>(null)
   const [products, setProducts] = useState<RequirementProduct[]>([])
   const [targetAge, setTargetAge] = useState('')
   const [noOfProducts, setNoOfProducts] = useState<number | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [activeRowIndex, setActiveRowIndex] = useState(0)
+
+  // Separate save states
+  const [manualSaving, setManualSaving] = useState(false)
+  const [autoSaving, setAutoSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
+  const [loadingRequirement, setLoadingRequirement] = useState(false)
+
   const [error, setError] = useState('')
   const [showDraftBanner, setShowDraftBanner] = useState(false)
-  const activeProductIdxRef = useRef(0)
-  const currentUser = useAuthStore((s) => s.user)
 
-  // Load existing requirement (edit mode)
+  // Track which product IDs have unsaved changes (only for server-persisted rows)
+  const dirtyProductsRef = useRef<Set<string>>(new Set())
+  // Track requirement-metadata dirty flag separately
+  const dirtyMetaRef = useRef(false)
+  // Debounce timer for auto-save
+  const autoSaveTimerRef = useRef<number | null>(null)
+
+  // ---- LOAD existing requirement ----
   useEffect(() => {
     if (!id) {
-      // Check for local draft
       const draft = localStorage.getItem(DRAFT_KEY)
       if (draft) setShowDraftBanner(true)
       return
     }
-    requirementService.get(id).then((r) => {
-      setRequirement(r)
-      if (r.client_data) setClient(r.client_data)
-      setTargetAge(r.target_audience_age || '')
-      setNoOfProducts(r.no_of_products)
-      setProducts(r.products || [])
-    }).catch(() => setError('Failed to load requirement'))
+    setLoadingRequirement(true)
+    requirementService.get(id)
+      .then((r) => {
+        setRequirement(r)
+        if (r.client_data) setClient(r.client_data)
+        setTargetAge(r.target_audience_age || '')
+        setNoOfProducts(r.no_of_products)
+        setProducts(r.products || [])
+        setSavedAt(new Date(r.updated_at))
+        dirtyProductsRef.current.clear()
+        dirtyMetaRef.current = false
+      })
+      .catch(() => setError('Failed to load requirement.'))
+      .finally(() => setLoadingRequirement(false))
   }, [id])
 
+  // ---- DRAFT recovery (new mode only) ----
   const restoreDraft = () => {
     const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}')
     if (draft.client) setClient(draft.client)
     if (draft.targetAge) setTargetAge(draft.targetAge)
-    if (draft.noOfProducts) setNoOfProducts(draft.noOfProducts)
+    if (draft.noOfProducts !== undefined) setNoOfProducts(draft.noOfProducts)
     if (draft.products) setProducts(draft.products)
     setShowDraftBanner(false)
   }
@@ -60,56 +79,149 @@ export default function RequirementForm() {
     setShowDraftBanner(false)
   }
 
-  // Save draft locally on every change (only in 'new' mode)
+  // Local draft save (new mode)
   useEffect(() => {
     if (isEdit) return
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ client, targetAge, noOfProducts, products }))
   }, [client, targetAge, noOfProducts, products, isEdit])
 
-  // Server auto-save (debounced) — only when there's a saved requirement
-  const autoSave = useDebouncedCallback(async () => {
+  // ---- AUTO-SAVE (only saves DIRTY rows, runs in parallel, silent) ----
+  const scheduleAutoSave = useCallback(() => {
     if (!requirement) return
-    setSaving(true)
-    try {
-      await requirementService.patch(requirement.id, {
-        target_audience_age: targetAge,
-        no_of_products: noOfProducts,
-      })
-      // Update each product row
-      for (const p of products) {
-        // Strip non-editable fields
-        const { id: pid, requirement: _r, row_number: _rn, created_at: _c, updated_at: _u, ...rest } = p
-        await requirementService.updateProduct(requirement.id, pid, rest)
+    if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = window.setTimeout(async () => {
+      const dirtyIds = Array.from(dirtyProductsRef.current)
+      const metaDirty = dirtyMetaRef.current
+      if (dirtyIds.length === 0 && !metaDirty) return
+
+      setAutoSaving(true)
+      try {
+        const tasks: Promise<unknown>[] = []
+
+        if (metaDirty) {
+          tasks.push(requirementService.patch(requirement.id, {
+            target_audience_age: targetAge,
+            no_of_products: noOfProducts,
+          }))
+          dirtyMetaRef.current = false
+        }
+
+        for (const pid of dirtyIds) {
+          if (pid.startsWith('tmp-')) continue  // not yet on server
+          const p = products.find((x) => x.id === pid)
+          if (!p) continue
+          const { id: _i, requirement: _r, row_number: _rn, created_at: _c, updated_at: _u, ...rest } = p
+          tasks.push(requirementService.updateProduct(requirement.id, pid, rest))
+        }
+        dirtyProductsRef.current.clear()
+
+        await Promise.all(tasks)
+        setSavedAt(new Date())
+      } catch (e) {
+        // silent — manual Save will surface errors
+      } finally {
+        setAutoSaving(false)
       }
-      setSavedAt(new Date())
-    } catch (e) {
-      // silent
-    } finally {
-      setSaving(false)
+    }, AUTOSAVE_DEBOUNCE_MS)
+  }, [requirement, targetAge, noOfProducts, products])
+
+  useEffect(() => () => {
+    if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current)
+  }, [])
+
+  // ---- Mutators that mark dirty ----
+  const markMetaDirty = () => { dirtyMetaRef.current = true; scheduleAutoSave() }
+  const markProductDirty = (id: string) => { dirtyProductsRef.current.add(id); scheduleAutoSave() }
+
+  const handleTargetAgeChange = (v: string) => { setTargetAge(v); markMetaDirty() }
+  const handleNoOfProductsChange = (v: number | null) => { setNoOfProducts(v); markMetaDirty() }
+
+  const handleRowChange = (idx: number, patch: Partial<RequirementProduct>) => {
+    setProducts((cur) => cur.map((p, i) => (i === idx ? { ...p, ...patch } : p)))
+    const row = products[idx]
+    if (row) markProductDirty(row.id)
+    setActiveRowIndex(idx)
+  }
+
+  const handleAddRow = async () => {
+    if (requirement) {
+      try {
+        const newP = await requirementService.addProduct(requirement.id)
+        setProducts((cur) => {
+          setActiveRowIndex(cur.length)
+          return [...cur, newP]
+        })
+      } catch {
+        setError('Could not add row. Please try again.')
+      }
+    } else {
+      const tempRow: RequirementProduct = {
+        id: `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        row_number: products.length + 1,
+        body_part: '', category: '', sub_category: '', key_benefits: [],
+        size: '', packaging_type: '', packaging_notes: '', planned_mrp: null,
+        specific_ingredient: '', benchmark_product: '',
+        has_color: null, color_details: '', has_fragrance: null, fragrance_details: '',
+      }
+      setProducts((cur) => {
+        setActiveRowIndex(cur.length)
+        return [...cur, tempRow]
+      })
     }
-  }, 3000)
+  }
 
-  useEffect(() => {
-    if (requirement) autoSave()
-  }, [targetAge, noOfProducts, products, requirement, autoSave])
+  const handleRowDelete = async (idx: number) => {
+    const row = products[idx]
+    if (!row) return
+    if (requirement && !row.id.startsWith('tmp-')) {
+      try {
+        await requirementService.deleteProduct(requirement.id, row.id)
+      } catch {
+        setError('Could not delete row.')
+        return
+      }
+    }
+    dirtyProductsRef.current.delete(row.id)
+    setProducts((cur) => cur.filter((_, i) => i !== idx))
+  }
 
-  // Save (creates client + requirement if needed)
+  // ---- Audio extraction ----
+  const handleExtract = (fields: Partial<RequirementProduct>) => {
+    if (products.length === 0) {
+      // Create a row then populate it
+      handleAddRow().then(() => {
+        setProducts((cur) => {
+          if (cur.length === 0) return cur
+          const updated = cur.map((p, i) => i === 0 ? { ...p, ...fields } : p)
+          markProductDirty(updated[0].id)
+          return updated
+        })
+        setActiveRowIndex(0)
+      })
+      return
+    }
+    setProducts((cur) => {
+      const updated = cur.map((p, i) => i === activeRowIndex ? { ...p, ...fields } : p)
+      const target = updated[activeRowIndex]
+      if (target) markProductDirty(target.id)
+      return updated
+    })
+  }
+
+  // ---- Manual save (creates client + requirement if needed) ----
   const saveAll = useCallback(async (): Promise<Requirement | null> => {
     setError('')
     if (!client.phone_no || !client.name) {
       setError('Client name and phone number are required.')
       return null
     }
-    setSaving(true)
+    setManualSaving(true)
     try {
-      // Build the slim client payload per simplified PRD:
-      //   name, phone_no, poc (= logged-in user), nothing else.
       const clientPayload = {
         phone_no: client.phone_no,
         name: client.name,
         poc: currentUser?.id || null,
       }
-      // Upsert client
       try {
         await clientService.update(client.phone_no, clientPayload)
       } catch (e: any) {
@@ -128,78 +240,48 @@ export default function RequirementForm() {
           no_of_products: noOfProducts,
         } as any)
         setRequirement(req)
+
         // Persist all in-memory product rows to the server
         const created: RequirementProduct[] = []
         for (const p of products) {
-          const { id: _ignore, requirement: _r, row_number: _rn, created_at: _c, updated_at: _u, ...rest } = p
+          const { id: _i, requirement: _r, row_number: _rn, created_at: _c, updated_at: _u, ...rest } = p
           const newP = await requirementService.addProduct(req.id, rest)
           created.push(newP)
         }
         setProducts(created)
         localStorage.removeItem(DRAFT_KEY)
       } else {
+        // Save metadata
         await requirementService.patch(req.id, {
           target_audience_age: targetAge,
           no_of_products: noOfProducts,
         })
+        // Save any dirty rows
+        const dirtyIds = Array.from(dirtyProductsRef.current)
+        const tasks = dirtyIds.flatMap((pid) => {
+          if (pid.startsWith('tmp-')) return []
+          const p = products.find((x) => x.id === pid)
+          if (!p) return []
+          const { id: _i, requirement: _r, row_number: _rn, created_at: _c, updated_at: _u, ...rest } = p
+          return [requirementService.updateProduct(req!.id, pid, rest)]
+        })
+        await Promise.all(tasks)
       }
+      dirtyProductsRef.current.clear()
+      dirtyMetaRef.current = false
       setSavedAt(new Date())
       return req
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Save failed.')
       return null
     } finally {
-      setSaving(false)
+      setManualSaving(false)
     }
-  }, [client, requirement, products, targetAge, noOfProducts])
+  }, [client, requirement, products, targetAge, noOfProducts, currentUser?.id])
 
   const handleSave = async () => {
     const req = await saveAll()
     if (req && !isEdit) navigate(`/requirements/${req.id}`, { replace: true })
-  }
-
-  const handleAddRow = async () => {
-    if (requirement) {
-      const newP = await requirementService.addProduct(requirement.id)
-      setProducts((cur) => [...cur, newP])
-      activeProductIdxRef.current = products.length
-    } else {
-      // local-only row before first save
-      const tempRow: RequirementProduct = {
-        id: `tmp-${Date.now()}`,
-        row_number: products.length + 1,
-        body_part: '', category: '', sub_category: '', key_benefits: [],
-        size: '', packaging_type: '', packaging_notes: '', planned_mrp: null,
-        specific_ingredient: '', benchmark_product: '',
-        has_color: null, color_details: '', has_fragrance: null, fragrance_details: '',
-      }
-      setProducts((cur) => [...cur, tempRow])
-      activeProductIdxRef.current = products.length
-    }
-  }
-
-  const handleRowChange = (idx: number, patch: Partial<RequirementProduct>) => {
-    setProducts((cur) => cur.map((p, i) => (i === idx ? { ...p, ...patch } : p)))
-    activeProductIdxRef.current = idx
-  }
-
-  const handleRowDelete = async (idx: number) => {
-    const row = products[idx]
-    if (requirement && !row.id.startsWith('tmp-')) {
-      await requirementService.deleteProduct(requirement.id, row.id)
-    }
-    setProducts((cur) => cur.filter((_, i) => i !== idx))
-  }
-
-  const handleExtract = (fields: Partial<RequirementProduct>) => {
-    let idx = activeProductIdxRef.current
-    if (products.length === 0) {
-      handleAddRow().then(() => {
-        setProducts((cur) => cur.map((p, i) => i === 0 ? { ...p, ...fields } : p))
-      })
-      return
-    }
-    setProducts((cur) => cur.map((p, i) => i === idx ? { ...p, ...fields } : p))
   }
 
   const handleCreateProposal = async () => {
@@ -207,16 +289,27 @@ export default function RequirementForm() {
     if (req) navigate(`/requirements/${req.id}/proposal`)
   }
 
+  // ---- Status text for the indicator (NOT the button) ----
+  const statusText = (() => {
+    if (autoSaving) return 'Saving draft…'
+    if (savedAt) return `Saved ${savedAt.toLocaleTimeString()}`
+    return null
+  })()
+
   return (
     <Layout>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold">
-            {isEdit ? 'Edit Requirement' : 'Capture New Requirement'}
+            {isEdit ? 'Edit requirement' : 'Capture new requirement'}
           </h1>
-          {savedAt && (
-            <p className="text-xs text-black/50 mt-1" aria-live="polite">
-              {saving ? 'Saving…' : `Saved at ${savedAt.toLocaleTimeString()}`}
+          {statusText && (
+            <p
+              className="text-xs text-black/50 mt-1"
+              aria-live="polite"
+              role="status"
+            >
+              {statusText}
             </p>
           )}
         </div>
@@ -224,7 +317,11 @@ export default function RequirementForm() {
       </div>
 
       {showDraftBanner && (
-        <div role="region" aria-label="Draft recovery" className="border border-mustard bg-mustard-50 rounded p-3 mb-4 flex items-center justify-between">
+        <div
+          role="region"
+          aria-label="Draft recovery"
+          className="border border-mustard bg-mustard-50 rounded p-3 mb-4 flex items-center justify-between"
+        >
           <span className="text-sm">You have an unsaved draft from a previous session.</span>
           <div className="flex gap-2">
             <button onClick={restoreDraft} className="btn-primary text-sm">Restore</button>
@@ -233,53 +330,66 @@ export default function RequirementForm() {
         </div>
       )}
 
-      {error && <div role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2 mb-4">{error}</div>}
+      {error && (
+        <div role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2 mb-4">
+          {error}
+        </div>
+      )}
 
-      <div className="space-y-6">
-        <ClientInfoForm
-          client={client}
-          onClientChange={setClient}
-          targetAge={targetAge}
-          onTargetAgeChange={setTargetAge}
-          noOfProducts={noOfProducts}
-          onNoOfProductsChange={setNoOfProducts}
-          readOnlyPhone={isEdit}
-        />
+      {loadingRequirement ? (
+        <p className="text-black/60">Loading requirement…</p>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          {/* LEFT: Client info + Product table */}
+          <div className="xl:col-span-8 space-y-6 min-w-0">
+            <ClientInfoForm
+              client={client}
+              onClientChange={(next) => {
+                setClient(next)
+                if (requirement) markMetaDirty()  // client edits don't trigger autosave on first creation
+              }}
+              targetAge={targetAge}
+              onTargetAgeChange={handleTargetAgeChange}
+              noOfProducts={noOfProducts}
+              onNoOfProductsChange={handleNoOfProductsChange}
+              readOnlyPhone={isEdit}
+            />
 
-        <section aria-labelledby="products-heading">
-          <div className="flex items-center justify-between mb-3">
-            <h2 id="products-heading" className="text-lg font-semibold">Products</h2>
+            <ProductTable
+              products={products}
+              onChange={handleRowChange}
+              onDelete={handleRowDelete}
+              onAddRow={handleAddRow}
+              activeIndex={activeRowIndex}
+              onActiveChange={setActiveRowIndex}
+            />
           </div>
 
-          {products.map((p, i) => (
-            <ProductRow
-              key={p.id}
-              product={p}
-              onChange={(patch) => handleRowChange(i, patch)}
-              onDelete={() => handleRowDelete(i)}
-            />
-          ))}
-
-          <button type="button" onClick={handleAddRow} className="btn-secondary">
-            + Add product row
-          </button>
-        </section>
-
-        {requirement && (
-          <>
-            <NotesSection requirementId={requirement.id} />
-            <FileUploadSection requirementId={requirement.id} />
-          </>
-        )}
-
-        <div className="flex items-center gap-2 pt-2 sticky bottom-0 bg-white py-3 border-t border-black/10">
-          <button onClick={handleSave} disabled={saving} className="btn-primary">
-            {saving ? 'Saving…' : 'Save Requirements'}
-          </button>
-          <button onClick={handleCreateProposal} disabled={saving} className="btn-secondary">
-            Create Proposal →
-          </button>
+          {/* RIGHT: Notes + Files — visible only after first save */}
+          <aside className="xl:col-span-4 space-y-6 min-w-0">
+            {requirement ? (
+              <>
+                <NotesSection requirementId={requirement.id} />
+                <FileUploadSection requirementId={requirement.id} />
+              </>
+            ) : (
+              <div className="card text-sm text-black/60">
+                <p className="font-medium text-black mb-1">Notes &amp; files</p>
+                <p>Save the requirement first to add notes or upload files.</p>
+              </div>
+            )}
+          </aside>
         </div>
+      )}
+
+      {/* Action bar */}
+      <div className="flex items-center gap-2 pt-4 mt-6 sticky bottom-0 bg-white py-3 border-t border-black/10">
+        <button onClick={handleSave} disabled={manualSaving} className="btn-primary">
+          {manualSaving ? 'Saving…' : 'Save requirements'}
+        </button>
+        <button onClick={handleCreateProposal} disabled={manualSaving} className="btn-secondary">
+          Create proposal →
+        </button>
       </div>
     </Layout>
   )

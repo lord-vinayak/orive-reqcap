@@ -93,7 +93,7 @@ export default function ClientInfoForm({
           </select>
         </div>
 
-        <div className="md:col-span-2">
+        <div>
           <label htmlFor="ci_age" className="block mb-1">Target audience age</label>
           <input
             id="ci_age"
