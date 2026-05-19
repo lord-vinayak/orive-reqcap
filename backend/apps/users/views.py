@@ -152,6 +152,16 @@ def debug_auth_view(request):
         'ALLOWED_HOSTS': os.getenv('ALLOWED_HOSTS', 'NOT_SET'),
     }
     
+    # Check if we can authenticate the admin with the configured INITIAL_ADMIN_PASSWORD
+    admin_auth_status = "NOT_SET"
+    if settings.INITIAL_ADMIN_EMAIL and settings.INITIAL_ADMIN_PASSWORD:
+        from django.contrib.auth import authenticate
+        user_auth = authenticate(
+            username=settings.INITIAL_ADMIN_EMAIL,
+            password=settings.INITIAL_ADMIN_PASSWORD
+        )
+        admin_auth_status = f"SUCCESS" if user_auth else "FAILED"
+    
     # 3. Users in DB
     users = []
     try:
@@ -174,5 +184,6 @@ def debug_auth_view(request):
             'host': db_host,
         },
         'environment': env_info,
+        'admin_auth_test': admin_auth_status,
         'users': users,
     })
