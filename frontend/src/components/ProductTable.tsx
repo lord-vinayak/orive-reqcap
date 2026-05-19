@@ -29,7 +29,7 @@ export default function ProductTable({
         <span className="text-xs text-black/50">{products.length} row{products.length === 1 ? '' : 's'}</span>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto min-h-[220px]">
         <table className="w-full text-sm border-collapse" role="grid">
           <thead>
             <tr className="bg-mustard-50 text-black/80 text-xs">

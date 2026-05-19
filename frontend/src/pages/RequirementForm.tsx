@@ -339,46 +339,49 @@ export default function RequirementForm() {
       {loadingRequirement ? (
         <p className="text-black/60">Loading requirement…</p>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          {/* LEFT: Client info + Product table */}
-          <div className="xl:col-span-8 space-y-6 min-w-0">
-            <ClientInfoForm
-              client={client}
-              onClientChange={(next) => {
-                setClient(next)
-                if (requirement) markMetaDirty()  // client edits don't trigger autosave on first creation
-              }}
-              targetAge={targetAge}
-              onTargetAgeChange={handleTargetAgeChange}
-              noOfProducts={noOfProducts}
-              onNoOfProductsChange={handleNoOfProductsChange}
-              readOnlyPhone={isEdit}
-            />
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            {/* LEFT: Client info */}
+            <div className="xl:col-span-8 min-w-0">
+              <ClientInfoForm
+                client={client}
+                onClientChange={(next) => {
+                  setClient(next)
+                  if (requirement) markMetaDirty()  // client edits don't trigger autosave on first creation
+                }}
+                targetAge={targetAge}
+                onTargetAgeChange={handleTargetAgeChange}
+                noOfProducts={noOfProducts}
+                onNoOfProductsChange={handleNoOfProductsChange}
+                readOnlyPhone={isEdit}
+              />
+            </div>
 
-            <ProductTable
-              products={products}
-              onChange={handleRowChange}
-              onDelete={handleRowDelete}
-              onAddRow={handleAddRow}
-              activeIndex={activeRowIndex}
-              onActiveChange={setActiveRowIndex}
-            />
+            {/* RIGHT: Notes + Files — visible only after first save */}
+            <aside className="xl:col-span-4 space-y-6 min-w-0">
+              {requirement ? (
+                <>
+                  <NotesSection requirementId={requirement.id} />
+                  <FileUploadSection requirementId={requirement.id} />
+                </>
+              ) : (
+                <div className="card text-sm text-black/60">
+                  <p className="font-medium text-black mb-1">Notes &amp; files</p>
+                  <p>Save the requirement first to add notes or upload files.</p>
+                </div>
+              )}
+            </aside>
           </div>
 
-          {/* RIGHT: Notes + Files — visible only after first save */}
-          <aside className="xl:col-span-4 space-y-6 min-w-0">
-            {requirement ? (
-              <>
-                <NotesSection requirementId={requirement.id} />
-                <FileUploadSection requirementId={requirement.id} />
-              </>
-            ) : (
-              <div className="card text-sm text-black/60">
-                <p className="font-medium text-black mb-1">Notes &amp; files</p>
-                <p>Save the requirement first to add notes or upload files.</p>
-              </div>
-            )}
-          </aside>
+          {/* FULL WIDTH: Product table */}
+          <ProductTable
+            products={products}
+            onChange={handleRowChange}
+            onDelete={handleRowDelete}
+            onAddRow={handleAddRow}
+            activeIndex={activeRowIndex}
+            onActiveChange={setActiveRowIndex}
+          />
         </div>
       )}
 
