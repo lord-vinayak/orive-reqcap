@@ -41,11 +41,33 @@ class UserViewSet(viewsets.ModelViewSet):
 def login_view(request):
     serializer = LoginSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+    
+    email = serializer.validated_data['email']
+    password = serializer.validated_data['password']
+    
+    # Debug logging
+    from django.db import connection
+    from apps.users.models import User
+    print(f"[DEBUG LOGIN] Attempting login for email: {email}")
+    print(f"[DEBUG LOGIN] Database: {connection.settings_dict.get('NAME')} on host {connection.settings_dict.get('HOST')}")
+    
+    try:
+        db_user = User.objects.get(email=email)
+        print(f"[DEBUG LOGIN] User found in DB: {db_user.email}")
+        print(f"[DEBUG LOGIN] User attributes: is_active={db_user.is_active}, is_staff={db_user.is_staff}, is_superuser={db_user.is_superuser}")
+        pw_check = db_user.check_password(password)
+        print(f"[DEBUG LOGIN] Password check: {pw_check}")
+    except User.DoesNotExist:
+        print(f"[DEBUG LOGIN] User NOT found in DB for email: {email}")
+        print(f"[DEBUG LOGIN] Existing users in DB: {[u.email for u in User.objects.all()[:5]]}")
+    
     user = authenticate(
         request,
-        username=serializer.validated_data['email'],
-        password=serializer.validated_data['password'],
+        username=email,
+        password=password,
     )
+    print(f"[DEBUG LOGIN] Authenticate output: {user}")
+    
     if user is None or not user.is_active:
         return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
     tokens = _tokens_for_user(user)
@@ -101,3 +123,56 @@ def google_login_view(request):
 @permission_classes([IsAuthenticated])
 def me_view(request):
     return Response(UserSerializer(request.user).data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def debug_auth_view(request):
+    import os
+    from django.db import connection
+    from apps.users.models import User
+    
+    # 1. DB Info
+    db_name = connection.settings_dict.get('NAME')
+    db_host = connection.settings_dict.get('HOST')
+    
+    # 2. Env Vars check (masking secrets)
+    def mask(val):
+        if not val:
+            return "NOT_SET"
+        if len(val) <= 4:
+            return "SET_BUT_SHORT"
+        return f"{val[:2]}...{val[-2:]} (len={len(val)})"
+        
+    env_info = {
+        'DATABASE_URL': mask(os.getenv('DATABASE_URL')),
+        'INITIAL_ADMIN_EMAIL': os.getenv('INITIAL_ADMIN_EMAIL', 'NOT_SET'),
+        'INITIAL_ADMIN_PASSWORD_SET': bool(os.getenv('INITIAL_ADMIN_PASSWORD')),
+        'CORS_ALLOWED_ORIGINS': os.getenv('CORS_ALLOWED_ORIGINS', 'NOT_SET'),
+        'ALLOWED_HOSTS': os.getenv('ALLOWED_HOSTS', 'NOT_SET'),
+    }
+    
+    # 3. Users in DB
+    users = []
+    try:
+        for u in User.objects.all():
+            users.append({
+                'email': u.email,
+                'name': u.name,
+                'role': u.role,
+                'is_active': u.is_active,
+                'is_staff': u.is_staff,
+                'is_superuser': u.is_superuser,
+                'has_password': u.has_usable_password(),
+            })
+    except Exception as e:
+        users = f"Error fetching users: {str(e)}"
+        
+    return Response({
+        'database': {
+            'name': db_name,
+            'host': db_host,
+        },
+        'environment': env_info,
+        'users': users,
+    })
