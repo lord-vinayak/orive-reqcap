@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-white text-black font-sans antialiased;
+    font-family: 'Aptos', 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  /* Focus ring (accessibility) */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-mustard ring-offset-2;
+  }
+  /* Heading defaults */
+  h1 { @apply text-3xl font-semibold; }
+  h2 { @apply text-2xl font-semibold; }
+  h3 { @apply text-xl font-semibold; }
+  /* Inputs */
+  input, select, textarea {
+    @apply border border-black/15 bg-white text-black rounded px-3 py-2
+           placeholder:text-black/40
+           focus:border-mustard focus:ring-1 focus:ring-mustard;
+  }
+  label {
+    @apply text-sm font-medium text-black/80;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded
+           font-medium transition-colors focus-visible:ring-2 focus-visible:ring-mustard
+           focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-mustard text-black hover:bg-mustard-500;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-black border border-black/20 hover:bg-black/5;
+  }
+  .btn-danger {
+    @apply btn bg-white text-red-700 border border-red-700/30 hover:bg-red-700/5;
+  }
+  .card {
+    @apply bg-white border border-black/10 rounded p-6;
+  }
+  .table-clean {
+    @apply w-full border-collapse text-sm;
+  }
+  .table-clean th {
+    @apply text-left font-medium text-black/70 border-b border-black/10 px-3 py-2 bg-mustard-50;
+  }
+  .table-clean td {
+    @apply border-b border-black/5 px-3 py-2 align-top;
+  }
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+           bg-mustard-50 text-mustard-700 border border-mustard-200;
+  }
+}

@@ -1,0 +1,87 @@
+"""Google Drive helper utilities."""
+import io
+import json
+import os
+from datetime import date
+from django.conf import settings
+
+
+def _build_drive_service():
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+
+    creds_json = settings.GOOGLE_DRIVE_CREDENTIALS_JSON
+    creds_file = settings.GOOGLE_DRIVE_CREDENTIALS_FILE
+    scopes = ['https://www.googleapis.com/auth/drive']
+
+    if creds_json:
+        info = json.loads(creds_json)
+        creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
+    elif creds_file and os.path.exists(creds_file):
+        creds = service_account.Credentials.from_service_account_file(creds_file, scopes=scopes)
+    else:
+        raise RuntimeError('Google Drive credentials not configured')
+
+    return build('drive', 'v3', credentials=creds, cache_discovery=False)
+
+
+def _get_or_create_folder(service, name, parent_id):
+    """Find or create a folder under parent_id with the given name."""
+    safe_name = name.replace("'", "\\'")
+    q = (f"name = '{safe_name}' and mimeType = 'application/vnd.google-apps.folder' "
+         f"and '{parent_id}' in parents and trashed = false")
+    resp = service.files().list(q=q, fields='files(id,name)', supportsAllDrives=True,
+                                includeItemsFromAllDrives=True).execute()
+    if resp.get('files'):
+        return resp['files'][0]['id']
+    metadata = {
+        'name': name,
+        'mimeType': 'application/vnd.google-apps.folder',
+        'parents': [parent_id],
+    }
+    folder = service.files().create(body=metadata, fields='id', supportsAllDrives=True).execute()
+    return folder['id']
+
+
+def upload_file(file_bytes, filename, mimetype, client_name):
+    """Upload to /<root>/<client_name>/<YYYY-MM-DD>/<filename>."""
+    from googleapiclient.http import MediaIoBaseUpload
+
+    service = _build_drive_service()
+    root_id = settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
+    if not root_id:
+        raise RuntimeError('GOOGLE_DRIVE_ROOT_FOLDER_ID not configured')
+
+    client_folder_id = _get_or_create_folder(service, client_name or 'unknown', root_id)
+    date_folder_id = _get_or_create_folder(service, date.today().isoformat(), client_folder_id)
+
+    media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mimetype, resumable=False)
+    metadata = {'name': filename, 'parents': [date_folder_id]}
+    file = service.files().create(
+        body=metadata, media_body=media,
+        fields='id, webViewLink, webContentLink',
+        supportsAllDrives=True,
+    ).execute()
+
+    # Make it readable by anyone with link (optional)
+    try:
+        service.permissions().create(
+            fileId=file['id'],
+            body={'type': 'anyone', 'role': 'reader'},
+            supportsAllDrives=True,
+        ).execute()
+    except Exception:
+        pass
+
+    return {
+        'drive_file_id': file['id'],
+        'drive_url': file.get('webViewLink', ''),
+    }
+
+
+def delete_file(drive_file_id):
+    service = _build_drive_service()
+    try:
+        service.files().delete(fileId=drive_file_id, supportsAllDrives=True).execute()
+    except Exception:
+        pass

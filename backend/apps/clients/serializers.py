@@ -1,0 +1,15 @@
+from rest_framework import serializers
+from .models import Client
+
+
+class ClientSerializer(serializers.ModelSerializer):
+    poc_name = serializers.CharField(source='poc.name', read_only=True)
+
+    class Meta:
+        model = Client
+        fields = [
+            'phone_no', 'name', 'company_name', 'email', 'city',
+            'gst_details', 'physical_address', 'poc', 'poc_name',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at']

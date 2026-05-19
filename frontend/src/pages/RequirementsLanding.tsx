@@ -1,0 +1,38 @@
+import { useNavigate } from 'react-router-dom'
+import Layout from '@/components/Layout'
+
+export default function RequirementsLanding() {
+  const navigate = useNavigate()
+  return (
+    <Layout>
+      <div className="max-w-3xl mx-auto pt-8">
+        <h1 className="text-3xl font-semibold mb-2">Requirements</h1>
+        <p className="text-black/60 mb-10">Capture a new requirement or edit an existing one.</p>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <button
+            onClick={() => navigate('/requirements/new')}
+            className="card text-left hover:border-mustard transition-colors"
+          >
+            <div className="w-12 h-12 bg-mustard-50 rounded flex items-center justify-center mb-4">
+              <span className="text-2xl">➕</span>
+            </div>
+            <h2 className="text-lg font-semibold mb-1">Capture New Requirement</h2>
+            <p className="text-sm text-black/60">Start a fresh requirement for a client.</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/requirements/search')}
+            className="card text-left hover:border-mustard transition-colors"
+          >
+            <div className="w-12 h-12 bg-mustard-50 rounded flex items-center justify-center mb-4">
+              <span className="text-2xl">🔍</span>
+            </div>
+            <h2 className="text-lg font-semibold mb-1">Edit Old Requirement</h2>
+            <p className="text-sm text-black/60">Search by client phone number.</p>
+          </button>
+        </div>
+      </div>
+    </Layout>
+  )
+}

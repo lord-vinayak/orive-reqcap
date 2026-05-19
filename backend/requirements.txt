@@ -1,0 +1,17 @@
+Django==5.0.6
+djangorestframework==3.15.1
+djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.3.1
+django-allauth==0.63.3
+dj-database-url==2.2.0
+psycopg2-binary==2.9.10
+python-dotenv==1.0.1
+google-auth==2.30.0
+google-auth-oauthlib==1.2.0
+google-api-python-client==2.135.0
+groq==0.9.0
+openpyxl==3.1.4
+Pillow==10.4.0
+gunicorn==22.0.0
+whitenoise==6.7.0
+requests==2.32.3
