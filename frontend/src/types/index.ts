@@ -104,6 +104,7 @@ export interface CatalogItem {
   tentative_monocarton_cost: number | null
   total_cost: number | null
   potential_mrp: number | null
+  rate_category: string
   is_active: boolean
 }
 

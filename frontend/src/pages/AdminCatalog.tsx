@@ -1,146 +1,389 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Layout from '@/components/Layout'
 import { catalogService } from '@/services'
 import type { CatalogItem } from '@/types'
 
-const EMPTY: Partial<CatalogItem> = {
-  body_part: '', product_type: '', sub_product_type: '',
-  kb_tag1: '', kb_tag2: '', kb_tag3: '',
-  specific_ingredients: '', color: '', fragrance: '',
-  size: '', packaging_type: '', client_name: '',
-  potential_mrp: null,
+// ---------------------------------------------------------------------------
+// Column definitions — every field from the Excel template
+// ---------------------------------------------------------------------------
+const COLUMNS: { key: keyof CatalogItem; label: string; numeric?: boolean; width: string }[] = [
+  { key: 'body_part',                label: 'Body Part',                  width: 'min-w-[100px]' },
+  { key: 'product_type',             label: 'Product Type',               width: 'min-w-[120px]' },
+  { key: 'sub_product_type',         label: 'Sub Product Type',           width: 'min-w-[140px]' },
+  { key: 'kb_tag1',                  label: 'Key Benefit 1',              width: 'min-w-[130px]' },
+  { key: 'kb_tag2',                  label: 'Key Benefit 2',              width: 'min-w-[130px]' },
+  { key: 'kb_tag3',                  label: 'Key Benefit 3',              width: 'min-w-[130px]' },
+  { key: 'specific_ingredients',     label: 'Specific Ingredients',       width: 'min-w-[200px]' },
+  { key: 'color',                    label: 'Color',                      width: 'min-w-[80px]'  },
+  { key: 'fragrance',                label: 'Fragrance',                  width: 'min-w-[100px]' },
+  { key: 'size',                     label: 'Size',                       width: 'min-w-[70px]'  },
+  { key: 'packaging_type',           label: 'Packaging Type',             width: 'min-w-[120px]' },
+  { key: 'rate_category',            label: 'Rate Category',              width: 'min-w-[120px]' },
+  { key: 'per_kg_rate',              label: 'Per KG Rate',       numeric: true, width: 'min-w-[110px]' },
+  { key: 'manufacturing_cost',       label: 'Manufacturing Cost',numeric: true, width: 'min-w-[150px]' },
+  { key: 'rate_per_unit',            label: 'Rate Per Unit',     numeric: true, width: 'min-w-[120px]' },
+  { key: 'tentative_packaging_cost', label: 'Tentative Packaging Cost', numeric: true, width: 'min-w-[190px]' },
+  { key: 'label_cost',               label: 'Label Cost',        numeric: true, width: 'min-w-[110px]' },
+  { key: 'tentative_monocarton_cost',label: 'Tentative Monocarton Cost', numeric: true, width: 'min-w-[200px]' },
+  { key: 'total_cost',               label: 'Total Cost',        numeric: true, width: 'min-w-[110px]' },
+  { key: 'potential_mrp',            label: 'Potential MRP',     numeric: true, width: 'min-w-[120px]' },
+]
+
+const RATE_CATEGORIES = ['Basic', 'Premium', 'Luxury']
+
+type Filters = {
+  body_part: string
+  product_type: string
+  sub_product_type: string
+  key_benefits: string[]
+  rate_category: string
+  q: string
 }
 
+const EMPTY_FILTERS: Filters = {
+  body_part: '', product_type: '', sub_product_type: '',
+  key_benefits: [], rate_category: '', q: '',
+}
+
+function fmt(val: number | null | undefined, numeric?: boolean) {
+  if (!numeric) return val ?? '—'
+  if (val === null || val === undefined) return '—'
+  return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+// ---------------------------------------------------------------------------
 export default function AdminCatalog() {
   const [items, setItems] = useState<CatalogItem[]>([])
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState<Partial<CatalogItem>>(EMPTY)
-  const [editing, setEditing] = useState<string | null>(null)
-  const [q, setQ] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+
+  // Facets for dropdown options
+  const [facets, setFacets] = useState<{
+    body_parts: string[]; product_types: string[]; sub_product_types: string[]; key_benefits: string[]; rate_categories: string[]
+  }>({ body_parts: [], product_types: [], sub_product_types: [], key_benefits: [], rate_categories: [] })
+
+  // Key benefits multi-select portal state
+  const [kbOpen, setKbOpen]           = useState(false)
+  const [kbDropStyle, setKbDropStyle] = useState<React.CSSProperties>({})
+  const kbBtnRef  = useRef<HTMLButtonElement>(null)
+  const kbDropRef = useRef<HTMLDivElement>(null)
+
+  // Import state
   const [importing, setImporting] = useState(false)
-  const [importMsg, setImportMsg] = useState('')
+  const [importMsg, setImportMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const load = async () => setItems(await catalogService.search(q ? { q } : {}))
-  useEffect(() => { load() }, [q])
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (editing) {
-      await catalogService.update(editing, form)
-    } else {
-      await catalogService.create(form)
+  // ---- Load catalog -------------------------------------------------------
+  const load = async () => {
+    setLoading(true)
+    try {
+      const params: Record<string, string | string[]> = {}
+      if (filters.body_part)         params.body_part        = filters.body_part
+      if (filters.product_type)      params.product_type     = filters.product_type
+      if (filters.sub_product_type)  params.sub_product_type = filters.sub_product_type
+      if (filters.key_benefits.length) params.key_benefit    = filters.key_benefits
+      if (filters.rate_category)     params.rate_category    = filters.rate_category
+      if (filters.q)                 params.q                = filters.q
+      setItems(await catalogService.search(params))
+    } finally {
+      setLoading(false)
     }
-    setForm(EMPTY); setShowForm(false); setEditing(null)
-    load()
   }
 
-  const handleEdit = (item: CatalogItem) => {
-    setEditing(item.id); setForm(item); setShowForm(true)
+  useEffect(() => { load() }, [filters])
+
+  // ---- Load facets --------------------------------------------------------
+  useEffect(() => {
+    catalogService.facets().then(setFacets)
+  }, [])
+
+  // ---- KB dropdown outside-click ------------------------------------------
+  useEffect(() => {
+    if (!kbOpen) return
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (kbBtnRef.current?.contains(t) || kbDropRef.current?.contains(t)) return
+      setKbOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [kbOpen])
+
+  const openKbDrop = () => {
+    if (kbBtnRef.current) {
+      const r = kbBtnRef.current.getBoundingClientRect()
+      setKbDropStyle({ position: 'fixed', top: r.bottom + 4, left: r.left, minWidth: r.width, zIndex: 9999 })
+    }
+    setKbOpen((o) => !o)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Deactivate this catalog item?')) return
-    await catalogService.delete(id)
-    load()
-  }
+  const toggleKb = (kb: string) =>
+    setFilters((f) => ({
+      ...f,
+      key_benefits: f.key_benefits.includes(kb)
+        ? f.key_benefits.filter((x) => x !== kb)
+        : [...f.key_benefits, kb],
+    }))
 
+  // ---- Import -------------------------------------------------------------
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setImporting(true); setImportMsg('')
+
+    const confirmed = window.confirm(
+      `Uploading "${file.name}" will permanently DELETE all existing catalog rows and replace them with the contents of this file.\n\nThis cannot be undone. Continue?`
+    )
+    if (!confirmed) {
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+
+    setImporting(true)
+    setImportMsg(null)
     try {
       const res = await catalogService.importXlsx(file)
-      setImportMsg(`Imported ${res.created} rows.`)
+      setImportMsg({
+        text: `Replaced catalog: deleted ${res.deleted ?? '?'} old rows, imported ${res.created} new rows from "${file.name}".`,
+        ok: true,
+      })
       load()
     } catch (err: any) {
-      setImportMsg(err.response?.data?.detail || 'Import failed')
+      setImportMsg({ text: err.response?.data?.detail || 'Import failed.', ok: false })
     } finally {
       setImporting(false)
       if (fileRef.current) fileRef.current.value = ''
     }
   }
 
+  // ---- Delete single item -------------------------------------------------
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Remove this catalog item?')) return
+    await catalogService.delete(id)
+    load()
+  }
+
+  const activeFilterCount = [
+    filters.body_part, filters.product_type, filters.sub_product_type,
+    filters.rate_category, filters.q,
+  ].filter(Boolean).length + filters.key_benefits.length
+
   return (
     <Layout>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Product Catalog</h1>
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".xlsx"
-            onChange={handleImport}
-            className="text-sm"
-            disabled={importing}
-            aria-label="Import catalog xlsx"
-          />
-          <button onClick={() => { setForm(EMPTY); setEditing(null); setShowForm(!showForm) }} className="btn-primary">
-            + Add item
-          </button>
+      {/* ---- Header ---- */}
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Product Catalog</h1>
+          <p className="text-xs text-black/50 mt-0.5">{items.length} items shown</p>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Replace-import button */}
+          <label
+            className={`btn-primary text-sm cursor-pointer flex items-center gap-2 ${importing ? 'opacity-60 pointer-events-none' : ''}`}
+            title="Upload a new Excel file to replace the entire catalog"
+          >
+            {importing ? 'Importing…' : '⬆ Replace catalog (Excel)'}
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx"
+              onChange={handleImport}
+              className="hidden"
+              disabled={importing}
+              aria-label="Replace catalog from Excel file"
+            />
+          </label>
         </div>
       </div>
 
-      {importMsg && <p className="text-sm mb-4 text-mustard-700">{importMsg}</p>}
-
-      <input
-        placeholder="Search catalog…"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        className="w-full max-w-md mb-4"
-      />
-
-      {showForm && (
-        <form onSubmit={handleSave} className="card mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <input placeholder="Body part" value={form.body_part || ''} onChange={(e) => setForm({ ...form, body_part: e.target.value })} required />
-          <input placeholder="Product type" value={form.product_type || ''} onChange={(e) => setForm({ ...form, product_type: e.target.value })} required />
-          <input placeholder="Sub product type" value={form.sub_product_type || ''} onChange={(e) => setForm({ ...form, sub_product_type: e.target.value })} />
-          <input placeholder="KB tag 1" value={form.kb_tag1 || ''} onChange={(e) => setForm({ ...form, kb_tag1: e.target.value })} />
-          <input placeholder="KB tag 2" value={form.kb_tag2 || ''} onChange={(e) => setForm({ ...form, kb_tag2: e.target.value })} />
-          <input placeholder="KB tag 3" value={form.kb_tag3 || ''} onChange={(e) => setForm({ ...form, kb_tag3: e.target.value })} />
-          <input placeholder="Size" value={form.size || ''} onChange={(e) => setForm({ ...form, size: e.target.value })} />
-          <input placeholder="Packaging type" value={form.packaging_type || ''} onChange={(e) => setForm({ ...form, packaging_type: e.target.value })} />
-          <input placeholder="Potential MRP" type="number" value={form.potential_mrp ?? ''} onChange={(e) => setForm({ ...form, potential_mrp: e.target.value ? Number(e.target.value) : null })} />
-          <input className="md:col-span-3" placeholder="Specific ingredients" value={form.specific_ingredients || ''} onChange={(e) => setForm({ ...form, specific_ingredients: e.target.value })} />
-          <div className="md:col-span-3 flex gap-2">
-            <button className="btn-primary">{editing ? 'Update' : 'Create'}</button>
-            <button type="button" onClick={() => { setShowForm(false); setEditing(null); setForm(EMPTY) }} className="btn-secondary">Cancel</button>
-          </div>
-        </form>
+      {/* Import result message */}
+      {importMsg && (
+        <div
+          className={`mb-4 p-3 rounded text-sm border ${
+            importMsg.ok
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+          role="status"
+        >
+          {importMsg.text}
+        </div>
       )}
 
-      <div className="card overflow-x-auto">
-        <table className="table-clean">
-          <thead>
-            <tr>
-              <th>Body</th>
-              <th>Type</th>
-              <th>Sub</th>
-              <th>Benefits</th>
-              <th>Size</th>
-              <th>MRP</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((c) => (
-              <tr key={c.id}>
-                <td>{c.body_part}</td>
-                <td>{c.product_type}</td>
-                <td>{c.sub_product_type}</td>
-                <td className="text-xs">{[c.kb_tag1, c.kb_tag2, c.kb_tag3].filter(Boolean).join(', ')}</td>
-                <td>{c.size}</td>
-                <td>{c.potential_mrp ?? '—'}</td>
-                <td>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleEdit(c)} className="btn-secondary text-xs">Edit</button>
-                    <button onClick={() => handleDelete(c.id)} className="btn-danger text-xs">Delete</button>
-                  </div>
-                </td>
-              </tr>
+      {/* ---- Filter bar ---- */}
+      <div className="card mb-4 flex flex-wrap gap-3 items-end p-4">
+        {/* Body Part */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-black/60">Body Part</label>
+          <select
+            value={filters.body_part}
+            onChange={(e) => setFilters((f) => ({ ...f, body_part: e.target.value }))}
+            className="text-sm min-w-[120px]"
+          >
+            <option value="">All</option>
+            {(facets.body_parts.length ? facets.body_parts : ['Face', 'Body', 'Hair', 'Lip', 'Eye']).map((v) => (
+              <option key={v}>{v}</option>
             ))}
-          </tbody>
-        </table>
+          </select>
+        </div>
+
+        {/* Product Type */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-black/60">Product Type</label>
+          <select
+            value={filters.product_type}
+            onChange={(e) => setFilters((f) => ({ ...f, product_type: e.target.value }))}
+            className="text-sm min-w-[130px]"
+          >
+            <option value="">All</option>
+            {facets.product_types.map((v) => <option key={v}>{v}</option>)}
+          </select>
+        </div>
+
+        {/* Sub Product Type */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-black/60">Sub Product Type</label>
+          <select
+            value={filters.sub_product_type}
+            onChange={(e) => setFilters((f) => ({ ...f, sub_product_type: e.target.value }))}
+            className="text-sm min-w-[150px]"
+          >
+            <option value="">All</option>
+            {facets.sub_product_types.map((v) => <option key={v}>{v}</option>)}
+          </select>
+        </div>
+
+        {/* Key Benefits multi-select */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-black/60">Key Benefits</label>
+          <button
+            ref={kbBtnRef}
+            type="button"
+            onClick={openKbDrop}
+            className="text-sm text-left px-2 py-1 border border-black/15 rounded bg-white hover:border-mustard min-w-[160px] truncate"
+          >
+            {filters.key_benefits.length === 0 ? 'All' : filters.key_benefits.join(', ')}
+          </button>
+          {kbOpen && createPortal(
+            <div
+              ref={kbDropRef}
+              style={kbDropStyle}
+              className="max-h-56 overflow-auto bg-white border border-black/15 rounded shadow-lg p-2"
+            >
+              {(facets.key_benefits.length ? facets.key_benefits : []).length === 0
+                ? <p className="text-xs text-black/50 px-2 py-1">No options yet.</p>
+                : facets.key_benefits.map((kb) => (
+                    <label key={kb} className="flex items-center gap-2 px-2 py-1 hover:bg-mustard-50 rounded cursor-pointer text-sm">
+                      <input
+                        type="checkbox"
+                        className="accent-mustard"
+                        checked={filters.key_benefits.includes(kb)}
+                        onChange={() => toggleKb(kb)}
+                      />
+                      <span>{kb}</span>
+                    </label>
+                  ))
+              }
+            </div>,
+            document.body,
+          )}
+        </div>
+
+        {/* Rate Category */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-black/60">Rate Category</label>
+          <select
+            value={filters.rate_category}
+            onChange={(e) => setFilters((f) => ({ ...f, rate_category: e.target.value }))}
+            className="text-sm min-w-[130px]"
+          >
+            <option value="">All</option>
+            {(facets.rate_categories.length ? facets.rate_categories : RATE_CATEGORIES).map((v) => (
+              <option key={v}>{v}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Free text search */}
+        <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
+          <label className="text-xs font-medium text-black/60">Search</label>
+          <input
+            placeholder="Search by ingredient, client, type…"
+            value={filters.q}
+            onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+            className="text-sm"
+          />
+        </div>
+
+        {/* Reset */}
+        {activeFilterCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setFilters(EMPTY_FILTERS)}
+            className="btn-secondary text-xs self-end"
+          >
+            Clear filters ({activeFilterCount})
+          </button>
+        )}
+      </div>
+
+      {/* ---- Table ---- */}
+      <div className="card p-0 overflow-hidden">
+        {loading ? (
+          <p className="text-sm text-black/50 p-6">Loading…</p>
+        ) : items.length === 0 ? (
+          <p className="text-sm text-black/50 p-6">
+            {activeFilterCount > 0
+              ? 'No catalog items match the current filters.'
+              : 'No catalog items yet. Upload an Excel file to get started.'}
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-mustard-50 text-black/80 text-xs sticky top-0 z-10">
+                  {COLUMNS.map((col) => (
+                    <th
+                      key={col.key}
+                      className={`px-3 py-2 text-left font-medium border-b border-black/10 whitespace-nowrap ${col.width} ${col.numeric ? 'text-right' : ''}`}
+                    >
+                      {col.label}
+                    </th>
+                  ))}
+                  <th className="px-3 py-2 border-b border-black/10 w-20 text-center font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, idx) => (
+                  <tr
+                    key={item.id}
+                    className={idx % 2 === 1 ? 'bg-black/[0.015] hover:bg-mustard-50/30' : 'hover:bg-mustard-50/30'}
+                  >
+                    {COLUMNS.map((col) => (
+                      <td
+                        key={col.key}
+                        className={`px-3 py-2 border-b border-black/5 align-top ${col.numeric ? 'text-right tabular-nums' : ''} ${col.key === 'specific_ingredients' ? 'max-w-[200px] truncate' : 'whitespace-nowrap'}`}
+                        title={col.key === 'specific_ingredients' ? String(item[col.key] ?? '') : undefined}
+                      >
+                        {fmt(item[col.key] as any, col.numeric)}
+                      </td>
+                    ))}
+                    <td className="px-3 py-2 border-b border-black/5 text-center">
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="btn-danger text-xs"
+                        aria-label={`Delete ${item.body_part} ${item.product_type}`}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </Layout>
   )

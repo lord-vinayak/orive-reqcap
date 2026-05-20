@@ -11,6 +11,7 @@ export default function NotesSection({ requirementId }: Props) {
   const [notes, setNotes] = useState<Note[]>([])
   const [text, setText] = useState('')
   const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState('')
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin')
 
   const load = async () => {
@@ -23,10 +24,13 @@ export default function NotesSection({ requirementId }: Props) {
     e.preventDefault()
     if (!text.trim()) return
     setAdding(true)
+    setAddError('')
     try {
       await notesService.add(requirementId, text.trim())
       setText('')
       await load()
+    } catch (err: any) {
+      setAddError(err.response?.data?.detail || err.response?.data?.text?.[0] || 'Failed to add note. Please try again.')
     } finally {
       setAdding(false)
     }
@@ -43,17 +47,22 @@ export default function NotesSection({ requirementId }: Props) {
       <h2 id="notes-heading" className="text-lg font-semibold mb-3">Notes</h2>
       <p className="text-xs text-black/50 mb-3">Notes are append-only. Each note records the author and timestamp.</p>
 
-      <form onSubmit={handleAdd} className="mb-4 flex gap-2">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Add a note…"
-          className="flex-1"
-          aria-label="New note"
-        />
-        <button disabled={adding || !text.trim()} className="btn-primary">
-          {adding ? 'Adding…' : 'Add'}
-        </button>
+      <form onSubmit={handleAdd} className="mb-4 flex flex-col gap-2">
+        <div className="flex gap-2">
+          <input
+            value={text}
+            onChange={(e) => { setText(e.target.value); setAddError('') }}
+            placeholder="Add a note…"
+            className="flex-1"
+            aria-label="New note"
+          />
+          <button type="submit" disabled={adding || !text.trim()} className="btn-primary">
+            {adding ? 'Adding…' : 'Add'}
+          </button>
+        </div>
+        {addError && (
+          <p role="alert" className="text-xs text-red-700">{addError}</p>
+        )}
       </form>
 
       {notes.length === 0 ? (

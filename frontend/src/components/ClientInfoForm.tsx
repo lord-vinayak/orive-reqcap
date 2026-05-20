@@ -65,7 +65,7 @@ export default function ClientInfoForm({
         </div>
 
         <div>
-          <label htmlFor="ci_poc" className="block mb-1">Client POC</label>
+          <label htmlFor="ci_poc" className="block mb-1">Client Point of Contact</label>
           <input
             id="ci_poc"
             value={currentUser?.name || ''}
@@ -81,7 +81,7 @@ export default function ClientInfoForm({
         </div>
 
         <div>
-          <label htmlFor="ci_noprod" className="block mb-1">No. of products</label>
+          <label htmlFor="ci_noprod" className="block mb-1">Number of Products</label>
           <select
             id="ci_noprod"
             value={noOfProducts ?? ''}

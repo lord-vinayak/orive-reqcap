@@ -17,8 +17,17 @@ def _build_drive_service():
     if creds_json:
         info = json.loads(creds_json)
         creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
-    elif creds_file and os.path.exists(creds_file):
-        creds = service_account.Credentials.from_service_account_file(creds_file, scopes=scopes)
+    elif creds_file:
+        # Resolve relative paths against Django's BASE_DIR (the backend/ folder)
+        from django.conf import settings as _settings
+        resolved = creds_file if os.path.isabs(creds_file) else os.path.join(_settings.BASE_DIR, creds_file)
+        if not os.path.exists(resolved):
+            raise RuntimeError(
+                f'Google Drive credentials file not found: {resolved}\n'
+                'Please download the service account JSON key from Google Cloud Console and '
+                f'place it at {resolved}, or set GOOGLE_DRIVE_CREDENTIALS_JSON in your .env.'
+            )
+        creds = service_account.Credentials.from_service_account_file(resolved, scopes=scopes)
     else:
         raise RuntimeError('Google Drive credentials not configured')
 

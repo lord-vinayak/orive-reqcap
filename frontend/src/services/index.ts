@@ -47,12 +47,26 @@ export const fileService = {
 }
 
 export const catalogService = {
-  search: async (params: Record<string, string>) => {
-    const { data } = await api.get<{ results: CatalogItem[] } | CatalogItem[]>('/catalog/', { params })
+  search: async (params: Record<string, string | string[]>) => {
+    const { data } = await api.get<{ results: CatalogItem[] } | CatalogItem[]>('/catalog/', {
+      params,
+      // Allow repeated keys: key_benefit[]=Acne&key_benefit[]=Glow
+      paramsSerializer: (p) => {
+        const parts: string[] = []
+        for (const [k, v] of Object.entries(p)) {
+          if (Array.isArray(v)) {
+            v.forEach((item) => parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(item)}`))
+          } else if (v !== '' && v !== undefined && v !== null) {
+            parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(v as string)}`)
+          }
+        }
+        return parts.join('&')
+      },
+    })
     return Array.isArray(data) ? data : data.results
   },
   facets: async (params: Record<string, string> = {}) =>
-    (await api.get<{ body_parts: string[]; product_types: string[]; sub_product_types: string[]; key_benefits: string[] }>(
+    (await api.get<{ body_parts: string[]; product_types: string[]; sub_product_types: string[]; key_benefits: string[]; rate_categories: string[] }>(
       '/catalog/facets/', { params })).data,
   create: async (data: Partial<CatalogItem>) => (await api.post<CatalogItem>('/catalog/', data)).data,
   update: async (id: string, data: Partial<CatalogItem>) => (await api.patch<CatalogItem>(`/catalog/${id}/`, data)).data,

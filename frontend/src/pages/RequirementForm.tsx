@@ -4,6 +4,7 @@ import Layout from '@/components/Layout'
 import AudioCaptureButton from '@/components/AudioCaptureButton'
 import ClientInfoForm from '@/components/ClientInfoForm'
 import ProductTable from '@/components/ProductTable'
+import CatalogSuggestions from '@/components/CatalogSuggestions'
 import NotesSection from '@/components/NotesSection'
 import FileUploadSection from '@/components/FileUploadSection'
 import { clientService, requirementService } from '@/services'
@@ -167,6 +168,40 @@ export default function RequirementForm() {
         setActiveRowIndex(cur.length)
         return [...cur, tempRow]
       })
+    }
+  }
+
+  /** Insert a new blank row immediately after position `afterIdx`. */
+  const handleInsertAfter = async (afterIdx: number) => {
+    const insertAt = afterIdx + 1
+    if (requirement) {
+      try {
+        const newP = await requirementService.addProduct(requirement.id)
+        setProducts((cur) => {
+          const next = [...cur]
+          next.splice(insertAt, 0, newP)
+          // Re-number rows
+          return next.map((p, i) => ({ ...p, row_number: i + 1 }))
+        })
+        setActiveRowIndex(insertAt)
+      } catch {
+        setError('Could not insert row. Please try again.')
+      }
+    } else {
+      const tempRow: RequirementProduct = {
+        id: `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        row_number: insertAt + 1,
+        body_part: '', category: '', sub_category: '', key_benefits: [],
+        size: '', packaging_type: '', packaging_notes: '', planned_mrp: null,
+        specific_ingredient: '', benchmark_product: '',
+        has_color: null, color_details: '', has_fragrance: null, fragrance_details: '',
+      }
+      setProducts((cur) => {
+        const next = [...cur]
+        next.splice(insertAt, 0, tempRow)
+        return next.map((p, i) => ({ ...p, row_number: i + 1 }))
+      })
+      setActiveRowIndex(insertAt)
     }
   }
 
@@ -399,8 +434,15 @@ export default function RequirementForm() {
             onChange={handleRowChange}
             onDelete={handleRowDelete}
             onAddRow={handleAddRow}
+            onInsertAfter={handleInsertAfter}
             activeIndex={activeRowIndex}
             onActiveChange={setActiveRowIndex}
+          />
+
+          {/* FULL WIDTH: Matching catalog items (auto-filtered from latest requirement row) */}
+          <CatalogSuggestions
+            products={products}
+            requirementId={requirement?.id}
           />
         </div>
       )}

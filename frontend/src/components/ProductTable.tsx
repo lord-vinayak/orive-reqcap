@@ -9,6 +9,8 @@ interface Props {
   onChange: (index: number, patch: Partial<RequirementProduct>) => void
   onDelete: (index: number) => void
   onAddRow: () => void
+  /** Insert a blank row immediately after the given index. */
+  onInsertAfter: (index: number) => void
   /** Index of the row currently being edited (audio fills into this row). */
   activeIndex?: number
   onActiveChange?: (i: number) => void
@@ -20,7 +22,7 @@ interface Props {
  * Horizontal scroll for narrow viewports.
  */
 export default function ProductTable({
-  products, onChange, onDelete, onAddRow, activeIndex, onActiveChange,
+  products, onChange, onDelete, onAddRow, onInsertAfter, activeIndex, onActiveChange,
 }: Props) {
   return (
     <section className="card p-0 overflow-hidden" aria-labelledby="products-heading">
@@ -40,7 +42,7 @@ export default function ProductTable({
               <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[170px]">Key benefits</th>
               <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[80px]">Size</th>
               <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[100px]">Packaging</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[160px]">Pkg notes</th>
+              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[160px]">Packaging Notes</th>
               <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[110px]">Planned MRP</th>
               <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[180px]">Specific ingredient</th>
               <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[160px]">Benchmark</th>
@@ -48,7 +50,7 @@ export default function ProductTable({
               <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[160px]">Color details</th>
               <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[90px]">Fragrance</th>
               <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[160px]">Fragrance details</th>
-              <th className="px-2 py-2 text-center font-medium border-b border-black/10 w-12">&nbsp;</th>
+              <th className="px-2 py-2 text-center font-medium border-b border-black/10 w-20">&nbsp;</th>
             </tr>
           </thead>
           <tbody>
@@ -224,16 +226,28 @@ export default function ProductTable({
                     />
                   </td>
 
+                  {/* + / − action buttons */}
                   <td className={`${cellCls} text-center`}>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); onDelete(i) }}
-                      className="text-red-700 hover:text-red-900 text-xs font-medium px-2"
-                      aria-label={`Delete row ${p.row_number}`}
-                      title="Delete row"
-                    >
-                      ✕
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onInsertAfter(i) }}
+                        className="w-6 h-6 flex items-center justify-center rounded border border-black/20 text-black/70 hover:bg-mustard-50 hover:border-mustard text-base font-semibold leading-none"
+                        aria-label={`Insert row after row ${p.row_number}`}
+                        title="Insert row below"
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onDelete(i) }}
+                        className="w-6 h-6 flex items-center justify-center rounded border border-red-200 text-red-700 hover:bg-red-50 hover:border-red-400 text-base font-semibold leading-none"
+                        aria-label={`Remove row ${p.row_number}`}
+                        title="Remove row"
+                      >
+                        −
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -242,7 +256,7 @@ export default function ProductTable({
             {products.length === 0 && (
               <tr>
                 <td colSpan={16} className="text-center text-sm text-black/50 py-6">
-                  No product rows yet. Click "Add row" below to start.
+                  No product rows yet. Click "+ Add row" below to start.
                 </td>
               </tr>
             )}

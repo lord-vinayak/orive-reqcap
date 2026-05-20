@@ -22,6 +22,8 @@ export function useSpeechRecognition(): SpeechRecognitionResult {
   const [transcript, setTranscript] = useState('')
   const [error, setError] = useState<string | null>(null)
   const recRef = useRef<any>(null)
+  // Keep accumulated final text in a ref so it survives across renders
+  const finalTextRef = useRef('')
 
   const isSupported = typeof window !== 'undefined' &&
     !!(window.SpeechRecognition || window.webkitSpeechRecognition)
@@ -35,30 +37,37 @@ export function useSpeechRecognition(): SpeechRecognitionResult {
     const rec = new SR()
     rec.continuous = true
     rec.interimResults = true
-    rec.lang = 'en-IN'
+    rec.lang = 'en-US'
 
-    let finalText = ''
+    finalTextRef.current = ''
+    setTranscript('')
+    setError(null)
+
     rec.onresult = (event: any) => {
       let interim = ''
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalText += event.results[i][0].transcript + ' '
+          finalTextRef.current += event.results[i][0].transcript + ' '
         } else {
           interim += event.results[i][0].transcript
         }
       }
-      setTranscript(finalText + interim)
+      setTranscript(finalTextRef.current + interim)
     }
+
     rec.onerror = (e: any) => {
+      // 'no-speech' is benign — user just didn't say anything yet
+      if (e.error === 'no-speech') return
       setError(`Recognition error: ${e.error}`)
       setIsRecording(false)
     }
+
     rec.onend = () => {
+      // Ensure state transcript has the final accumulated text before flipping isRecording
+      setTranscript(finalTextRef.current.trim())
       setIsRecording(false)
     }
 
-    setTranscript('')
-    setError(null)
     setIsRecording(true)
     rec.start()
     recRef.current = rec
@@ -71,6 +80,7 @@ export function useSpeechRecognition(): SpeechRecognitionResult {
   const reset = useCallback(() => {
     setTranscript('')
     setError(null)
+    finalTextRef.current = ''
   }, [])
 
   useEffect(() => () => { recRef.current?.abort?.() }, [])

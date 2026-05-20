@@ -21,7 +21,9 @@ class CatalogViewSet(viewsets.ModelViewSet):
         body_part = params.get('body_part')
         product_type = params.get('product_type')
         sub_product_type = params.get('sub_product_type')
-        key_benefit = params.get('key_benefit')
+        # key_benefit may be sent multiple times: ?key_benefit=Acne&key_benefit=Glow
+        key_benefits = params.getlist('key_benefit')
+        rate_category = params.get('rate_category')
         q = params.get('q')
 
         if body_part:
@@ -30,12 +32,17 @@ class CatalogViewSet(viewsets.ModelViewSet):
             qs = qs.filter(product_type__iexact=product_type)
         if sub_product_type:
             qs = qs.filter(sub_product_type__iexact=sub_product_type)
-        if key_benefit:
-            qs = qs.filter(
-                Q(kb_tag1__iexact=key_benefit) |
-                Q(kb_tag2__iexact=key_benefit) |
-                Q(kb_tag3__iexact=key_benefit)
-            )
+        if key_benefits:
+            kb_filter = Q()
+            for kb in key_benefits:
+                kb_filter |= (
+                    Q(kb_tag1__iexact=kb) |
+                    Q(kb_tag2__iexact=kb) |
+                    Q(kb_tag3__iexact=kb)
+                )
+            qs = qs.filter(kb_filter)
+        if rate_category:
+            qs = qs.filter(rate_category__iexact=rate_category)
         if q:
             qs = qs.filter(
                 Q(body_part__icontains=q) |
@@ -71,6 +78,9 @@ class CatalogViewSet(viewsets.ModelViewSet):
         header = [str(h).strip() if h is not None else '' for h in rows[header_row_idx]]
         data_rows = rows[header_row_idx + 1:]
 
+        # Replace mode: delete ALL existing catalog rows before importing
+        deleted_count, _ = CatalogItem.objects.all().delete()
+
         # Map header → field name
         column_map = {
             'date': 'date', 'poc': 'poc', 'client name': 'client_name',
@@ -80,6 +90,7 @@ class CatalogViewSet(viewsets.ModelViewSet):
             'specific ingredients': 'specific_ingredients',
             'color': 'color', 'fragrance': 'fragrance',
             'size': 'size', 'packaging type': 'packaging_type',
+            'rate category': 'rate_category',
             'per kg rate': 'per_kg_rate', 'manufacturing cost': 'manufacturing_cost',
             'rate per unit': 'rate_per_unit',
             'tentative packaging cost': 'tentative_packaging_cost',
@@ -118,7 +129,7 @@ class CatalogViewSet(viewsets.ModelViewSet):
                 CatalogItem.objects.create(**obj)
                 created += 1
 
-        return Response({'created': created})
+        return Response({'created': created, 'deleted': deleted_count})
 
 
 # Lookup endpoint: return list of distinct values for cascading filters
@@ -152,4 +163,5 @@ def catalog_facets(request):
                 list(qs.values_list('kb_tag3', flat=True))
             ) if v
         }),
+        'rate_categories': _distinct(qs, 'rate_category'),
     })
