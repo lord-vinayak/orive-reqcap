@@ -69,7 +69,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           {/* Logo placeholder */}
-          <div className="w-16 h-16 bg-mustard rounded-full flex items-center justify-center font-bold text-2xl text-black mx-auto mb-4">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl text-black mx-auto mb-4">
             <img src="/public/logo.png" alt="Skinovation Sciences" />
           </div>
           <h1 className="text-2xl font-semibold text-black">Skinovation Sciences CRM</h1>

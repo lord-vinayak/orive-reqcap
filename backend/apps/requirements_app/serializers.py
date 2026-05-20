@@ -4,6 +4,8 @@ from apps.clients.serializers import ClientSerializer
 
 
 class RequirementProductSerializer(serializers.ModelSerializer):
+    row_number = serializers.IntegerField(required=False)
+
     class Meta:
         model = RequirementProduct
         fields = [

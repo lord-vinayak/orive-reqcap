@@ -256,7 +256,27 @@ export default function RequirementForm() {
           target_audience_age: targetAge,
           no_of_products: noOfProducts,
         })
-        // Save any dirty rows
+
+        // 1. Save any tmp- rows (if a previous save failed halfway)
+        const tmpProducts = products.filter(p => p.id.startsWith('tmp-'))
+        const createdPromises = tmpProducts.map(async (p) => {
+          const { id: _i, requirement: _r, row_number: _rn, created_at: _c, updated_at: _u, ...rest } = p
+          const newP = await requirementService.addProduct(req!.id, rest)
+          return { oldId: p.id, newP }
+        })
+        
+        if (tmpProducts.length > 0) {
+          const newlyCreated = await Promise.all(createdPromises)
+          setProducts(cur => {
+            let next = [...cur]
+            for (const { oldId, newP } of newlyCreated) {
+              next = next.map(x => x.id === oldId ? newP : x)
+            }
+            return next
+          })
+        }
+
+        // 2. Save any dirty existing rows
         const dirtyIds = Array.from(dirtyProductsRef.current)
         const tasks = dirtyIds.flatMap((pid) => {
           if (pid.startsWith('tmp-')) return []

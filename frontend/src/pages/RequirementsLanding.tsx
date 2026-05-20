@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import Layout from '@/components/Layout'
+import {Plus, Search} from 'lucide-react'
+ 
 
 export default function RequirementsLanding() {
   const navigate = useNavigate()
@@ -15,7 +17,7 @@ export default function RequirementsLanding() {
             className="card text-left hover:border-mustard transition-colors"
           >
             <div className="w-12 h-12 bg-mustard-50 rounded flex items-center justify-center mb-4">
-              <span className="text-2xl">➕</span>
+              <span className="text-2xl"><Plus /></span>
             </div>
             <h2 className="text-lg font-semibold mb-1">Capture New Requirement</h2>
             <p className="text-sm text-black/60">Start a fresh requirement for a client.</p>
@@ -26,7 +28,7 @@ export default function RequirementsLanding() {
             className="card text-left hover:border-mustard transition-colors"
           >
             <div className="w-12 h-12 bg-mustard-50 rounded flex items-center justify-center mb-4">
-              <span className="text-2xl">🔍</span>
+              <span className="text-2xl"><Search /></span>
             </div>
             <h2 className="text-lg font-semibold mb-1">Edit Old Requirement</h2>
             <p className="text-sm text-black/60">Search by client phone number.</p>
