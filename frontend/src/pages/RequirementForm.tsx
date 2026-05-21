@@ -14,6 +14,44 @@ import type { Client, Requirement, RequirementProduct } from "@/types";
 const DRAFT_KEY = "skinovation-draft-requirement";
 const AUTOSAVE_DEBOUNCE_MS = 3000;
 
+function hasText(value: string | null | undefined) {
+  return Boolean(value?.trim());
+}
+
+function hasDraftProductContent(product: RequirementProduct) {
+  return (
+    hasText(product.body_part) ||
+    hasText(product.category) ||
+    hasText(product.sub_category) ||
+    product.key_benefits.length > 0 ||
+    hasText(product.size) ||
+    hasText(product.packaging_type) ||
+    hasText(product.packaging_notes) ||
+    product.planned_mrp !== null ||
+    hasText(product.specific_ingredient) ||
+    hasText(product.benchmark_product) ||
+    product.has_color !== null ||
+    hasText(product.color_details) ||
+    product.has_fragrance !== null ||
+    hasText(product.fragrance_details)
+  );
+}
+
+function hasMeaningfulDraft(
+  client: Partial<Client>,
+  targetAge: string,
+  noOfProducts: number | null,
+  products: RequirementProduct[],
+) {
+  return (
+    hasText(client.name) ||
+    hasText(client.phone_no) ||
+    hasText(targetAge) ||
+    noOfProducts !== null ||
+    products.some(hasDraftProductContent)
+  );
+}
+
 export default function RequirementForm() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
@@ -69,8 +107,24 @@ export default function RequirementForm() {
   // ---- LOAD existing requirement ----
   useEffect(() => {
     if (!id) {
-      const draft = localStorage.getItem(DRAFT_KEY);
-      if (draft) setShowDraftBanner(true);
+      const rawDraft = localStorage.getItem(DRAFT_KEY);
+      if (!rawDraft) return;
+      try {
+        const draft = JSON.parse(rawDraft);
+        const hasSavedDraft = hasMeaningfulDraft(
+          draft.client || {},
+          draft.targetAge || "",
+          draft.noOfProducts ?? null,
+          draft.products || [],
+        );
+        if (hasSavedDraft) {
+          setShowDraftBanner(true);
+        } else {
+          localStorage.removeItem(DRAFT_KEY);
+        }
+      } catch {
+        localStorage.removeItem(DRAFT_KEY);
+      }
       return;
     }
     setLoadingRequirement(true);
@@ -107,6 +161,10 @@ export default function RequirementForm() {
   // Local draft save (new mode)
   useEffect(() => {
     if (isEdit) return;
+    if (!hasMeaningfulDraft(client, targetAge, noOfProducts, products)) {
+      localStorage.removeItem(DRAFT_KEY);
+      return;
+    }
     localStorage.setItem(
       DRAFT_KEY,
       JSON.stringify({ client, targetAge, noOfProducts, products }),

@@ -10,6 +10,8 @@ from .models import User
 from .serializers import UserSerializer, CreateUserSerializer, LoginSerializer, GoogleAuthSerializer
 from .permissions import IsAdmin
 
+GOOGLE_TOKEN_CLOCK_SKEW_SECONDS = 30
+
 
 def _tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -89,6 +91,7 @@ def google_login_view(request):
             id_token_str,
             g_requests.Request(),
             settings.GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=GOOGLE_TOKEN_CLOCK_SKEW_SECONDS,
         )
     except Exception as e:
         return Response({'detail': f'Invalid Google token: {e}'}, status=status.HTTP_401_UNAUTHORIZED)
