@@ -69,7 +69,11 @@ export default function FileUploadSection({ requirementId }: Props) {
                 <span>{f.file_type}</span>
                 <span>{new Date(f.uploaded_at).toLocaleDateString()}</span>
                 {isAdmin && (
-                  <button onClick={() => handleDelete(f.id)} className="text-red-700 hover:underline">
+                  <button
+                    onClick={() => handleDelete(f.id)}
+                    className="text-red-700 hover:underline"
+                    aria-label={`Delete file: ${f.filename}`}
+                  >
                     delete
                   </button>
                 )}

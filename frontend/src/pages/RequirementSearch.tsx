@@ -34,7 +34,7 @@ export default function RequirementSearch() {
   }
 
   return (
-    <Layout>
+    <Layout title="Edit Requirement">
       <h1 className="text-2xl font-semibold mb-6">Edit Old Requirement</h1>
 
       <form onSubmit={handleSearch} className="card max-w-xl mb-6">
@@ -70,14 +70,14 @@ export default function RequirementSearch() {
       {requirements.length > 0 && (
         <div className="card">
           <h3 className="text-lg font-semibold mb-4">Requirements ({requirements.length})</h3>
-          <table className="table-clean">
+          <table className="table-clean" aria-label="Requirements for this client">
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Status</th>
-                <th># Products</th>
-                <th>Last updated</th>
-                <th></th>
+                <th scope="col">Title</th>
+                <th scope="col">Status</th>
+                <th scope="col"># Products</th>
+                <th scope="col">Last updated</th>
+                <th scope="col"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
@@ -91,6 +91,7 @@ export default function RequirementSearch() {
                     <button
                       onClick={() => navigate(`/requirements/${r.id}`)}
                       className="btn-secondary text-sm"
+                      aria-label={`Open requirement: ${r.title}`}
                     >
                       Open
                     </button>

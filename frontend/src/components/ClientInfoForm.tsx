@@ -59,7 +59,7 @@ export default function ClientInfoForm({
             aria-required="true"
             aria-describedby="phone-help"
           />
-          <p id="phone-help" className="text-xs text-black/50 mt-1">
+          <p id="phone-help" className="text-xs text-black/60 dark:text-slate-400 mt-1">
             Primary key — links across the entire CRM.
           </p>
         </div>
@@ -71,11 +71,11 @@ export default function ClientInfoForm({
             value={currentUser?.name || ''}
             readOnly
             disabled
-            className="w-full bg-black/[0.04] cursor-not-allowed"
+            className="w-full bg-black/[0.04] dark:bg-white/[0.06] cursor-not-allowed"
             aria-readonly="true"
             aria-describedby="poc-help"
           />
-          <p id="poc-help" className="text-xs text-black/50 mt-1">
+          <p id="poc-help" className="text-xs text-black/60 dark:text-slate-400 mt-1">
             Automatically set to the logged-in user.
           </p>
         </div>

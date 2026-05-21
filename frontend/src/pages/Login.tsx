@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authService } from '@/services/auth'
 import { useAuthStore } from '@/store/authStore'
+import { useDarkMode } from '@/hooks/useDarkMode'
 
 declare global {
   interface Window { google?: any }
@@ -10,6 +11,7 @@ declare global {
 export default function Login() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const { dark, toggle } = useDarkMode()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -65,15 +67,58 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-4">
+    <div className="min-h-screen bg-white dark:bg-slate-900 px-4 py-6">
+      <div className="mx-auto flex w-full max-w-6xl justify-end">
+        <button
+          onClick={toggle}
+          className="btn-secondary text-sm w-9 h-9 p-0 flex items-center justify-center"
+          aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={dark ? 'Light mode' : 'Dark mode'}
+        >
+          {dark ? (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+            </svg>
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          )}
+        </button>
+      </div>
+
+      <div className="flex items-center justify-center pt-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           {/* Logo placeholder */}
           <div className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl text-black mx-auto mb-4">
-            <img src="/public/logo.png" alt="Skinovation Sciences" />
+            <img src="/logo.png" alt="Skinovation Sciences" />
           </div>
-          <h1 className="text-2xl font-semibold text-black">Skinovation Sciences CRM</h1>
-          <p className="text-sm text-black/60 mt-1">We help our clients succeed</p>
+          <h1 className="text-2xl font-semibold text-black dark:text-slate-100">Skinovation Sciences CRM</h1>
+          <p className="text-sm text-black/60 dark:text-slate-400 mt-1">We help our clients succeed</p>
         </div>
 
         <div className="card">
@@ -90,7 +135,7 @@ export default function Login() {
 
           <div className="relative my-4 text-center">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-black/10" /></div>
-            <span className="relative bg-white px-2 text-xs text-black/50 uppercase">or</span>
+            <span className="relative bg-white dark:bg-slate-800 px-2 text-xs text-black/60 dark:text-slate-400 uppercase">or</span>
           </div>
 
           <form onSubmit={handlePasswordLogin} className="space-y-4" noValidate>
@@ -131,9 +176,10 @@ export default function Login() {
           </form>
         </div>
 
-        <p className="text-xs text-black/50 text-center mt-6">
+        <p className="text-xs text-black/60 dark:text-slate-400 text-center mt-6">
           Don't have an account? Please contact your admin.
         </p>
+      </div>
       </div>
     </div>
   )

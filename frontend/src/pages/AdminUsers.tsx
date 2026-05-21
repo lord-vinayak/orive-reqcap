@@ -35,7 +35,7 @@ export default function AdminUsers() {
   }
 
   return (
-    <Layout>
+    <Layout title="Manage Users">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Users</h1>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
@@ -44,48 +44,50 @@ export default function AdminUsers() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="card mb-6 max-w-xl space-y-4">
+        <form onSubmit={handleCreate} className="card mb-6 max-w-xl space-y-4" aria-label="Create new user">
           <div>
-            <label className="block mb-1">Name</label>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="w-full" />
+            <label htmlFor="new-user-name" className="block mb-1">Name</label>
+            <input id="new-user-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="w-full" aria-required="true" />
           </div>
           <div>
-            <label className="block mb-1">Email</label>
-            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required className="w-full" />
+            <label htmlFor="new-user-email" className="block mb-1">Email</label>
+            <input id="new-user-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required className="w-full" aria-required="true" />
           </div>
           <div>
-            <label className="block mb-1">Role</label>
-            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full">
+            <label htmlFor="new-user-role" className="block mb-1">Role</label>
+            <select id="new-user-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full">
               <option value="user">User</option>
               <option value="admin">Admin</option>
             </select>
           </div>
           <div>
-            <label className="block mb-1">Initial password (optional)</label>
+            <label htmlFor="new-user-password" className="block mb-1">Initial password (optional)</label>
             <input
+              id="new-user-password"
               type="text"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               placeholder="Leave blank to use default"
               className="w-full"
+              aria-describedby="password-hint"
             />
-            <p className="text-xs text-black/50 mt-1">User can sign in with Google using this email, or use email + password.</p>
+            <p id="password-hint" className="text-xs text-black/60 mt-1">User can sign in with Google using this email, or use email + password.</p>
           </div>
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-          <button className="btn-primary">Create user</button>
+          <button type="submit" className="btn-primary">Create user</button>
         </form>
       )}
 
       <div className="card">
-        <table className="table-clean">
+        <table className="table-clean" aria-label="Users list">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Created</th>
-              <th></th>
+              <th scope="col">Name</th>
+              <th scope="col">Email</th>
+              <th scope="col">Role</th>
+              <th scope="col">Status</th>
+              <th scope="col">Created</th>
+              <th scope="col"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
@@ -97,7 +99,11 @@ export default function AdminUsers() {
                 <td>{u.is_active ? 'Active' : 'Inactive'}</td>
                 <td>{new Date(u.created_at).toLocaleDateString()}</td>
                 <td>
-                  <button onClick={() => handleToggle(u)} className="btn-secondary text-xs">
+                  <button
+                    onClick={() => handleToggle(u)}
+                    className="btn-secondary text-xs"
+                    aria-label={u.is_active ? `Deactivate ${u.name}` : `Activate ${u.name}`}
+                  >
                     {u.is_active ? 'Deactivate' : 'Activate'}
                   </button>
                 </td>

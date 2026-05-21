@@ -26,31 +26,31 @@ export default function ProductTable({
 }: Props) {
   return (
     <section className="card p-0 overflow-hidden" aria-labelledby="products-heading">
-      <div className="px-4 py-3 border-b border-black/10 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
         <h2 id="products-heading" className="text-lg font-semibold">Product details</h2>
-        <span className="text-xs text-black/50">{products.length} row{products.length === 1 ? '' : 's'}</span>
+        <span className="text-xs text-black/60 dark:text-slate-400">{products.length} row{products.length === 1 ? '' : 's'}</span>
       </div>
 
       <div className="overflow-x-auto min-h-[220px]">
-        <table className="w-full text-sm border-collapse" role="grid">
+        <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="bg-mustard-50 text-black/80 text-xs">
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 w-10">#</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[110px]">Body part</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[120px]">Category</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[140px]">Sub category</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[170px]">Key benefits</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[80px]">Size</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[100px]">Packaging</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[160px]">Packaging Notes</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[110px]">Planned MRP</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[180px]">Specific ingredient</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[160px]">Benchmark</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[90px]">Color</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[160px]">Color details</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[90px]">Fragrance</th>
-              <th className="px-2 py-2 text-left font-medium border-b border-black/10 min-w-[160px]">Fragrance details</th>
-              <th className="px-2 py-2 text-center font-medium border-b border-black/10 w-20">&nbsp;</th>
+            <tr className="bg-mustard-50 dark:bg-slate-700 text-black/80 dark:text-slate-300 text-xs">
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 w-10">#</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[110px]">Body part</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[120px]">Category</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[140px]">Sub category</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[170px]">Key benefits</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[80px]">Size</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[100px]">Packaging</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Packaging Notes</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[110px]">Planned MRP</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[180px]">Specific ingredient</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Benchmark</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[90px]">Color</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Color details</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[90px]">Fragrance</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Fragrance details</th>
+              <th scope="col" className="px-2 py-2 text-center font-medium border-b border-black/10 dark:border-white/10 w-20"><span className="sr-only">Row actions</span></th>
             </tr>
           </thead>
           <tbody>
@@ -58,17 +58,17 @@ export default function ProductTable({
               const subOptions = p.category ? (SUB_CATEGORIES[p.category] || []) : []
               const isActive = activeIndex === i
 
-              const cellCls = 'px-2 py-1 border-b border-black/5 align-middle'
+              const cellCls = 'px-2 py-1 border-b border-black/5 dark:border-white/5 align-middle'
               const inputCls =
-                'w-full px-2 py-1 text-sm border border-transparent rounded bg-transparent hover:bg-mustard-50/40 focus:bg-white focus:border-mustard'
+                'w-full px-2 py-1 text-sm border border-transparent rounded bg-transparent dark:text-slate-100 hover:bg-mustard-50/40 dark:hover:bg-slate-700/50 focus:bg-white dark:focus:bg-slate-700 focus:border-mustard'
 
               return (
                 <tr
                   key={p.id}
                   onClick={() => onActiveChange?.(i)}
-                  className={isActive ? 'bg-mustard-50/40' : ''}
+                  className={isActive ? 'bg-mustard-50/40 dark:bg-slate-700/40' : ''}
                 >
-                  <td className={`${cellCls} text-center text-black/60 font-medium`}>{p.row_number}</td>
+                  <td className={`${cellCls} text-center text-black/60 dark:text-slate-400 font-medium`}>{p.row_number}</td>
 
                   <td className={cellCls}>
                     <select
@@ -255,7 +255,7 @@ export default function ProductTable({
 
             {products.length === 0 && (
               <tr>
-                <td colSpan={16} className="text-center text-sm text-black/50 py-6">
+                <td colSpan={16} className="text-center text-sm text-black/60 dark:text-slate-400 py-6">
                   No product rows yet. Click "+ Add row" below to start.
                 </td>
               </tr>
@@ -264,7 +264,7 @@ export default function ProductTable({
         </table>
       </div>
 
-      <div className="px-4 py-3 border-t border-black/10 bg-white">
+      <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 bg-white dark:bg-slate-800">
         <button
           type="button"
           onClick={onAddRow}

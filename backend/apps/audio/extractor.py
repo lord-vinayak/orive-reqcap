@@ -112,7 +112,10 @@ def _groq_pass(transcript: str, partial: dict) -> dict:
     except ImportError:
         return partial
 
-    client = Groq(api_key=settings.GROQ_API_KEY)
+    try:
+        client = Groq(api_key=settings.GROQ_API_KEY)
+    except Exception:
+        return partial
 
     system = (
         "You extract structured skincare product requirements from a sales call transcript. "

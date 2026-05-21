@@ -68,16 +68,24 @@ export default function ProposalPage() {
     catalogService.search(params).then(setResults)
   }, [filters])
 
-  // Close KB dropdown on outside click
+  // Close KB dropdown on outside click or Escape
+  const kbBtnRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (!kbOpen) return
-    const handler = (e: MouseEvent) => {
+    const handleMouse = (e: MouseEvent) => {
       const t = e.target as Node
       if (kbWrapRef.current?.contains(t) || kbDropRef.current?.contains(t)) return
       setKbOpen(false)
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setKbOpen(false); kbBtnRef.current?.focus() }
+    }
+    document.addEventListener('mousedown', handleMouse)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleMouse)
+      document.removeEventListener('keydown', handleKey)
+    }
   }, [kbOpen])
 
   const openKbDrop = () => {
@@ -122,11 +130,11 @@ export default function ProposalPage() {
   const selectedIds = useMemo(() => new Set(proposal?.items.map((i) => i.catalog_item) || []), [proposal])
 
   if (loading || !proposal || !requirement) {
-    return <Layout><p className="text-black/60">Loading proposal…</p></Layout>
+    return <Layout title="Proposal"><p className="text-black/60">Loading proposal…</p></Layout>
   }
 
   return (
-    <Layout>
+    <Layout title={`Proposal – ${requirement.title}`}>
       <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-2xl font-semibold">Proposal</h1>
@@ -189,8 +197,11 @@ export default function ProposalPage() {
               {/* Key Benefits — multi-select dropdown */}
               <div ref={kbWrapRef} className="relative">
                 <button
+                  ref={kbBtnRef}
                   type="button"
                   onClick={openKbDrop}
+                  aria-haspopup="true"
+                  aria-expanded={kbOpen}
                   className="w-full text-left px-2 py-1 border border-black/15 rounded bg-white text-sm truncate hover:border-mustard"
                 >
                   {filters.key_benefits.length === 0
@@ -200,11 +211,13 @@ export default function ProposalPage() {
                 {kbOpen && createPortal(
                   <div
                     ref={kbDropRef}
+                    role="group"
+                    aria-label="Key benefits options"
                     style={kbDropStyle}
                     className="max-h-52 overflow-auto bg-white border border-black/15 rounded shadow-lg p-2"
                   >
                     {facets.key_benefits.length === 0 && (
-                      <p className="text-xs text-black/50 px-2 py-1">No options available.</p>
+                      <p className="text-xs text-black/60 px-2 py-1">No options available.</p>
                     )}
                     {facets.key_benefits.map((kb) => (
                       <label key={kb} className="flex items-center gap-2 px-2 py-1 hover:bg-mustard-50 rounded cursor-pointer text-sm">
@@ -241,18 +254,18 @@ export default function ProposalPage() {
               />
             </div>
 
-            <p className="text-xs text-black/50 mb-2">{results.length} results</p>
+            <p className="text-xs text-black/60 mb-2">{results.length} results</p>
             <div className="overflow-x-auto max-h-[480px]">
               <table className="table-clean">
                 <thead>
                   <tr>
-                    <th>Body Part</th>
-                    <th>Product Type</th>
-                    <th>Sub Type</th>
-                    <th>Key Benefits</th>
-                    <th>Size</th>
-                    <th>Potential MRP</th>
-                    <th></th>
+                    <th scope="col">Body Part</th>
+                    <th scope="col">Product Type</th>
+                    <th scope="col">Sub Type</th>
+                    <th scope="col">Key Benefits</th>
+                    <th scope="col">Size</th>
+                    <th scope="col">Potential MRP</th>
+                    <th scope="col"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -288,7 +301,7 @@ export default function ProposalPage() {
           <section className="card" aria-labelledby="selected-heading">
             <h2 id="selected-heading" className="text-lg font-semibold mb-3">In this proposal ({proposal.items.length})</h2>
             {proposal.items.length === 0 ? (
-              <p className="text-sm text-black/50">No items added yet. Use the catalog on the left.</p>
+              <p className="text-sm text-black/60">No items added yet. Use the catalog on the left.</p>
             ) : (
               <ol className="space-y-2">
                 {proposal.items.map((it) => {
@@ -321,7 +334,7 @@ export default function ProposalPage() {
             Generates a formatted .xlsx with the company logo, header, client info, and selected catalog rows.
           </p>
           {proposal.last_exported_at && (
-            <p className="text-xs text-black/50 mb-3">
+            <p className="text-xs text-black/60 mb-3">
               Last exported: {new Date(proposal.last_exported_at).toLocaleString()}
             </p>
           )}
@@ -343,44 +356,54 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
   const client = requirement.client_data
   return (
     <section className="card max-w-6xl overflow-x-auto">
-      <p className="text-xs text-black/50 mb-3">Preview of the Excel that will be exported.</p>
+      <p className="text-xs text-black/60 mb-3">Preview of the Excel that will be exported.</p>
       <div className="border border-black/15 min-w-[900px]">
-        {/* Company header */}
-        <div className="bg-mustard text-black font-bold text-center py-3 text-xl">
-          SKINOVATION SCIENCES
-        </div>
-        <div className="bg-mustard-50 text-center py-2 font-semibold">Product Proposal</div>
-
-        {/* Client info */}
-        <div className="px-4 py-3 grid grid-cols-[180px_1fr] gap-y-1 text-sm">
-          <div className="font-medium">Date</div><div>{today}</div>
-          <div className="font-medium">Client Name</div><div>{client?.name || ''}</div>
-          <div className="font-medium">Phone</div><div>{client?.phone_no || ''}</div>
-          <div className="font-medium">Point of Contact</div><div>{client?.poc_name || ''}</div>
-        </div>
-
-        {/* Proposal table — all catalog fields */}
-        <table className="w-full text-sm border-t border-black/10">
+        {/* Single table so header rows stretch to match the data columns */}
+        <table className="w-full text-sm">
           <thead>
+            {/* Company header */}
+            <tr>
+              <th colSpan={18} className="bg-mustard text-black font-bold text-center py-3 text-xl">
+                SKINOVATION SCIENCES
+              </th>
+            </tr>
+            {/* Sub-header */}
+            <tr>
+              <th colSpan={18} className="bg-mustard-50 text-center py-2 font-semibold border-b border-black/10">
+                Product Proposal
+              </th>
+            </tr>
+            {/* Client info */}
+            <tr>
+              <td colSpan={18} className="px-4 py-3 border-b border-black/10">
+                <div className="grid grid-cols-[180px_1fr] gap-y-1 text-sm">
+                  <div className="font-medium">Date</div><div>{today}</div>
+                  <div className="font-medium">Client Name</div><div>{client?.name || ''}</div>
+                  <div className="font-medium">Phone</div><div>{client?.phone_no || ''}</div>
+                  <div className="font-medium">Point of Contact</div><div>{client?.poc_name || ''}</div>
+                </div>
+              </td>
+            </tr>
+            {/* Column headers */}
             <tr className="bg-mustard text-black">
-              <th className="text-left px-3 py-2 whitespace-nowrap">Body Part</th>
-              <th className="text-left px-3 py-2 whitespace-nowrap">Product Type</th>
-              <th className="text-left px-3 py-2 whitespace-nowrap">Sub Product Type</th>
-              <th className="text-left px-3 py-2 whitespace-nowrap">Key Benefits</th>
-              <th className="text-left px-3 py-2 whitespace-nowrap">Specific Ingredients</th>
-              <th className="text-left px-3 py-2 whitespace-nowrap">Color</th>
-              <th className="text-left px-3 py-2 whitespace-nowrap">Fragrance</th>
-              <th className="text-left px-3 py-2 whitespace-nowrap">Size</th>
-              <th className="text-left px-3 py-2 whitespace-nowrap">Packaging</th>
-              <th className="text-left px-3 py-2 whitespace-nowrap">Rate Category</th>
-              <th className="text-right px-3 py-2 whitespace-nowrap">Per KG Rate</th>
-              <th className="text-right px-3 py-2 whitespace-nowrap">Manufacturing Cost</th>
-              <th className="text-right px-3 py-2 whitespace-nowrap">Rate Per Unit</th>
-              <th className="text-right px-3 py-2 whitespace-nowrap">Tentative Packaging Cost</th>
-              <th className="text-right px-3 py-2 whitespace-nowrap">Label Cost</th>
-              <th className="text-right px-3 py-2 whitespace-nowrap">Tentative Monocarton Cost</th>
-              <th className="text-right px-3 py-2 whitespace-nowrap">Total Cost</th>
-              <th className="text-right px-3 py-2 whitespace-nowrap">Potential MRP</th>
+              <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Body Part</th>
+              <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Product Type</th>
+              <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Sub Product Type</th>
+              <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Key Benefits</th>
+              <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Specific Ingredients</th>
+              <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Color</th>
+              <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Fragrance</th>
+              <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Size</th>
+              <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Packaging</th>
+              <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Rate Category</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Per KG Rate</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Manufacturing Cost</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Rate Per Unit</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Tentative Packaging Cost</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Label Cost</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Tentative Monocarton Cost</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Total Cost</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Potential MRP</th>
             </tr>
           </thead>
           <tbody>
@@ -411,7 +434,7 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
               )
             })}
           </tbody>
-        </table>
+        </table>  {/* single unified table ends here */}
       </div>
     </section>
   )

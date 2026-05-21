@@ -98,16 +98,26 @@ export default function AdminCatalog() {
     catalogService.facets().then(setFacets)
   }, [])
 
-  // ---- KB dropdown outside-click ------------------------------------------
+  // ---- KB dropdown outside-click or Escape ---------------------------------
   useEffect(() => {
     if (!kbOpen) return
-    const handler = (e: MouseEvent) => {
+    const handleMouse = (e: MouseEvent) => {
       const t = e.target as Node
       if (kbBtnRef.current?.contains(t) || kbDropRef.current?.contains(t)) return
       setKbOpen(false)
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setKbOpen(false)
+        kbBtnRef.current?.focus()
+      }
+    }
+    document.addEventListener('mousedown', handleMouse)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleMouse)
+      document.removeEventListener('keydown', handleKey)
+    }
   }, [kbOpen])
 
   const openKbDrop = () => {
@@ -169,12 +179,12 @@ export default function AdminCatalog() {
   ].filter(Boolean).length + filters.key_benefits.length
 
   return (
-    <Layout>
+    <Layout title="Product Catalog">
       {/* ---- Header ---- */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Product Catalog</h1>
-          <p className="text-xs text-black/50 mt-0.5">{items.length} items shown</p>
+          <p className="text-xs text-black/60 mt-0.5">{items.length} items shown</p>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
@@ -212,7 +222,7 @@ export default function AdminCatalog() {
       )}
 
       {/* ---- Filter bar ---- */}
-      <div className="card mb-4 flex flex-wrap gap-3 items-end p-4">
+      <div className="card mb-4 flex flex-wrap gap-3 items-end p-4 dark:bg-slate-800">
         {/* Body Part */}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-black/60">Body Part</label>
@@ -261,6 +271,8 @@ export default function AdminCatalog() {
             ref={kbBtnRef}
             type="button"
             onClick={openKbDrop}
+            aria-haspopup="true"
+            aria-expanded={kbOpen}
             className="text-sm text-left px-2 py-1 border border-black/15 rounded bg-white hover:border-mustard min-w-[160px] truncate"
           >
             {filters.key_benefits.length === 0 ? 'All' : filters.key_benefits.join(', ')}
@@ -268,11 +280,13 @@ export default function AdminCatalog() {
           {kbOpen && createPortal(
             <div
               ref={kbDropRef}
+              role="group"
+              aria-label="Key benefits options"
               style={kbDropStyle}
               className="max-h-56 overflow-auto bg-white border border-black/15 rounded shadow-lg p-2"
             >
               {(facets.key_benefits.length ? facets.key_benefits : []).length === 0
-                ? <p className="text-xs text-black/50 px-2 py-1">No options yet.</p>
+                ? <p className="text-xs text-black/60 px-2 py-1">No options yet.</p>
                 : facets.key_benefits.map((kb) => (
                     <label key={kb} className="flex items-center gap-2 px-2 py-1 hover:bg-mustard-50 rounded cursor-pointer text-sm">
                       <input
@@ -331,9 +345,9 @@ export default function AdminCatalog() {
       {/* ---- Table ---- */}
       <div className="card p-0 overflow-hidden">
         {loading ? (
-          <p className="text-sm text-black/50 p-6">Loading…</p>
+          <p className="text-sm text-black/60 p-6">Loading…</p>
         ) : items.length === 0 ? (
-          <p className="text-sm text-black/50 p-6">
+          <p className="text-sm text-black/60 p-6">
             {activeFilterCount > 0
               ? 'No catalog items match the current filters.'
               : 'No catalog items yet. Upload an Excel file to get started.'}
@@ -346,19 +360,20 @@ export default function AdminCatalog() {
                   {COLUMNS.map((col) => (
                     <th
                       key={col.key}
+                      scope="col"
                       className={`px-3 py-2 text-left font-medium border-b border-black/10 whitespace-nowrap ${col.width} ${col.numeric ? 'text-right' : ''}`}
                     >
                       {col.label}
                     </th>
                   ))}
-                  <th className="px-3 py-2 border-b border-black/10 w-20 text-center font-medium">Actions</th>
+                  <th scope="col" className="px-3 py-2 border-b border-black/10 w-20 text-center font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, idx) => (
                   <tr
                     key={item.id}
-                    className={idx % 2 === 1 ? 'bg-black/[0.015] hover:bg-mustard-50/30' : 'hover:bg-mustard-50/30'}
+                    className={idx % 2 === 1 ? 'bg-black/[0.015] dark:bg-white/[0.02] hover:bg-mustard-50/30 dark:hover:bg-slate-700/30' : 'hover:bg-mustard-50/30 dark:hover:bg-slate-700/30'}
                   >
                     {COLUMNS.map((col) => (
                       <td

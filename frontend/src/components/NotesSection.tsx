@@ -45,7 +45,7 @@ export default function NotesSection({ requirementId }: Props) {
   return (
     <section className="card" aria-labelledby="notes-heading">
       <h2 id="notes-heading" className="text-lg font-semibold mb-3">Notes</h2>
-      <p className="text-xs text-black/50 mb-3">Notes are append-only. Each note records the author and timestamp.</p>
+      <p className="text-xs text-black/60 dark:text-slate-400 mb-3">Notes are append-only. Each note records the author and timestamp.</p>
 
       <form onSubmit={handleAdd} className="mb-4 flex flex-col gap-2">
         <div className="flex gap-2">
@@ -66,13 +66,13 @@ export default function NotesSection({ requirementId }: Props) {
       </form>
 
       {notes.length === 0 ? (
-        <p className="text-sm text-black/50">No notes yet.</p>
+        <p className="text-sm text-black/60 dark:text-slate-400">No notes yet.</p>
       ) : (
         <ol className="space-y-2" aria-label="Note history">
           {notes.map((n) => (
             <li key={n.id} className="border-l-2 border-mustard pl-3 py-1">
-              <div className="text-sm text-black">{n.text}</div>
-              <div className="text-xs text-black/50 mt-0.5 flex items-center gap-2">
+              <div className="text-sm text-black dark:text-slate-100">{n.text}</div>
+              <div className="text-xs text-black/60 dark:text-slate-400 mt-0.5 flex items-center gap-2">
                 <span>{n.added_by_name || 'Unknown'}</span>
                 <span>•</span>
                 <span>{new Date(n.created_at).toLocaleString()}</span>

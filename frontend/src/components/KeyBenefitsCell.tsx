@@ -20,7 +20,7 @@ export default function KeyBenefitsCell({ bodyPart, value, onChange }: Props) {
 
   useEffect(() => {
     if (!open) return
-    const handler = (e: MouseEvent) => {
+    const handleMouse = (e: MouseEvent) => {
       const target = e.target as Node
       if (
         wrapperRef.current?.contains(target) ||
@@ -28,8 +28,18 @@ export default function KeyBenefitsCell({ bodyPart, value, onChange }: Props) {
       ) return
       setOpen(false)
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        buttonRef.current?.focus()
+      }
+    }
+    document.addEventListener('mousedown', handleMouse)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleMouse)
+      document.removeEventListener('keydown', handleKey)
+    }
   }, [open])
 
   const handleOpen = () => {
@@ -59,7 +69,7 @@ export default function KeyBenefitsCell({ bodyPart, value, onChange }: Props) {
         type="button"
         onClick={handleOpen}
         disabled={!bodyPart}
-        className="w-full text-left px-2 py-1 border border-black/15 rounded bg-white text-sm truncate hover:border-mustard disabled:bg-black/[0.04] disabled:cursor-not-allowed"
+        className="w-full text-left px-2 py-1 border border-black/15 dark:border-white/15 rounded bg-white dark:bg-slate-800 dark:text-slate-100 text-sm truncate hover:border-mustard disabled:bg-black/[0.04] dark:disabled:bg-white/[0.04] disabled:cursor-not-allowed"
         aria-haspopup="listbox"
         aria-expanded={open}
         title={summary}
@@ -69,15 +79,15 @@ export default function KeyBenefitsCell({ bodyPart, value, onChange }: Props) {
       {open && createPortal(
         <div
           ref={dropdownRef}
-          role="listbox"
-          aria-multiselectable="true"
+          role="group"
+          aria-label="Key benefits options"
           style={dropdownStyle}
-          className="max-h-60 overflow-auto bg-white border border-black/15 rounded shadow-lg p-2"
+          className="max-h-60 overflow-auto bg-white dark:bg-slate-800 border border-black/15 dark:border-white/15 rounded shadow-lg p-2"
         >
           {options.length === 0 ? (
-            <p className="text-xs text-black/50 p-2">Select a body part first.</p>
+            <p className="text-xs text-black/60 p-2">Select a body part first.</p>
           ) : options.map((kb) => (
-            <label key={kb} className="flex items-center gap-2 px-2 py-1 hover:bg-mustard-50 rounded cursor-pointer text-sm">
+            <label key={kb} className="flex items-center gap-2 px-2 py-1 hover:bg-mustard-50 dark:hover:bg-slate-700 rounded cursor-pointer text-sm dark:text-slate-100">
               <input
                 type="checkbox"
                 className="accent-mustard"
