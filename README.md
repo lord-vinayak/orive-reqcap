@@ -5,7 +5,7 @@ A web app to capture client product requirements and generate Excel proposals.
 - **Frontend:** React + Vite + TypeScript + Tailwind (hosted on Vercel)
 - **Backend:** Django + DRF, Dockerized (hosted on Railway)
 - **Database:** PostgreSQL on Supabase
-- **File storage:** Google Drive (single service account)
+- **File storage:** Google Drive (single connected owner account, service account fallback)
 - **Audio:** Web Speech API (Chrome) → Groq LLM + keyword matching
 - **Theme:** white / black / mustard, Aptos font
 
@@ -41,7 +41,7 @@ You need:
 | Service | What you'll get | Free? |
 |---|---|---|
 | **Supabase** | Database connection string | Yes, free tier 500 MB |
-| **Google Cloud** | OAuth Client ID/Secret + Drive Service Account JSON | Yes |
+| **Google Cloud** | OAuth Client ID/Secret + Drive owner refresh token | Yes |
 | **Groq** | Free API key for audio transcript extraction | Yes |
 | **Railway** | Backend hosting | $5 trial credit |
 | **Vercel** | Frontend hosting | Yes, free tier |
@@ -76,6 +76,29 @@ You need:
 7. In `backend/.env`:
    - `GOOGLE_DRIVE_ROOT_FOLDER_ID` = the folder ID
    - `GOOGLE_DRIVE_CREDENTIALS_JSON` = paste the full JSON content as a one-line string, **or** set `GOOGLE_DRIVE_CREDENTIALS_FILE` to the absolute path of the JSON file
+
+#### C2. Google Drive owner account (recommended for uploads)
+
+Use this when all uploaded files should go into one real Google account, such as a client account with Google One storage.
+
+1. In Google Drive, log in as the account that should own uploaded files
+2. Create a folder named `Skinovation Requirement Tool` (or any name)
+3. Copy the folder ID from the URL: `https://drive.google.com/drive/folders/THIS_IS_THE_ID`
+4. In Google Cloud **Credentials -> OAuth Client ID**, add this redirect URI:
+   - `http://localhost:8080/`
+5. In `backend/.env`, set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
+6. Run:
+   ```bash
+   cd backend
+   python manage.py connect_drive_owner
+   ```
+7. Sign in with the Drive owner account and approve access
+8. Copy the printed `GOOGLE_DRIVE_REFRESH_TOKEN=...` into `backend/.env`
+9. In `backend/.env`, set:
+   - `GOOGLE_DRIVE_ROOT_FOLDER_ID` = the folder ID
+   - `GOOGLE_DRIVE_REFRESH_TOKEN` = the token printed by the command
+
+Service account upload is still supported as a fallback, but Google requires service accounts to upload into a Google Workspace Shared Drive because service accounts do not have personal Drive storage quota.
 
 #### D. Groq API (audio extraction)
 
@@ -170,7 +193,7 @@ After deployment:
 Every external service (Google Cloud, Groq, Supabase, Railway, Vercel) is configured via env variables. Handover means:
 
 1. Client creates their own account in each service
-2. They generate new credentials (OAuth keys, service account JSON, API keys, DB URL)
+2. They generate new credentials (OAuth keys, Drive owner token, API keys, DB URL)
 3. They update env vars in Railway + Vercel dashboards
 4. No code changes required
 

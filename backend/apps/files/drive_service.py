@@ -7,14 +7,30 @@ from django.conf import settings
 
 
 def _build_drive_service():
+    from google.oauth2.credentials import Credentials
     from google.oauth2 import service_account
     from googleapiclient.discovery import build
 
     creds_json = settings.GOOGLE_DRIVE_CREDENTIALS_JSON
     creds_file = settings.GOOGLE_DRIVE_CREDENTIALS_FILE
+    refresh_token = settings.GOOGLE_DRIVE_REFRESH_TOKEN
     scopes = ['https://www.googleapis.com/auth/drive']
 
-    if creds_json:
+    if refresh_token:
+        if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+            raise RuntimeError(
+                'GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required when '
+                'GOOGLE_DRIVE_REFRESH_TOKEN is configured'
+            )
+        creds = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri='https://oauth2.googleapis.com/token',
+            client_id=settings.GOOGLE_CLIENT_ID,
+            client_secret=settings.GOOGLE_CLIENT_SECRET,
+            scopes=scopes,
+        )
+    elif creds_json:
         info = json.loads(creds_json)
         creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
     elif creds_file:

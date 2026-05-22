@@ -25,10 +25,10 @@ export const SUB_CATEGORIES: Record<string, string[]> = {
 
 export const KEY_BENEFITS: Record<string, string[]> = {
   Face: ['Acne', 'Pigmentation', 'Glow', 'Skin Lightening', 'Aging',
-         'Wrinkle', 'Hydration', 'Barrier Repair', 'Dark Circle'],
+         'Wrinkle', 'Hydration', 'Barrier Repair', 'Dark Circle', 'Sun Protection'],
   Body: ['Acne', 'Pigmentation', 'Glow', 'Skin Lightening', 'Aging',
-         'Wrinkle', 'Hydration', 'Barrier Repair'],
-  Lip:  ['Acne', 'Pigmentation', 'Glow', 'Hydration'],
+         'Wrinkle', 'Hydration', 'Barrier Repair', 'Sun Protection'],
+  Lip:  ['Acne', 'Pigmentation', 'Glow', 'Hydration', 'Sun Protection'],
   Eye:  ['Dark Circle', 'Aging', 'Wrinkle', 'Hydration'],
   Hair: ['Dandruff', 'Thinning', 'Greying', 'Growth', 'Hydration', 'Frizz', 'Bond Repair'],
 }

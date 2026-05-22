@@ -4,6 +4,16 @@ import {
 } from '@/utils/dropdownOptions'
 import KeyBenefitsCell from './KeyBenefitsCell'
 
+/** Derives the rate category label from a planned MRP value. Read-only — cannot be edited. */
+function getRateCategory(mrp: number | null): string {
+  if (mrp === null || mrp <= 0) return '—'
+  if (mrp <= 500)  return 'Basic Range'
+  if (mrp <= 899)  return 'Premium Entry Range'
+  if (mrp <= 1299) return 'Premium High-End Range'
+  if (mrp < 2100)  return 'Luxury Entry Range'
+  return 'Luxury High-End Range'
+}
+
 interface Props {
   products: RequirementProduct[]
   onChange: (index: number, patch: Partial<RequirementProduct>) => void
@@ -44,6 +54,10 @@ export default function ProductTable({
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[100px]">Packaging</th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Packaging Notes</th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[110px]">Planned MRP</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">
+                Rate Category
+                <span className="sr-only"> (auto-computed from Planned MRP)</span>
+              </th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[180px]">Specific ingredient</th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Benchmark</th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[90px]">Color</th>
@@ -159,6 +173,17 @@ export default function ProductTable({
                   </td>
 
                   <td className={cellCls}>
+                    <span
+                      className="block px-2 py-1 text-xs rounded bg-black/[0.04] dark:bg-white/[0.06] text-black/70 dark:text-slate-400 select-none"
+                      aria-label={`Row ${p.row_number} rate category: ${getRateCategory(p.planned_mrp)}`}
+                      aria-readonly="true"
+                      title="Auto-computed from Planned MRP"
+                    >
+                      {getRateCategory(p.planned_mrp)}
+                    </span>
+                  </td>
+
+                  <td className={cellCls}>
                     <input
                       value={p.specific_ingredient}
                       onChange={(e) => onChange(i, { specific_ingredient: e.target.value })}
@@ -255,7 +280,7 @@ export default function ProductTable({
 
             {products.length === 0 && (
               <tr>
-                <td colSpan={16} className="text-center text-sm text-black/60 dark:text-slate-400 py-6">
+                <td colSpan={17} className="text-center text-sm text-black/60 dark:text-slate-400 py-6">
                   No product rows yet. Click "+ Add row" below to start.
                 </td>
               </tr>
