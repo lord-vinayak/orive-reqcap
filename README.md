@@ -134,6 +134,8 @@ python scripts/seed_catalog.py "E:/Orive/Content for Website.xlsx"
 
 # Run dev server
 python manage.py runserver 0.0.0.0:8000
+
+python manage.py connect_drive_owner
 ```
 
 Backend will be at http://localhost:8000
