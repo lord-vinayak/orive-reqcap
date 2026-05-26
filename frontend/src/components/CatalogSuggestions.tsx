@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { catalogService, proposalService } from '@/services'
 import type { CatalogItem, ProposalItem, RequirementProduct } from '@/types'
 import { BODY_PARTS, CATEGORIES, SUB_CATEGORIES, KEY_BENEFITS } from '@/utils/dropdownOptions'
+// Note: KEY_BENEFITS still used for the Key Benefits filter dropdown options
 
 interface Props {
   /** All current product rows. */
@@ -88,32 +89,8 @@ export default function CatalogSuggestions({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requirementId])
 
-  // ---------- Sync filters from the active (highlighted) product row ----------
-  useEffect(() => {
-    const row = products[activeRowIndex]
-    if (!row || (!row.body_part && !row.category && !(row.key_benefits?.length))) {
-      setFilters(EMPTY_FILTERS)
-      return
-    }
-    const bp = row.body_part || ''
-    const validKbs = bp ? (KEY_BENEFITS[bp] || []) : []
-    const kbs = (row.key_benefits ?? []).filter((kb) => !validKbs.length || validKbs.includes(kb))
-    setFilters({
-      body_part: bp,
-      product_type: row.category || '',
-      sub_product_type: row.sub_category || '',
-      key_benefits: kbs,
-      rate_category: '',
-      q: '',
-    })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    activeRowIndex,
-    products[activeRowIndex]?.body_part,
-    products[activeRowIndex]?.category,
-    products[activeRowIndex]?.sub_category,
-    JSON.stringify(products[activeRowIndex]?.key_benefits),
-  ])
+  // Auto-filter from active row is intentionally disabled.
+  // The user controls the filter bar manually.
 
   // ---------- Search catalog whenever filters change ----------
   useEffect(() => {

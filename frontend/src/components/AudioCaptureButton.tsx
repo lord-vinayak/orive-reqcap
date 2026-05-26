@@ -94,7 +94,9 @@ export default function AudioCaptureButton({ onExtract }: Props) {
         disabled={extracting}
         className={isRecording ? 'btn-danger' : 'btn-primary'}
         aria-pressed={isRecording}
-        aria-label={isRecording ? 'Stop recording' : 'Start audio capture'}
+        aria-label={isRecording ? 'Stop recording (Alt+R)' : 'Start audio capture (Alt+R)'}
+        data-audio-capture-btn
+        title={isRecording ? 'Stop recording — Alt+R' : 'Start audio capture — Alt+R'}
       >
         {isRecording ? 'Stop Recording' : '🎙 Start Audio Capture'}
       </button>

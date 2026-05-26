@@ -15,15 +15,42 @@ from apps.requirements_app.models import Requirement
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_or_create_proposal_for_requirement(request, requirement_id):
+    """Get the most recent proposal for a requirement, or create one if none exist."""
     try:
         req = Requirement.objects.get(pk=requirement_id)
     except Requirement.DoesNotExist:
         raise NotFound('Requirement not found')
-    proposal, _ = Proposal.objects.get_or_create(
-        requirement=req,
-        defaults={'created_by': request.user},
-    )
+    try:
+        proposal = Proposal.objects.filter(requirement=req).latest('created_at')
+    except Proposal.DoesNotExist:
+        proposal = Proposal.objects.create(requirement=req, created_by=request.user)
     return Response(ProposalSerializer(proposal).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_proposals_for_requirement(request, requirement_id):
+    """List ALL proposals for a requirement, newest first."""
+    try:
+        req = Requirement.objects.get(pk=requirement_id)
+    except Requirement.DoesNotExist:
+        raise NotFound('Requirement not found')
+    proposals = Proposal.objects.filter(requirement=req).prefetch_related(
+        'items__catalog_item'
+    ).order_by('-created_at')
+    return Response(ProposalSerializer(proposals, many=True).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_new_proposal(request, requirement_id):
+    """Create a fresh blank proposal for a requirement (alongside existing ones)."""
+    try:
+        req = Requirement.objects.get(pk=requirement_id)
+    except Requirement.DoesNotExist:
+        raise NotFound('Requirement not found')
+    proposal = Proposal.objects.create(requirement=req, created_by=request.user)
+    return Response(ProposalSerializer(proposal).data, status=status.HTTP_201_CREATED)
 
 
 class ProposalViewSet(viewsets.ModelViewSet):

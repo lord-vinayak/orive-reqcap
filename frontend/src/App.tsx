@@ -6,6 +6,7 @@ import RequirementsLanding from '@/pages/RequirementsLanding'
 import RequirementSearch from '@/pages/RequirementSearch'
 import RequirementForm from '@/pages/RequirementForm'
 import ProposalPage from '@/pages/Proposal'
+import RequirementView from '@/pages/RequirementView'
 import AdminUsers from '@/pages/AdminUsers'
 import AdminCatalog from '@/pages/AdminCatalog'
 
@@ -20,6 +21,7 @@ export default function App() {
       <Route path="/requirements/search" element={<ProtectedRoute><RequirementSearch /></ProtectedRoute>} />
       <Route path="/requirements/new" element={<ProtectedRoute><RequirementForm /></ProtectedRoute>} />
       <Route path="/requirements/:id" element={<ProtectedRoute><RequirementForm /></ProtectedRoute>} />
+      <Route path="/requirements/:id/view" element={<ProtectedRoute><RequirementView /></ProtectedRoute>} />
       <Route path="/requirements/:id/proposal" element={<ProtectedRoute><ProposalPage /></ProtectedRoute>} />
 
       <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />

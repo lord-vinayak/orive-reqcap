@@ -1,6 +1,13 @@
-import type { Client } from '@/types'
+import type { Client, RequirementProduct } from '@/types'
 import { PRODUCT_COUNTS } from '@/utils/dropdownOptions'
 import { useAuthStore } from '@/store/authStore'
+import AudioCaptureButton from './AudioCaptureButton'
+
+const CLIENT_STATUS_OPTIONS: { value: Client['status']; label: string }[] = [
+  { value: 'new_lead',              label: 'New Lead' },
+  { value: 'interested_started',    label: 'Interested – Project Started' },
+  { value: 'not_interested_closed', label: 'Not Interested – Closed' },
+]
 
 interface Props {
   client: Partial<Client>
@@ -10,20 +17,23 @@ interface Props {
   noOfProducts: number | null
   onNoOfProductsChange: (val: number | null) => void
   readOnlyPhone?: boolean
+  onExtract: (fields: Partial<RequirementProduct>) => void
 }
 
 /**
- * Simplified Client Info per latest PRD.
+ * Client Info form.
  * Fields:
  *   1. Client name        (manual)
  *   2. Client Phone no    (primary key, manual)
- *   3. Client POC         (auto from logged-in user — locked, not editable)
- *   4. No. of products    (dropdown)
- *   5. Target Audience Age (open text)
+ *   3. Client POC         (auto from logged-in user — locked)
+ *   4. Client Status      (dropdown)
+ *   5. No. of products    (dropdown)
+ *   6. Target Audience Age (open text) + Audio Capture button (Alt+R shortcut)
  */
 export default function ClientInfoForm({
   client, onClientChange, targetAge, onTargetAgeChange,
   noOfProducts, onNoOfProductsChange, readOnlyPhone = false,
+  onExtract,
 }: Props) {
   const currentUser = useAuthStore((s) => s.user)
 
@@ -81,6 +91,22 @@ export default function ClientInfoForm({
         </div>
 
         <div>
+          <label htmlFor="ci_status" className="block mb-1">Client Status</label>
+          <select
+            id="ci_status"
+            value={client.status || 'new_lead'}
+            onChange={(e) => onClientChange({ ...client, status: e.target.value as Client['status'] })}
+            className="w-full"
+            aria-describedby="status-help"
+          >
+            {CLIENT_STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <p id="status-help" className="sr-only">Current sales pipeline status for this client</p>
+        </div>
+
+        <div>
           <label htmlFor="ci_noprod" className="block mb-1">Number of Products</label>
           <select
             id="ci_noprod"
@@ -93,15 +119,23 @@ export default function ClientInfoForm({
           </select>
         </div>
 
+        {/* Target Audience Age + Audio Capture button side by side */}
         <div>
           <label htmlFor="ci_age" className="block mb-1">Target audience age</label>
-          <input
-            id="ci_age"
-            value={targetAge}
-            onChange={(e) => onTargetAgeChange(e.target.value)}
-            placeholder="e.g. 25-40"
-            className="w-full"
-          />
+          <div className="flex items-center gap-3 flex-wrap">
+            <input
+              id="ci_age"
+              value={targetAge}
+              onChange={(e) => onTargetAgeChange(e.target.value)}
+              placeholder="e.g. 25-40"
+              className="flex-1 min-w-0"
+              aria-describedby="age-audio-hint"
+            />
+            <AudioCaptureButton onExtract={onExtract} />
+          </div>
+          <p id="age-audio-hint" className="text-xs text-black/60 dark:text-slate-400 mt-1">
+            Press <kbd className="px-1 py-0.5 rounded border border-black/20 text-xs font-mono">Alt+R</kbd> to toggle audio recording
+          </p>
         </div>
       </div>
     </section>

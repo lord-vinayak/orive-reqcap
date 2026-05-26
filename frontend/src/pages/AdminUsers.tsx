@@ -6,7 +6,7 @@ import type { User } from '@/types'
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ email: '', name: '', role: 'user', password: '' })
+  const [form, setForm] = useState({ email: '', name: '', role: 'poc_sales', password: '' })
   const [error, setError] = useState('')
 
   const load = async () => {
@@ -21,7 +21,7 @@ export default function AdminUsers() {
     setError('')
     try {
       await userService.create(form as any)
-      setForm({ email: '', name: '', role: 'user', password: '' })
+      setForm({ email: '', name: '', role: 'poc_sales', password: '' })
       setShowForm(false)
       load()
     } catch (err: any) {
@@ -56,7 +56,8 @@ export default function AdminUsers() {
           <div>
             <label htmlFor="new-user-role" className="block mb-1">Role</label>
             <select id="new-user-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full">
-              <option value="user">User</option>
+              <option value="poc_sales">POC-Sales</option>
+              <option value="poc_formulation">POC-Formulation</option>
               <option value="admin">Admin</option>
             </select>
           </div>
@@ -95,7 +96,14 @@ export default function AdminUsers() {
               <tr key={u.id}>
                 <td>{u.name}</td>
                 <td>{u.email}</td>
-                <td><span className="badge">{u.role}</span></td>
+                <td>
+                  <span className="badge">
+                    {u.role === 'admin' ? 'Admin'
+                      : u.role === 'poc_sales' ? 'POC-Sales'
+                      : u.role === 'poc_formulation' ? 'POC-Formulation'
+                      : u.role}
+                  </span>
+                </td>
                 <td>{u.is_active ? 'Active' : 'Inactive'}</td>
                 <td>{new Date(u.created_at).toLocaleDateString()}</td>
                 <td>

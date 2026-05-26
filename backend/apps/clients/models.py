@@ -17,6 +17,16 @@ class Client(models.Model):
         null=True, blank=True,
         related_name='clients_as_poc',
     )
+
+    STATUS_CHOICES = [
+        ('new_lead', 'New Lead'),
+        ('interested_started', 'Interested – Project Started'),
+        ('not_interested_closed', 'Not Interested – Closed'),
+    ]
+    status = models.CharField(
+        max_length=30, choices=STATUS_CHOICES, default='new_lead', blank=True,
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

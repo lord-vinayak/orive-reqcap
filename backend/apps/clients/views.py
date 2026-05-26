@@ -12,11 +12,19 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Client.objects.select_related('poc').all()
-        q = self.request.query_params.get('q')
+        params = self.request.query_params
+
+        # Free-text search by name or phone
+        q = params.get('q')
         if q:
             qs = qs.filter(
                 Q(name__icontains=q) |
-                Q(phone_no__icontains=q) |
-                Q(poc__name__icontains=q)
+                Q(phone_no__icontains=q)
             )
+
+        # Filter by POC user ID
+        poc_id = params.get('poc')
+        if poc_id:
+            qs = qs.filter(poc__id=poc_id)
+
         return qs

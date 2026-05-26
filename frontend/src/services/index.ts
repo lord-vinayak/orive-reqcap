@@ -5,10 +5,12 @@ import type {
 } from '@/types'
 
 export const clientService = {
-  list: async (q?: string) => (await api.get<{ results: Client[] } | Client[]>('/clients/', { params: { q } })).data,
+  list: async (params: { q?: string; poc?: string } = {}) =>
+    (await api.get<{ results: Client[] } | Client[]>('/clients/', { params })).data,
   get: async (phone: string) => (await api.get<Client>(`/clients/${phone}/`)).data,
   create: async (data: Partial<Client>) => (await api.post<Client>('/clients/', data)).data,
-  update: async (phone: string, data: Partial<Client>) => (await api.put<Client>(`/clients/${phone}/`, data)).data,
+  update: async (phone: string, data: Partial<Client>) =>
+    (await api.put<Client>(`/clients/${phone}/`, data)).data,
 }
 
 export const requirementService = {
@@ -50,7 +52,6 @@ export const catalogService = {
   search: async (params: Record<string, string | string[]>) => {
     const { data } = await api.get<{ results: CatalogItem[] } | CatalogItem[]>('/catalog/', {
       params,
-      // Allow repeated keys: key_benefit[]=Acne&key_benefit[]=Glow
       paramsSerializer: (p) => {
         const parts: string[] = []
         for (const [k, v] of Object.entries(p)) {
@@ -79,11 +80,22 @@ export const catalogService = {
     })
     return data
   },
+  downloadTemplate: async () => {
+    const response = await api.get('/catalog/download_template/', { responseType: 'blob' })
+    return response.data as Blob
+  },
 }
 
 export const proposalService = {
+  /** Get the latest proposal for a requirement (creates one if none exist). */
   getForRequirement: async (reqId: string) =>
     (await api.get<Proposal>(`/requirements/${reqId}/proposal/`)).data,
+  /** List ALL proposals for a requirement, newest first. */
+  listForRequirement: async (reqId: string) =>
+    (await api.get<Proposal[]>(`/requirements/${reqId}/proposals/`)).data,
+  /** Create a fresh blank proposal alongside existing ones. */
+  createNew: async (reqId: string) =>
+    (await api.post<Proposal>(`/requirements/${reqId}/proposals/new/`)).data,
   addItem: async (proposalId: string, catalogItemId: string) =>
     (await api.post<ProposalItem>(`/proposals/${proposalId}/items/`, { catalog_item: catalogItemId })).data,
   removeItem: async (itemId: string) => api.delete(`/proposal-items/${itemId}/`),

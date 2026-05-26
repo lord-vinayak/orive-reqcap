@@ -2,7 +2,7 @@ export interface User {
   id: string
   email: string
   name: string
-  role: 'admin' | 'user'
+  role: 'admin' | 'poc_sales' | 'poc_formulation'
   is_active: boolean
   created_at: string
 }
@@ -17,6 +17,7 @@ export interface Client {
   physical_address: string
   poc: string | null
   poc_name?: string
+  status: 'new_lead' | 'interested_started' | 'not_interested_closed'
   created_at: string
   updated_at: string
 }
@@ -106,6 +107,7 @@ export interface CatalogItem {
   potential_mrp: number | null
   rate_category: string
   is_active: boolean
+  uploaded_at: string | null
 }
 
 export interface ProposalItem {

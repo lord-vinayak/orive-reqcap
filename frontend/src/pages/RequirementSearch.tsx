@@ -1,102 +1,257 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '@/components/Layout'
-import { clientService, requirementService } from '@/services'
-import type { Client, Requirement } from '@/types'
+import { clientService, requirementService, userService } from '@/services'
+import type { Client, Requirement, User } from '@/types'
+
+const STATUS_LABELS: Record<string, string> = {
+  new_lead: 'New Lead',
+  interested_started: 'Interested – Project Started',
+  not_interested_closed: 'Not Interested – Closed',
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  new_lead: 'bg-blue-50 text-blue-700 border-blue-200',
+  interested_started: 'bg-green-50 text-green-700 border-green-200',
+  not_interested_closed: 'bg-red-50 text-red-700 border-red-200',
+}
 
 export default function RequirementSearch() {
   const navigate = useNavigate()
-  const [phone, setPhone] = useState('')
-  const [client, setClient] = useState<Client | null>(null)
-  const [requirements, setRequirements] = useState<Requirement[]>([])
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(''); setLoading(true); setClient(null); setRequirements([])
-    try {
-      const c = await clientService.get(phone.trim())
-      setClient(c)
-      const result = await requirementService.listForClient(phone.trim())
-      const list = Array.isArray(result) ? result : result.results
-      setRequirements(list)
-      if (list.length === 0) {
-        setError('No requirements yet for this client.')
+  // Filter state
+  const [pocFilter, setPocFilter] = useState('')
+  const [textFilter, setTextFilter] = useState('')
+
+  // Data
+  const [users, setUsers] = useState<User[]>([])
+  const [clients, setClients] = useState<Client[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [loadingClients, setLoadingClients] = useState(false)
+
+  // Expanded client → show their requirements
+  const [expandedPhone, setExpandedPhone] = useState<string | null>(null)
+  const [requirements, setRequirements] = useState<Requirement[]>([])
+  const [loadingReqs, setLoadingReqs] = useState(false)
+  const [reqError, setReqError] = useState('')
+
+  // Load users list once for POC dropdown
+  useEffect(() => {
+    setLoadingUsers(true)
+    userService.list()
+      .then((res) => setUsers(Array.isArray(res) ? res : res.results))
+      .finally(() => setLoadingUsers(false))
+  }, [])
+
+  // Live-search clients whenever filters change (debounced slightly)
+  useEffect(() => {
+    const params: { q?: string; poc?: string } = {}
+    if (textFilter.trim()) params.q = textFilter.trim()
+    if (pocFilter) params.poc = pocFilter
+
+    // Only fetch if at least one filter is set; otherwise show nothing
+    if (!params.q && !params.poc) {
+      setClients([])
+      setExpandedPhone(null)
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setLoadingClients(true)
+      try {
+        const res = await clientService.list(params)
+        setClients(Array.isArray(res) ? res : (res as any).results ?? [])
+      } catch {
+        setClients([])
+      } finally {
+        setLoadingClients(false)
       }
-    } catch (err: any) {
-      setError(err.response?.status === 404
-        ? 'No client found with this phone number.'
-        : 'Search failed. Please try again.')
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [textFilter, pocFilter])
+
+  // Load requirements when a client row is expanded
+  const handleExpandClient = async (phone: string) => {
+    if (expandedPhone === phone) {
+      setExpandedPhone(null)
+      setRequirements([])
+      return
+    }
+    setExpandedPhone(phone)
+    setRequirements([])
+    setReqError('')
+    setLoadingReqs(true)
+    try {
+      const res = await requirementService.listForClient(phone)
+      const list = Array.isArray(res) ? res : (res as any).results ?? []
+      setRequirements(list)
+      if (list.length === 0) setReqError('No requirements yet for this client.')
+    } catch {
+      setReqError('Failed to load requirements.')
     } finally {
-      setLoading(false)
+      setLoadingReqs(false)
     }
   }
+
+  const hasFilters = Boolean(textFilter.trim() || pocFilter)
 
   return (
     <Layout title="Edit Requirement">
       <h1 className="text-2xl font-semibold mb-6">Edit Old Requirement</h1>
 
-      <form onSubmit={handleSearch} className="card max-w-xl mb-6">
-        <label htmlFor="phone" className="block mb-2">Client Phone Number</label>
-        <div className="flex gap-2">
-          <input
-            id="phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="e.g. 9876543210"
-            required
-            className="flex-1"
-            aria-required="true"
-          />
-          <button type="submit" disabled={loading || !phone} className="btn-primary">
-            {loading ? 'Searching…' : 'Search'}
-          </button>
+      {/* ---- Filter bar ---- */}
+      <div className="card mb-6 flex flex-wrap gap-4 items-end">
+        {/* POC dropdown */}
+        <div className="flex flex-col gap-1 min-w-[200px]">
+          <label htmlFor="poc-filter" className="text-sm font-medium">
+            Filter by POC
+          </label>
+          <select
+            id="poc-filter"
+            value={pocFilter}
+            onChange={(e) => setPocFilter(e.target.value)}
+            className="text-sm"
+            aria-label="Filter clients by Point of Contact"
+            disabled={loadingUsers}
+          >
+            <option value="">All POCs</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
         </div>
-        {error && <p role="alert" className="text-sm text-red-700 mt-3">{error}</p>}
-      </form>
 
-      {client && (
-        <div className="card mb-6">
-          <h2 className="text-lg font-semibold mb-2">{client.name}</h2>
-          <div className="text-sm text-black/70 space-y-1">
-            <div>Phone: {client.phone_no}</div>
-            {client.company_name && <div>Company: {client.company_name}</div>}
-            {client.poc_name && <div>POC: {client.poc_name}</div>}
-          </div>
+        {/* Name or phone text search */}
+        <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
+          <label htmlFor="text-filter" className="text-sm font-medium">
+            Search by name or phone
+          </label>
+          <input
+            id="text-filter"
+            value={textFilter}
+            onChange={(e) => setTextFilter(e.target.value)}
+            placeholder="Type client name or phone number…"
+            className="text-sm"
+            aria-label="Search clients by name or phone number"
+          />
         </div>
+
+        {/* Clear */}
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={() => { setPocFilter(''); setTextFilter(''); setClients([]); setExpandedPhone(null) }}
+            className="btn-secondary text-sm self-end"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* ---- Client list ---- */}
+      {!hasFilters && (
+        <p className="text-sm text-black/60 dark:text-slate-400">
+          Select a POC or type a client name / phone number to search.
+        </p>
       )}
 
-      {requirements.length > 0 && (
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-4">Requirements ({requirements.length})</h3>
-          <table className="table-clean" aria-label="Requirements for this client">
+      {hasFilters && loadingClients && (
+        <p className="text-sm text-black/60 dark:text-slate-400">Searching…</p>
+      )}
+
+      {hasFilters && !loadingClients && clients.length === 0 && (
+        <p className="text-sm text-black/60 dark:text-slate-400">No clients found matching those filters.</p>
+      )}
+
+      {clients.length > 0 && (
+        <div className="card p-0 overflow-hidden">
+          <table className="table-clean" aria-label="Matching clients">
             <thead>
               <tr>
-                <th scope="col">Title</th>
+                <th scope="col">Name</th>
+                <th scope="col">Phone</th>
+                <th scope="col">POC</th>
                 <th scope="col">Status</th>
-                <th scope="col"># Products</th>
-                <th scope="col">Last updated</th>
-                <th scope="col"><span className="sr-only">Actions</span></th>
+                <th scope="col"><span className="sr-only">Expand</span></th>
               </tr>
             </thead>
             <tbody>
-              {requirements.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.title}</td>
-                  <td><span className="badge">{r.status}</span></td>
-                  <td>{r.no_of_products ?? '—'}</td>
-                  <td>{new Date(r.updated_at).toLocaleString()}</td>
-                  <td>
-                    <button
-                      onClick={() => navigate(`/requirements/${r.id}`)}
-                      className="btn-secondary text-sm"
-                      aria-label={`Open requirement: ${r.title}`}
-                    >
-                      Open
-                    </button>
-                  </td>
-                </tr>
+              {clients.map((c) => (
+                <>
+                  <tr key={c.phone_no} className={expandedPhone === c.phone_no ? 'bg-mustard-50/40 dark:bg-slate-700/40' : ''}>
+                    <td className="font-medium">{c.name}</td>
+                    <td>{c.phone_no}</td>
+                    <td>{c.poc_name || '—'}</td>
+                    <td>
+                      {c.status ? (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${STATUS_COLORS[c.status] || 'bg-black/5 text-black/60 border-black/10'}`}>
+                          {STATUS_LABELS[c.status] || c.status}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => handleExpandClient(c.phone_no)}
+                        className="btn-secondary text-xs"
+                        aria-expanded={expandedPhone === c.phone_no}
+                        aria-label={`${expandedPhone === c.phone_no ? 'Collapse' : 'Expand'} requirements for ${c.name}`}
+                      >
+                        {expandedPhone === c.phone_no ? 'Collapse ▲' : 'View requirements ▼'}
+                      </button>
+                    </td>
+                  </tr>
+
+                  {/* Expanded requirements sub-rows */}
+                  {expandedPhone === c.phone_no && (
+                    <tr key={`${c.phone_no}-reqs`}>
+                      <td colSpan={6} className="p-0">
+                        <div className="bg-black/[0.015] dark:bg-white/[0.03] px-6 py-4 border-t border-black/5 dark:border-white/5">
+                          {loadingReqs && (
+                            <p className="text-sm text-black/60 dark:text-slate-400">Loading requirements…</p>
+                          )}
+                          {reqError && (
+                            <p className="text-sm text-black/60 dark:text-slate-400">{reqError}</p>
+                          )}
+                          {!loadingReqs && requirements.length > 0 && (
+                            <table className="table-clean" aria-label={`Requirements for ${c.name}`}>
+                              <thead>
+                                <tr>
+                                  <th scope="col">Title</th>
+                                  <th scope="col">Status</th>
+                                  <th scope="col"># Products</th>
+                                  <th scope="col">Last updated</th>
+                                  <th scope="col"><span className="sr-only">Actions</span></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {requirements.map((r) => (
+                                  <tr key={r.id}>
+                                    <td>{r.title}</td>
+                                    <td><span className="badge">{r.status}</span></td>
+                                    <td>{r.no_of_products ?? '—'}</td>
+                                    <td>{new Date(r.updated_at).toLocaleString()}</td>
+                                    <td>
+                                      <button
+                                        onClick={() => navigate(`/requirements/${r.id}/view`)}
+                                        className="btn-secondary text-sm"
+                                        aria-label={`View requirement: ${r.title}`}
+                                      >
+                                        View
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               ))}
             </tbody>
           </table>

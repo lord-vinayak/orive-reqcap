@@ -8,26 +8,27 @@ import type { CatalogItem } from '@/types'
 // Column definitions — every field from the Excel template
 // ---------------------------------------------------------------------------
 const COLUMNS: { key: keyof CatalogItem; label: string; numeric?: boolean; width: string }[] = [
-  { key: 'body_part',                label: 'Body Part',                  width: 'min-w-[100px]' },
-  { key: 'product_type',             label: 'Product Type',               width: 'min-w-[120px]' },
-  { key: 'sub_product_type',         label: 'Sub Product Type',           width: 'min-w-[140px]' },
-  { key: 'kb_tag1',                  label: 'Key Benefit 1',              width: 'min-w-[130px]' },
-  { key: 'kb_tag2',                  label: 'Key Benefit 2',              width: 'min-w-[130px]' },
-  { key: 'kb_tag3',                  label: 'Key Benefit 3',              width: 'min-w-[130px]' },
-  { key: 'specific_ingredients',     label: 'Specific Ingredients',       width: 'min-w-[200px]' },
-  { key: 'color',                    label: 'Color',                      width: 'min-w-[80px]'  },
-  { key: 'fragrance',                label: 'Fragrance',                  width: 'min-w-[100px]' },
-  { key: 'size',                     label: 'Size',                       width: 'min-w-[70px]'  },
-  { key: 'packaging_type',           label: 'Packaging Type',             width: 'min-w-[120px]' },
-  { key: 'rate_category',            label: 'Rate Category',              width: 'min-w-[120px]' },
-  { key: 'per_kg_rate',              label: 'Per KG Rate',       numeric: true, width: 'min-w-[110px]' },
-  { key: 'manufacturing_cost',       label: 'Manufacturing Cost',numeric: true, width: 'min-w-[150px]' },
-  { key: 'rate_per_unit',            label: 'Rate Per Unit',     numeric: true, width: 'min-w-[120px]' },
-  { key: 'tentative_packaging_cost', label: 'Tentative Packaging Cost', numeric: true, width: 'min-w-[190px]' },
-  { key: 'label_cost',               label: 'Label Cost',        numeric: true, width: 'min-w-[110px]' },
-  { key: 'tentative_monocarton_cost',label: 'Tentative Monocarton Cost', numeric: true, width: 'min-w-[200px]' },
-  { key: 'total_cost',               label: 'Total Cost',        numeric: true, width: 'min-w-[110px]' },
-  { key: 'potential_mrp',            label: 'Potential MRP',     numeric: true, width: 'min-w-[120px]' },
+  { key: 'uploaded_at',               label: 'Upload Date',                width: 'min-w-[110px]' },
+  { key: 'body_part',                 label: 'Body Part',                  width: 'min-w-[100px]' },
+  { key: 'product_type',              label: 'Product Type',               width: 'min-w-[120px]' },
+  { key: 'sub_product_type',          label: 'Sub Product Type',           width: 'min-w-[140px]' },
+  { key: 'kb_tag1',                   label: 'Key Benefit 1',              width: 'min-w-[130px]' },
+  { key: 'kb_tag2',                   label: 'Key Benefit 2',              width: 'min-w-[130px]' },
+  { key: 'kb_tag3',                   label: 'Key Benefit 3',              width: 'min-w-[130px]' },
+  { key: 'specific_ingredients',      label: 'Specific Ingredients',       width: 'min-w-[200px]' },
+  { key: 'color',                     label: 'Color',                      width: 'min-w-[80px]'  },
+  { key: 'fragrance',                 label: 'Fragrance',                  width: 'min-w-[100px]' },
+  { key: 'size',                      label: 'Size',                       width: 'min-w-[70px]'  },
+  { key: 'packaging_type',            label: 'Packaging Type',             width: 'min-w-[120px]' },
+  { key: 'rate_category',             label: 'Rate Category',              width: 'min-w-[120px]' },
+  { key: 'per_kg_rate',               label: 'Per KG Rate',       numeric: true, width: 'min-w-[110px]' },
+  { key: 'manufacturing_cost',        label: 'Manufacturing Cost',numeric: true, width: 'min-w-[150px]' },
+  { key: 'rate_per_unit',             label: 'Rate Per Unit',     numeric: true, width: 'min-w-[120px]' },
+  { key: 'tentative_packaging_cost',  label: 'Tentative Packaging Cost', numeric: true, width: 'min-w-[190px]' },
+  { key: 'label_cost',                label: 'Label Cost',        numeric: true, width: 'min-w-[110px]' },
+  { key: 'tentative_monocarton_cost', label: 'Tentative Monocarton Cost', numeric: true, width: 'min-w-[200px]' },
+  { key: 'total_cost',                label: 'Total Cost',        numeric: true, width: 'min-w-[110px]' },
+  { key: 'potential_mrp',             label: 'Potential MRP',     numeric: true, width: 'min-w-[120px]' },
 ]
 
 const RATE_CATEGORIES = ['Basic', 'Premium', 'Luxury']
@@ -46,8 +47,8 @@ const EMPTY_FILTERS: Filters = {
   key_benefits: [], rate_category: '', q: '',
 }
 
-function fmt(val: number | null | undefined, numeric?: boolean) {
-  if (!numeric) return val ?? '—'
+function fmt(val: unknown, numeric?: boolean) {
+  if (!numeric) return (val as string | null) ?? '—'
   if (val === null || val === undefined) return '—'
   return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
@@ -73,6 +74,9 @@ export default function AdminCatalog() {
   const [importing, setImporting] = useState(false)
   const [importMsg, setImportMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Template download state
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false)
 
   // ---- Load catalog -------------------------------------------------------
   const load = async () => {
@@ -136,25 +140,17 @@ export default function AdminCatalog() {
         : [...f.key_benefits, kb],
     }))
 
-  // ---- Import -------------------------------------------------------------
+  // ---- Append import ------------------------------------------------------
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    const confirmed = window.confirm(
-      `Uploading "${file.name}" will permanently DELETE all existing catalog rows and replace them with the contents of this file.\n\nThis cannot be undone. Continue?`
-    )
-    if (!confirmed) {
-      if (fileRef.current) fileRef.current.value = ''
-      return
-    }
 
     setImporting(true)
     setImportMsg(null)
     try {
       const res = await catalogService.importXlsx(file)
       setImportMsg({
-        text: `Replaced catalog: deleted ${res.deleted ?? '?'} old rows, imported ${res.created} new rows from "${file.name}".`,
+        text: `Appended ${res.created} new row${res.created === 1 ? '' : 's'} from "${file.name}" to the catalog.`,
         ok: true,
       })
       load()
@@ -163,6 +159,24 @@ export default function AdminCatalog() {
     } finally {
       setImporting(false)
       if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  // ---- Template download --------------------------------------------------
+  const handleDownloadTemplate = async () => {
+    setDownloadingTemplate(true)
+    try {
+      const blob = await catalogService.downloadTemplate()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'catalog_template.xlsx'
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      // silent — rare failure
+    } finally {
+      setDownloadingTemplate(false)
     }
   }
 
@@ -188,12 +202,23 @@ export default function AdminCatalog() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Replace-import button */}
+          {/* Download template button */}
+          <button
+            type="button"
+            onClick={handleDownloadTemplate}
+            disabled={downloadingTemplate}
+            className="btn-secondary text-sm"
+            aria-label="Download Excel template with dropdown validation"
+          >
+            {downloadingTemplate ? 'Downloading…' : '⬇ Download template (Excel)'}
+          </button>
+
+          {/* Append-import button */}
           <label
             className={`btn-primary text-sm cursor-pointer flex items-center gap-2 ${importing ? 'opacity-60 pointer-events-none' : ''}`}
-            title="Upload a new Excel file to replace the entire catalog"
+            title="Upload an Excel file to append rows to the catalog (existing rows are kept)"
           >
-            {importing ? 'Importing…' : '⬆ Replace catalog (Excel)'}
+            {importing ? 'Importing…' : '⬆ Append catalog (Excel)'}
             <input
               ref={fileRef}
               type="file"
@@ -201,7 +226,7 @@ export default function AdminCatalog() {
               onChange={handleImport}
               className="hidden"
               disabled={importing}
-              aria-label="Replace catalog from Excel file"
+              aria-label="Append catalog rows from Excel file"
             />
           </label>
         </div>
@@ -216,6 +241,7 @@ export default function AdminCatalog() {
               : 'bg-red-50 border-red-200 text-red-800'
           }`}
           role="status"
+          aria-live="polite"
         >
           {importMsg.text}
         </div>
@@ -381,7 +407,7 @@ export default function AdminCatalog() {
                         className={`px-3 py-2 border-b border-black/5 align-top ${col.numeric ? 'text-right tabular-nums' : ''} ${col.key === 'specific_ingredients' ? 'max-w-[200px] truncate' : 'whitespace-nowrap'}`}
                         title={col.key === 'specific_ingredients' ? String(item[col.key] ?? '') : undefined}
                       >
-                        {fmt(item[col.key] as any, col.numeric)}
+                        {fmt(item[col.key], col.numeric)}
                       </td>
                     ))}
                     <td className="px-3 py-2 border-b border-black/5 text-center">

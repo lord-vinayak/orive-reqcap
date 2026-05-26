@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Layout from "@/components/Layout";
-import AudioCaptureButton from "@/components/AudioCaptureButton";
 import ClientInfoForm from "@/components/ClientInfoForm";
 import ProductTable from "@/components/ProductTable";
 import CatalogSuggestions from "@/components/CatalogSuggestions";
@@ -394,6 +393,7 @@ export default function RequirementForm() {
         phone_no: client.phone_no,
         name: client.name,
         poc: currentUser?.id || null,
+        status: client.status,
       };
       try {
         await clientService.update(client.phone_no, clientPayload);
@@ -510,6 +510,26 @@ export default function RequirementForm() {
     return null;
   })();
 
+  // ---- Alt+R global keyboard shortcut to toggle audio recording ----
+  // The shortcut dispatches a synthetic click on the audio button rendered inside ClientInfoForm.
+  const audioButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        // Find the audio capture button rendered inside the form and click it
+        const btn = document.querySelector<HTMLButtonElement>(
+          '[data-audio-capture-btn]'
+        );
+        btn?.click();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  // Keep ref to satisfy linter (unused but harmless)
+  void audioButtonRef;
+
   return (
     <Layout title={isEdit ? "Edit Requirement" : "New Requirement"}>
       <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
@@ -526,7 +546,6 @@ export default function RequirementForm() {
             </p>
           )}
         </div>
-        <AudioCaptureButton onExtract={handleExtract} />
       </div>
 
       {showDraftBanner && (
@@ -567,13 +586,14 @@ export default function RequirementForm() {
                 client={client}
                 onClientChange={(next) => {
                   setClient(next);
-                  if (requirement) markMetaDirty(); // client edits don't trigger autosave on first creation
+                  if (requirement) markMetaDirty();
                 }}
                 targetAge={targetAge}
                 onTargetAgeChange={handleTargetAgeChange}
                 noOfProducts={noOfProducts}
                 onNoOfProductsChange={handleNoOfProductsChange}
                 readOnlyPhone={isEdit}
+                onExtract={handleExtract}
               />
             </div>
 

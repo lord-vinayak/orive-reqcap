@@ -9,9 +9,9 @@ class Proposal(models.Model):
         ('exported', 'Exported'),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    requirement = models.OneToOneField(
+    requirement = models.ForeignKey(
         'requirements_app.Requirement', on_delete=models.CASCADE,
-        related_name='proposal',
+        related_name='proposals',
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     created_by = models.ForeignKey(
