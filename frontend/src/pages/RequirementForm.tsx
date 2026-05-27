@@ -387,6 +387,10 @@ export default function RequirementForm() {
       setError("Client name and phone number are required.");
       return null;
     }
+    if (!/^\d{10}$/.test(client.phone_no)) {
+      setError("Phone number must be exactly 10 digits.");
+      return null;
+    }
     setManualSaving(true);
     try {
       const clientPayload = {

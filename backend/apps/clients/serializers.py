@@ -1,3 +1,4 @@
+import re
 from rest_framework import serializers
 from .models import Client
 
@@ -13,3 +14,8 @@ class ClientSerializer(serializers.ModelSerializer):
             'status', 'created_at', 'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def validate_phone_no(self, value):
+        if not re.fullmatch(r'\d{10}', value):
+            raise serializers.ValidationError('Phone number must be of 10 digits.')
+        return value
