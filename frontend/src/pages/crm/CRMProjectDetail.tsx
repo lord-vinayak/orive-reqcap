@@ -63,8 +63,39 @@ export default function CRMProjectDetail() {
     project.stage_completions.find((s) => s.stage_key === stageKey)?.is_complete ?? false
 
   const handleToggleSubStage = async (stageKey: string, subKey: string, completed: boolean) => {
-    if (!id) return
-    await crmApi.toggleSubStage(id, stageKey, subKey, completed)
+    if (!id || !project) return
+    // Optimistic update — flip the checkbox immediately in local state
+    setProject((prev) => {
+      if (!prev) return prev
+      const exists = prev.sub_stage_completions.find(
+        (s) => s.stage_key === stageKey && s.sub_stage_key === subKey
+      )
+      const updated = exists
+        ? prev.sub_stage_completions.map((s) =>
+            s.stage_key === stageKey && s.sub_stage_key === subKey
+              ? { ...s, completed }
+              : s
+          )
+        : [
+            ...prev.sub_stage_completions,
+            {
+              id: `optimistic-${stageKey}-${subKey}`,
+              stage_key: stageKey,
+              sub_stage_key: subKey,
+              completed,
+              completed_at: completed ? new Date().toISOString() : null,
+              completed_by: null,
+              completed_by_name: null,
+            },
+          ]
+      return { ...prev, sub_stage_completions: updated }
+    })
+    // Sync with server and refresh progress
+    try {
+      await crmApi.toggleSubStage(id, stageKey, subKey, completed)
+    } catch {
+      // Revert on failure by re-fetching ground truth
+    }
     fetchProject()
   }
 

@@ -13,6 +13,7 @@ import AdminCatalog from '@/pages/AdminCatalog'
 // CRM pages
 import CRMDashboard from '@/pages/crm/CRMDashboard'
 import CRMClientList from '@/pages/crm/CRMClientList'
+import CRMClientCreate from '@/pages/crm/CRMClientCreate'
 import CRMClientDetail from '@/pages/crm/CRMClientDetail'
 import CRMProjectList from '@/pages/crm/CRMProjectList'
 import CRMProjectDetail from '@/pages/crm/CRMProjectDetail'
@@ -40,6 +41,7 @@ export default function App() {
       <Route path="/crm" element={<Navigate to="/crm/dashboard" replace />} />
       <Route path="/crm/dashboard" element={<ProtectedRoute><CRMDashboard /></ProtectedRoute>} />
       <Route path="/crm/clients" element={<ProtectedRoute><CRMClientList /></ProtectedRoute>} />
+      <Route path="/crm/clients/new" element={<ProtectedRoute><CRMClientCreate /></ProtectedRoute>} />
       <Route path="/crm/clients/:phoneNo" element={<ProtectedRoute><CRMClientDetail /></ProtectedRoute>} />
       <Route path="/crm/projects" element={<ProtectedRoute><CRMProjectList /></ProtectedRoute>} />
       <Route path="/crm/projects/new" element={<ProtectedRoute><CRMProjectCreate /></ProtectedRoute>} />

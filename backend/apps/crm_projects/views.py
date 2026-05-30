@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from django.utils import timezone
 from django.db.models import Q
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
@@ -58,33 +59,37 @@ def _refresh_milestone_statuses(project: CRMProject):
 
 def _check_stage_complete(project: CRMProject, stage_key: str):
     """
-    Mark a stage complete if all mandatory sub-stages are checked.
+    Mark a stage complete if all mandatory sub-stages (or all sub-stages if none are mandatory) are checked.
     Returns True if stage transitioned to complete.
     """
     stage_def = next((s for s in STAGE_DEFINITIONS if s['key'] == stage_key), None)
     if not stage_def:
         return False
 
-    mandatory_keys = [ss['key'] for ss in stage_def['sub_stages'] if ss['mandatory']]
-
-    if not mandatory_keys:
+    sub_stages = stage_def.get('sub_stages', [])
+    if not sub_stages:
         # Stage with no sub-stages — user controls completion directly
         return False
+
+    mandatory_keys = [ss['key'] for ss in sub_stages if ss['mandatory']]
+    
+    # If no sub-stages are marked mandatory, we require all sub-stages to be completed
+    keys_to_check = mandatory_keys if mandatory_keys else [ss['key'] for ss in sub_stages]
 
     completed_keys = set(
         SubStageCompletion.objects.filter(
             project=project, stage_key=stage_key, completed=True
         ).values_list('sub_stage_key', flat=True)
     )
-    all_mandatory_done = all(k in completed_keys for k in mandatory_keys)
+    all_done = all(k in completed_keys for k in keys_to_check)
 
     sc, _ = StageCompletion.objects.get_or_create(project=project, stage_key=stage_key)
-    if all_mandatory_done and not sc.is_complete:
+    if all_done and not sc.is_complete:
         sc.is_complete = True
-        sc.completed_at = date.today()
+        sc.completed_at = timezone.now()
         sc.save(update_fields=['is_complete', 'completed_at'])
         return True
-    elif not all_mandatory_done and sc.is_complete:
+    elif not all_done and sc.is_complete:
         sc.is_complete = False
         sc.completed_at = None
         sc.save(update_fields=['is_complete', 'completed_at'])
@@ -190,7 +195,7 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
             project=project, stage_key=stage_key, sub_stage_key=sub_stage_key
         )
         ssc.completed = completed
-        ssc.completed_at = date.today() if completed else None
+        ssc.completed_at = timezone.now() if completed else None
         ssc.completed_by = request.user if completed else None
         ssc.save(update_fields=['completed', 'completed_at', 'completed_by'])
 
@@ -207,7 +212,7 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
 
         sc, _ = StageCompletion.objects.get_or_create(project=project, stage_key=stage_key)
         sc.is_complete = is_complete
-        sc.completed_at = date.today() if is_complete else None
+        sc.completed_at = timezone.now() if is_complete else None
         sc.completed_by = request.user if is_complete else None
         sc.save(update_fields=['is_complete', 'completed_at', 'completed_by'])
 
