@@ -5,7 +5,7 @@ from .views import (
     get_or_create_proposal_for_requirement,
     list_proposals_for_requirement,
     create_new_proposal,
-    remove_item,
+    item_detail,
 )
 
 router = DefaultRouter()
@@ -18,6 +18,6 @@ urlpatterns = router.urls + [
     path('requirements/<uuid:requirement_id>/proposals/', list_proposals_for_requirement),
     # Create a new blank proposal alongside existing ones
     path('requirements/<uuid:requirement_id>/proposals/new/', create_new_proposal),
-    # Remove a single proposal item
-    path('proposal-items/<uuid:item_id>/', remove_item),
+    # PATCH (edit snapshot) or DELETE a single Client Costing item
+    path('proposal-items/<uuid:item_id>/', item_detail),
 ]

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
-import { notesService } from '@/services'
+import { notesService, AUTO_NOTE_MARKER_RE } from '@/services'
 import { useAuthStore } from '@/store/authStore'
 import type { Note } from '@/types'
 
 interface Props {
   requirementId: string
+  /** Bump to trigger a refetch (used after Save to surface auto-mirror notes). */
+  refreshKey?: number
 }
 
-export default function NotesSection({ requirementId }: Props) {
+export default function NotesSection({ requirementId, refreshKey }: Props) {
   const [notes, setNotes] = useState<Note[]>([])
   const [text, setText] = useState('')
   const [adding, setAdding] = useState(false)
@@ -18,7 +20,7 @@ export default function NotesSection({ requirementId }: Props) {
     const data = await notesService.list(requirementId)
     setNotes(data)
   }
-  useEffect(() => { load() }, [requirementId])
+  useEffect(() => { load() }, [requirementId, refreshKey])
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,7 +73,7 @@ export default function NotesSection({ requirementId }: Props) {
         <ol className="space-y-2" aria-label="Note history">
           {notes.map((n) => (
             <li key={n.id} className="border-l-2 border-mustard pl-3 py-1">
-              <div className="text-sm text-black dark:text-slate-100">{n.text}</div>
+              <div className="text-sm text-black dark:text-slate-100">{n.text.replace(AUTO_NOTE_MARKER_RE, '')}</div>
               <div className="text-xs text-black/60 dark:text-slate-400 mt-0.5 flex items-center gap-2">
                 <span>{n.added_by_name || 'Unknown'}</span>
                 <span>•</span>

@@ -69,7 +69,7 @@ export default function ClientInfoForm({
 
         <div>
           <label htmlFor="ci_phone" className="block mb-1">
-            Client phone no{" "}
+            Client phone number{" "}
             <span className="text-red-700" aria-hidden="true">
               *
             </span>

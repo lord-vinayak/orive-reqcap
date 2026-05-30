@@ -127,9 +127,9 @@ export default function RequirementView() {
             onClick={handleCreateNewProposal}
             disabled={creatingProposal}
             className="btn-secondary"
-            aria-label="Create a new blank proposal for this requirement"
+            aria-label="Create a new blank Client Costing for this requirement"
           >
-            {creatingProposal ? 'Creating…' : '+ New Proposal'}
+            {creatingProposal ? 'Creating…' : '+ New Client Costing'}
           </button>
           <button
             onClick={() => navigate(`/requirements/${id}`)}
@@ -299,28 +299,28 @@ export default function RequirementView() {
         <section aria-labelledby="view-proposals-heading">
           <div className="flex items-center justify-between mb-3">
             <h2 id="view-proposals-heading" className="text-lg font-semibold">
-              Proposals <span className="text-sm font-normal text-black/60 dark:text-slate-400">({proposals.length})</span>
+              Client Costings <span className="text-sm font-normal text-black/60 dark:text-slate-400">({proposals.length})</span>
             </h2>
             <button
               onClick={handleCreateNewProposal}
               disabled={creatingProposal}
               className="btn-primary text-sm"
-              aria-label="Create a new blank proposal"
+              aria-label="Create a new blank Client Costing"
             >
-              {creatingProposal ? 'Creating…' : '+ New Proposal'}
+              {creatingProposal ? 'Creating…' : '+ New Client Costing'}
             </button>
           </div>
 
           {proposals.length === 0 && (
             <div className="card text-sm text-black/60 dark:text-slate-400">
-              No proposals created yet. Click "+ New Proposal" to start one.
+              No Client Costings created yet. Click "+ New Client Costing" to start one.
             </div>
           )}
 
           <div className="space-y-3">
             {proposals.map((proposal, idx) => {
               const isExpanded = expandedProposals.has(proposal.id)
-              const proposalLabel = `Proposal ${proposals.length - idx}`
+              const proposalLabel = `Client Costing ${proposals.length - idx}`
               return (
                 <div key={proposal.id} className="card p-0 overflow-hidden">
                   {/* Proposal header row */}
@@ -406,9 +406,9 @@ export default function RequirementView() {
                         <button
                           onClick={() => navigate(`/requirements/${id}/proposal`)}
                           className="btn-secondary text-xs"
-                          aria-label={`Open proposal editor for ${proposalLabel}`}
+                          aria-label={`Open Client Costing editor for ${proposalLabel}`}
                         >
-                          Open in Proposal Editor →
+                          Open in Client Costing Editor →
                         </button>
                       </div>
                     </div>

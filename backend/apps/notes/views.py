@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, NotFound
 from .models import Note
 from .serializers import NoteSerializer
 
@@ -22,11 +22,27 @@ class RequirementNotesView(viewsets.ViewSet):
         return Response(NoteSerializer(note).data, status=status.HTTP_201_CREATED)
 
 
-@api_view(['DELETE'])
+@api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
-def delete_note(request, pk):
-    """Admin only: delete a single note."""
+def note_detail(request, pk):
+    """PATCH updates text (any auth user); DELETE is admin-only."""
+    try:
+        note = Note.objects.get(pk=pk)
+    except Note.DoesNotExist:
+        raise NotFound('Note not found.')
+
+    if request.method == 'PATCH':
+        ser = NoteSerializer(note, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+    # DELETE
     if request.user.role != 'admin':
         raise PermissionDenied('Only admins can delete notes.')
-    Note.objects.filter(pk=pk).delete()
+    note.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# Back-compat alias so any old imports keep working.
+delete_note = note_detail

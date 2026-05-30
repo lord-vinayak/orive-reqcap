@@ -10,13 +10,25 @@ interface Props {
   products: RequirementProduct[]
   /** Index of the currently highlighted/active row in the product table. */
   activeRowIndex: number
-  /** ID of the saved requirement; needed to find/create the proposal when adding items. */
+  /** ID of the saved requirement; needed to find/create the Client Costing when adding items. */
   requirementId: string | undefined
   /**
    * Called when the user tries to add items but the requirement isn't saved yet.
    * Should trigger a save and return the new requirement ID (or null on failure).
    */
   onAutoSave?: () => Promise<string | null>
+  /**
+   * Bubbled to parent so the bulk "Add to Client Costing" button can render
+   * elsewhere (e.g. inside the sticky bottom action bar of RequirementForm).
+   * Called whenever the selection state changes.
+   */
+  onPendingChange?: (state: {
+    count: number
+    busy: boolean
+    add: () => Promise<void>
+  }) => void
+  /** Trigger a reload of the proposal when this key changes. */
+  refreshKey?: number
 }
 
 type Filters = {
@@ -44,6 +56,8 @@ export default function CatalogSuggestions({
   activeRowIndex,
   requirementId,
   onAutoSave,
+  onPendingChange,
+  refreshKey,
 }: Props) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const [results, setResults] = useState<CatalogItem[]>([])
@@ -87,7 +101,7 @@ export default function CatalogSuggestions({
     if (requirementId) loadProposal(requirementId)
     else { setProposalItems([]); setProposalId(null) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requirementId])
+  }, [requirementId, refreshKey])
 
   // Auto-filter from active row is intentionally disabled.
   // The user controls the filter bar manually.
@@ -174,7 +188,7 @@ export default function CatalogSuggestions({
       let reqId = requirementId
       if (!reqId) {
         if (!onAutoSave) {
-          setFeedback('Save the requirement first to add items to the proposal.')
+          setFeedback('Save the requirement first to add items to the Client Costing.')
           setTimeout(() => setFeedback(''), 3000)
           return
         }
@@ -202,7 +216,7 @@ export default function CatalogSuggestions({
 
       setCheckedIds(new Set())
       await loadProposal(reqId)
-      setFeedback(`${toAdd.length} item${toAdd.length === 1 ? '' : 's'} added to proposal.`)
+      setFeedback(`${toAdd.length} item${toAdd.length === 1 ? '' : 's'} added to Client Costing.`)
       setTimeout(() => setFeedback(''), 3000)
     } catch {
       setFeedback('Could not add items. Please try again.')
@@ -212,7 +226,18 @@ export default function CatalogSuggestions({
     }
   }
 
-  // ---------- Remove item from proposal ----------
+  // Bubble selection state up to the parent so the bulk action button can live
+  // in the sticky bottom action bar.
+  useEffect(() => {
+    onPendingChange?.({
+      count: checkedIds.size,
+      busy: addingSelected,
+      add: handleAddSelected,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkedIds, addingSelected])
+
+  // ---------- Remove item from Client Costing ----------
   const handleRemove = async (proposalItemId: string) => {
     setRemovingId(proposalItemId)
     try {
@@ -246,17 +271,9 @@ export default function CatalogSuggestions({
             Matching catalog items
           </h2>
           {checkedIds.size > 0 && (
-            <button
-              type="button"
-              onClick={handleAddSelected}
-              disabled={addingSelected}
-              className="btn-primary text-sm"
-              aria-live="polite"
-            >
-              {addingSelected
-                ? 'Adding…'
-                : `Add ${checkedIds.size} selected to proposal`}
-            </button>
+            <span className="text-xs text-black/60 dark:text-slate-400" aria-live="polite">
+              {checkedIds.size} selected — use “Add to Client Costing” in the bottom bar
+            </span>
           )}
         </div>
 
@@ -506,8 +523,8 @@ export default function CatalogSuggestions({
                       {isAdded ? (
                         <span
                           className="text-mustard-600 dark:text-mustard-400 text-xs font-medium"
-                          aria-label="Already in proposal"
-                          title="Already in proposal"
+                          aria-label="Already in Client Costing"
+                          title="Already in Client Costing"
                         >
                           ✓
                         </span>
@@ -554,7 +571,7 @@ export default function CatalogSuggestions({
       >
         <div className="px-4 py-3 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
           <h2 id="proposal-items-heading" className="text-lg font-semibold">
-            Items in proposal
+            Items in Client Costing
           </h2>
           <span className="text-xs text-black/60 dark:text-slate-400">
             {proposalLoading
@@ -588,7 +605,7 @@ export default function CatalogSuggestions({
                     className="text-center text-sm text-black/60 dark:text-slate-400 py-8"
                   >
                     {requirementId
-                      ? 'No items added yet. Select items above and click "Add selected to proposal".'
+                      ? 'No items added yet. Select items above and click "Add selected to Client Costing".'
                       : 'Save the requirement first, then add items.'}
                   </td>
                 </tr>
@@ -622,7 +639,7 @@ export default function CatalogSuggestions({
                         onClick={() => handleRemove(it.id)}
                         disabled={isRemoving}
                         className="btn-danger text-xs"
-                        aria-label={`Remove ${c.body_part} ${c.product_type} from proposal`}
+                        aria-label={`Remove ${c.body_part} ${c.product_type} from Client Costing`}
                       >
                         {isRemoving ? '…' : 'Remove'}
                       </button>

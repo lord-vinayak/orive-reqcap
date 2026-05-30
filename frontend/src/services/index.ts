@@ -31,7 +31,24 @@ export const notesService = {
   list: async (reqId: string) => (await api.get<Note[]>(`/requirements/${reqId}/notes/`)).data,
   add: async (reqId: string, text: string) =>
     (await api.post<Note>(`/requirements/${reqId}/notes/`, { text })).data,
+  update: async (id: string, text: string) =>
+    (await api.patch<Note>(`/notes/${id}/`, { text })).data,
   delete: async (id: string) => api.delete(`/notes/${id}/`),
+}
+
+/** Marker prefix used to identify auto-generated mirror notes
+ *  (packaging notes / color details / fragrance details from product rows). */
+export const AUTO_NOTE_MARKER_RE = /^\[AUTO\|([^|]+)\|([^\]]+)\]\s*/
+
+export function buildAutoNoteText(rowId: string, field: string, rowNumber: number, value: string, bodyPart: string, category: string, subCategory: string) {
+  const label = field === 'packaging_notes'  ? 'Packaging notes'
+             : field === 'color_details'     ? 'Color details'
+             : field === 'fragrance_details' ? 'Fragrance details'
+             : field
+  const bp = bodyPart || 'N/A'
+  const cat = category || 'N/A'
+  const sub = subCategory || 'N/A'
+  return `[AUTO|${rowId}|${field}] #${rowNumber} | ${bp} | ${cat} | ${sub} — ${label}: ${value}`
 }
 
 export const fileService = {
@@ -96,8 +113,29 @@ export const proposalService = {
   /** Create a fresh blank proposal alongside existing ones. */
   createNew: async (reqId: string) =>
     (await api.post<Proposal>(`/requirements/${reqId}/proposals/new/`)).data,
-  addItem: async (proposalId: string, catalogItemId: string) =>
-    (await api.post<ProposalItem>(`/proposals/${proposalId}/items/`, { catalog_item: catalogItemId })).data,
+  addItem: async (proposalId: string, catalogItemId: string) => {
+    const item = (await api.post<ProposalItem>(`/proposals/${proposalId}/items/`, { catalog_item: catalogItemId })).data
+    const defaults = {
+      manufacturing_cost: 30.00,
+      tentative_packaging_cost: 30.00,
+      label_cost: 10.00,
+      tentative_monocarton_cost: 15.00,
+    }
+    return (await api.patch<ProposalItem>(`/proposal-items/${item.id}/`, { snapshot: defaults })).data
+  },
+  /** Add a freeform (non-catalog) item to a Client Costing — copies snapshot fields directly. */
+  addFreeformItem: async (proposalId: string, snapshot: Partial<ProposalItem['catalog_data']>) => {
+    const defaults = {
+      manufacturing_cost: 30.00,
+      tentative_packaging_cost: 30.00,
+      label_cost: 10.00,
+      tentative_monocarton_cost: 15.00,
+    }
+    return (await api.post<ProposalItem>(`/proposals/${proposalId}/items/`, { snapshot: { ...defaults, ...snapshot } })).data
+  },
+  /** Update any snapshot field of an existing Client Costing item. */
+  updateItem: async (itemId: string, patch: Partial<ProposalItem['catalog_data']>) =>
+    (await api.patch<ProposalItem>(`/proposal-items/${itemId}/`, { snapshot: patch })).data,
   removeItem: async (itemId: string) => api.delete(`/proposal-items/${itemId}/`),
   exportXlsx: async (proposalId: string) => {
     const response = await api.get(`/proposals/${proposalId}/export/`, { responseType: 'blob' })

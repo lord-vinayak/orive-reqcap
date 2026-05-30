@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { catalogService, proposalService, requirementService } from '@/services'
-import type { CatalogItem, Proposal, Requirement } from '@/types'
+import type { CatalogItem, Proposal, ProposalItem, Requirement } from '@/types'
 
 type Tab = 'edit' | 'preview' | 'export'
 
@@ -130,21 +130,21 @@ export default function ProposalPage() {
   const selectedIds = useMemo(() => new Set(proposal?.items.map((i) => i.catalog_item) || []), [proposal])
 
   if (loading || !proposal || !requirement) {
-    return <Layout title="Proposal"><p className="text-black/60">Loading proposal…</p></Layout>
+    return <Layout title="Client Costing"><p className="text-black/60">Loading Client Costing…</p></Layout>
   }
 
   return (
-    <Layout title={`Proposal – ${requirement.title}`}>
+    <Layout title={`Client Costing – ${requirement.title}`}>
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-2xl font-semibold">Proposal</h1>
+          <h1 className="text-2xl font-semibold">Client Costing</h1>
           <p className="text-sm text-black/60">{requirement.title}</p>
         </div>
         <span className="badge">{proposal.status}</span>
       </div>
 
       {/* Tabs */}
-      <div role="tablist" aria-label="Proposal sections" className="flex border-b border-black/10 mb-6">
+      <div role="tablist" aria-label="Client Costing sections" className="flex border-b border-black/10 mb-6">
         {(['edit', 'preview', 'export'] as Tab[]).map((t) => (
           <button
             key={t}
@@ -297,27 +297,22 @@ export default function ProposalPage() {
             </div>
           </section>
 
-          {/* Selected items */}
+          {/* Selected items — fully editable inline (item #7) */}
           <section className="card" aria-labelledby="selected-heading">
-            <h2 id="selected-heading" className="text-lg font-semibold mb-3">In this proposal ({proposal.items.length})</h2>
+            <h2 id="selected-heading" className="text-lg font-semibold mb-3">
+              In this Client Costing ({proposal.items.length})
+            </h2>
             {proposal.items.length === 0 ? (
-              <p className="text-sm text-black/60">No items added yet. Use the catalog on the left.</p>
+              <p className="text-sm text-black/60">No items added yet. Use the catalog on the left or click “→Cost” on a product row.</p>
             ) : (
-              <ol className="space-y-2">
-                {proposal.items.map((it) => {
-                  const c = it.catalog_data
-                  return (
-                    <li key={it.id} className="border border-black/10 rounded p-3 flex items-start justify-between">
-                      <div className="text-sm">
-                        <div className="font-medium">{c.body_part} • {c.product_type} • {c.sub_product_type}</div>
-                        <div className="text-black/60 text-xs">{[c.kb_tag1, c.kb_tag2, c.kb_tag3].filter(Boolean).join(', ')}</div>
-                        <div className="text-black/60 text-xs">{c.specific_ingredients}</div>
-                      </div>
-                      <button onClick={() => handleRemove(it.id)} className="btn-danger text-xs">Remove</button>
-                    </li>
-                  )
-                })}
-              </ol>
+              <EditableItemsTable
+                items={proposal.items}
+                onItemChange={async (itemId, patch) => {
+                  await proposalService.updateItem(itemId, patch)
+                  await load()
+                }}
+                onRemove={handleRemove}
+              />
             )}
           </section>
         </div>
@@ -349,6 +344,128 @@ export default function ProposalPage() {
 
 
 // ---------------------------------------------------------------------------
+// Editable items table — every cell can be edited; changes PATCH the snapshot.
+// (Item #7) Edits only affect the costing's local snapshot, never the catalog.
+// ---------------------------------------------------------------------------
+const EDITABLE_FIELDS: { key: keyof CatalogItem; label: string; numeric?: boolean }[] = [
+  { key: 'body_part',           label: 'Body Part' },
+  { key: 'product_type',        label: 'Product Type' },
+  { key: 'sub_product_type',    label: 'Sub Type' },
+  { key: 'kb_tag1',             label: 'KB 1' },
+  { key: 'kb_tag2',             label: 'KB 2' },
+  { key: 'kb_tag3',             label: 'KB 3' },
+  { key: 'specific_ingredients',label: 'Specific Ingredients' },
+  { key: 'color',               label: 'Color' },
+  { key: 'fragrance',           label: 'Fragrance' },
+  { key: 'size',                label: 'Size' },
+  { key: 'packaging_type',      label: 'Packaging' },
+  { key: 'rate_category',       label: 'Rate Category' },
+  { key: 'per_kg_rate',         label: 'Per KG Rate',         numeric: true },
+  { key: 'manufacturing_cost',  label: 'Mfg Cost',            numeric: true },
+  { key: 'rate_per_unit',       label: 'Rate / Unit',         numeric: true },
+  { key: 'tentative_packaging_cost', label: 'Packaging Cost', numeric: true },
+  { key: 'label_cost',          label: 'Label Cost',          numeric: true },
+  { key: 'tentative_monocarton_cost', label: 'Monocarton',    numeric: true },
+  { key: 'total_cost',          label: 'Total Cost',          numeric: true },
+  { key: 'potential_mrp',       label: 'Potential MRP',       numeric: true },
+]
+
+function EditableItemsTable({
+  items, onItemChange, onRemove,
+}: {
+  items: ProposalItem[]
+  onItemChange: (itemId: string, patch: Record<string, unknown>) => Promise<void>
+  onRemove: (id: string) => void
+}) {
+  // Local editable buffer — PATCH only fires on blur to avoid spam.
+  const [draft, setDraft] = useState<Record<string, Record<string, string>>>({})
+
+  const cellValue = (it: ProposalItem, field: keyof CatalogItem) => {
+    if (draft[it.id]?.[field as string] !== undefined) return draft[it.id][field as string]
+    const v = (it.catalog_data as any)[field]
+    return v === null || v === undefined ? '' : String(v)
+  }
+
+  const updateLocal = (itemId: string, field: string, value: string) => {
+    setDraft((prev) => ({ ...prev, [itemId]: { ...(prev[itemId] || {}), [field]: value } }))
+  }
+
+  const commit = async (it: ProposalItem, field: typeof EDITABLE_FIELDS[number]) => {
+    const newVal = draft[it.id]?.[field.key as string]
+    if (newVal === undefined) return
+    const original = (it.catalog_data as any)[field.key]
+    const originalStr = original === null || original === undefined ? '' : String(original)
+    if (newVal === originalStr) return
+    const patchVal: unknown = field.numeric
+      ? (newVal === '' ? null : Number(newVal))
+      : newVal
+    try {
+      await onItemChange(it.id, { [field.key]: patchVal })
+    } finally {
+      setDraft((prev) => {
+        const next = { ...prev }
+        if (next[it.id]) {
+          const { [field.key as string]: _, ...rest } = next[it.id]
+          if (Object.keys(rest).length === 0) delete next[it.id]
+          else next[it.id] = rest
+        }
+        return next
+      })
+    }
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs border-collapse" aria-label="Client Costing items — all cells editable">
+        <thead>
+          <tr className="bg-mustard-50 text-black/80">
+            <th scope="col" className="px-2 py-1 text-left font-medium w-8">#</th>
+            {EDITABLE_FIELDS.map((f) => (
+              <th key={f.key as string} scope="col" className="px-2 py-1 text-left font-medium whitespace-nowrap">
+                {f.label}
+              </th>
+            ))}
+            <th scope="col" className="px-2 py-1 text-center font-medium w-16">
+              <span className="sr-only">Remove</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((it, idx) => (
+            <tr key={it.id} className={idx % 2 === 1 ? 'bg-black/[0.02]' : ''}>
+              <td className="px-2 py-1 text-center text-black/50 font-medium">{idx + 1}</td>
+              {EDITABLE_FIELDS.map((f) => (
+                <td key={f.key as string} className="px-1 py-1">
+                  <input
+                    type={f.numeric ? 'number' : 'text'}
+                    value={cellValue(it, f.key)}
+                    onChange={(e) => updateLocal(it.id, f.key as string, e.target.value)}
+                    onBlur={() => commit(it, f)}
+                    className="w-full px-1 py-0.5 border border-transparent rounded bg-transparent hover:bg-mustard-50/50 focus:bg-white focus:border-mustard text-xs"
+                    aria-label={`Item ${idx + 1} ${f.label}`}
+                  />
+                </td>
+              ))}
+              <td className="px-2 py-1 text-center">
+                <button
+                  type="button"
+                  onClick={() => onRemove(it.id)}
+                  className="text-red-700 hover:underline text-xs"
+                  aria-label={`Remove item ${idx + 1} from Client Costing`}
+                >
+                  Remove
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
 // Preview component — shows all catalog cost fields
 // ---------------------------------------------------------------------------
 function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requirement: Requirement }) {
@@ -370,7 +487,7 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
             {/* Sub-header */}
             <tr>
               <th colSpan={18} className="bg-mustard-50 text-center py-2 font-semibold border-b border-black/10">
-                Product Proposal
+                Client Costing
               </th>
             </tr>
             {/* Client info */}

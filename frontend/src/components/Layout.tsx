@@ -1,9 +1,12 @@
 import { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
 const BASE_TITLE = "Skinovation Sciences CRM";
+
+// Routes where a Back link is suppressed.
+const NO_BACK_ROUTES = ["/home", "/login", "/"];
 
 export default function Layout({
   children,
@@ -14,6 +17,7 @@ export default function Layout({
 }) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     document.title = title ? `${title} – ${BASE_TITLE}` : BASE_TITLE;
@@ -26,6 +30,8 @@ export default function Layout({
     logout();
     navigate("/login");
   };
+
+  const showBack = !NO_BACK_ROUTES.includes(location.pathname);
 
   return (
     <div className="min-h-full bg-white dark:bg-slate-900">
@@ -45,7 +51,7 @@ export default function Layout({
           <Link
             to="/home"
             className="flex items-center gap-3 group"
-            aria-label="Home"
+            aria-label="Skinovation Sciences home"
           >
             <div className="w-10 h-10 rounded flex items-center justify-center font-bold text-black dark:text-white">
               <img src="/logo.png" alt="Skinovation Sciences" />
@@ -61,6 +67,9 @@ export default function Layout({
           </Link>
 
           <nav className="flex items-center gap-2" aria-label="Primary">
+            <Link to="/home" className="btn-secondary text-sm" aria-label="Go to Home page">
+              Home
+            </Link>
             {user?.role === "admin" && (
               <>
                 <Link to="/admin/users" className="btn-secondary text-sm">
@@ -94,6 +103,16 @@ export default function Layout({
         role="main"
         className="max-w-7xl mx-auto px-6 py-8"
       >
+        {showBack && (
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1 text-sm text-black/70 dark:text-slate-300 hover:text-black dark:hover:text-white hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard rounded px-1 -ml-1 mb-3"
+            aria-label="Go back to previous page"
+          >
+            <span aria-hidden="true">←</span> Go Back
+          </button>
+        )}
         {children}
       </main>
     </div>

@@ -15,7 +15,7 @@ from apps.requirements_app.models import Requirement
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_or_create_proposal_for_requirement(request, requirement_id):
-    """Get the most recent proposal for a requirement, or create one if none exist."""
+    """Get the most recent Client Costing for a requirement, or create one if none exist."""
     try:
         req = Requirement.objects.get(pk=requirement_id)
     except Requirement.DoesNotExist:
@@ -30,7 +30,7 @@ def get_or_create_proposal_for_requirement(request, requirement_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def list_proposals_for_requirement(request, requirement_id):
-    """List ALL proposals for a requirement, newest first."""
+    """List ALL Client Costings for a requirement, newest first."""
     try:
         req = Requirement.objects.get(pk=requirement_id)
     except Requirement.DoesNotExist:
@@ -44,7 +44,7 @@ def list_proposals_for_requirement(request, requirement_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_new_proposal(request, requirement_id):
-    """Create a fresh blank proposal for a requirement (alongside existing ones)."""
+    """Create a fresh blank Client Costing for a requirement (alongside existing ones)."""
     try:
         req = Requirement.objects.get(pk=requirement_id)
     except Requirement.DoesNotExist:
@@ -66,7 +66,7 @@ class ProposalViewSet(viewsets.ModelViewSet):
         proposal.last_exported_at = datetime.now(timezone.utc)
         proposal.save(update_fields=['status', 'last_exported_at'])
 
-        filename = f'Proposal_{proposal.requirement.client.name}_{datetime.now().date().isoformat()}.xlsx'
+        filename = f'ClientCosting_{proposal.requirement.client.name}_{datetime.now().date().isoformat()}.xlsx'
         response = HttpResponse(
             data,
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -76,21 +76,45 @@ class ProposalViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='items')
     def add_item(self, request, pk=None):
+        """Add a costing item. Either catalog-linked (catalog_item id) or freeform (snapshot dict)."""
         proposal = self.get_object()
-        catalog_item_id = request.data.get('catalog_item')
-        if not catalog_item_id:
-            return Response({'detail': 'catalog_item required'}, status=status.HTTP_400_BAD_REQUEST)
-        item, created = ProposalItem.objects.get_or_create(
-            proposal=proposal,
-            catalog_item_id=catalog_item_id,
-            defaults={'sort_order': proposal.items.count()},
-        )
-        return Response(ProposalItemSerializer(item).data,
-                        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        data = dict(request.data)
+        # Stamp the proposal FK so the serializer's create() can use it.
+        data['proposal'] = str(proposal.id)
+        catalog_item_id = data.get('catalog_item')
+        snapshot = data.get('snapshot')
+
+        if not catalog_item_id and not snapshot:
+            return Response(
+                {'detail': 'Provide either catalog_item or snapshot.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data.setdefault('sort_order', proposal.items.count())
+        ser = ProposalItemSerializer(data=data)
+        ser.is_valid(raise_exception=True)
+        item = ser.save()
+        return Response(ProposalItemSerializer(item).data, status=status.HTTP_201_CREATED)
 
 
-@api_view(['DELETE'])
+@api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
-def remove_item(request, item_id):
-    ProposalItem.objects.filter(pk=item_id).delete()
+def item_detail(request, item_id):
+    """PATCH merges fields into the snapshot; DELETE removes the item."""
+    try:
+        item = ProposalItem.objects.get(pk=item_id)
+    except ProposalItem.DoesNotExist:
+        raise NotFound('Item not found')
+
+    if request.method == 'PATCH':
+        ser = ProposalItemSerializer(item, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+    item.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# Back-compat alias for the old import name in urls.py
+remove_item = item_detail

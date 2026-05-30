@@ -113,8 +113,12 @@ export interface CatalogItem {
 export interface ProposalItem {
   id: string
   proposal: string
-  catalog_item: string
+  /** Catalog item reference. NULL for freeform rows added from the Product Requirements table. */
+  catalog_item: string | null
+  /** Read-only merged view of catalog defaults + per-item snapshot overrides. */
   catalog_data: CatalogItem
+  /** The editable per-item override layer. Write any catalog field here to override. */
+  snapshot?: Partial<CatalogItem>
   sort_order: number
   added_at: string
 }
