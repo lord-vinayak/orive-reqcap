@@ -34,6 +34,9 @@ INSTALLED_APPS = [
     'apps.catalog',
     'apps.proposals',
     'apps.audio',
+
+    'apps.crm_master_data',
+    'apps.crm_projects',
 ]
 
 MIDDLEWARE = [

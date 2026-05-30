@@ -1,0 +1,139 @@
+import { useEffect, useState, useId } from 'react'
+import { Link } from 'react-router-dom'
+import Layout from '@/components/Layout'
+import { api } from '@/services/api'
+
+interface Client {
+  phone_no: string
+  name: string
+  company_name: string
+  email: string
+  city: string
+  status: string
+  poc: string | null
+}
+
+interface PaginatedClients {
+  count: number
+  results: Client[]
+}
+
+export default function CRMClientList() {
+  const searchId = useId()
+  const [clients, setClients] = useState<Client[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [error, setError] = useState('')
+
+  const fetchClients = (q = '') => {
+    setLoading(true)
+    api.get<PaginatedClients>('/clients/', { params: q ? { search: q } : {} })
+      .then((r) => setClients(r.data.results))
+      .catch(() => setError('Failed to load clients.'))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { fetchClients() }, [])
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    fetchClients(search.trim())
+  }
+
+  const STATUS_LABEL: Record<string, string> = {
+    new_lead: 'New Lead',
+    interested_started: 'Interested – Project Started',
+    not_interested_closed: 'Not Interested – Closed',
+  }
+
+  return (
+    <Layout title="Clients">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <h1 className="text-2xl font-bold text-black dark:text-white">Clients</h1>
+          <Link to="/crm/clients/new" className="btn-primary text-sm" aria-label="Add a new client">
+            + Add Client
+          </Link>
+        </div>
+
+        {/* Search */}
+        <form onSubmit={handleSearch} role="search" aria-label="Search clients">
+          <div className="flex gap-2">
+            <label htmlFor={searchId} className="sr-only">Search by name, phone, or POC</label>
+            <input
+              id={searchId}
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, phone, or POC…"
+              className="flex-1 border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+              aria-label="Search clients by name, phone number, or point of contact"
+            />
+            <button type="submit" className="btn-primary text-sm px-4">Search</button>
+            {search && (
+              <button
+                type="button"
+                className="btn-secondary text-sm px-4"
+                onClick={() => { setSearch(''); fetchClients() }}
+                aria-label="Clear search"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </form>
+
+        {error && (
+          <div role="alert" className="text-red-600 dark:text-red-400 text-sm">{error}</div>
+        )}
+
+        {loading ? (
+          <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-400 text-sm">
+            Loading clients…
+          </div>
+        ) : clients.length === 0 ? (
+          <p className="text-black/60 dark:text-slate-400 text-sm">No clients found.</p>
+        ) : (
+          <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
+            <table className="w-full text-sm" aria-label="Client list">
+              <thead>
+                <tr className="bg-black/5 dark:bg-white/5 text-left">
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Name</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Company</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Phone</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">City</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                {clients.map((c) => (
+                  <tr key={c.phone_no} className="hover:bg-black/2 dark:hover:bg-white/2">
+                    <td className="px-4 py-3 font-medium text-black dark:text-white">{c.name}</td>
+                    <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.company_name || '—'}</td>
+                    <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.phone_no}</td>
+                    <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.city || '—'}</td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs text-black/60 dark:text-slate-400">
+                        {STATUS_LABEL[c.status] || c.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link
+                        to={`/crm/clients/${c.phone_no}`}
+                        className="text-mustard hover:underline focus-visible:ring-2 focus-visible:ring-mustard rounded text-sm"
+                        aria-label={`View details for ${c.name}`}
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </Layout>
+  )
+}

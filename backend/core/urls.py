@@ -19,4 +19,6 @@ urlpatterns = [
     path('api/catalog/', include('apps.catalog.urls')),
     path('api/', include('apps.proposals.urls')),
     path('api/audio/', include('apps.audio.urls')),
+    path('api/crm/', include('apps.crm_projects.urls')),
+    path('api/crm/', include('apps.crm_master_data.urls')),
 ]
