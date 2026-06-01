@@ -442,7 +442,7 @@ function EditableItemsTable({
 
   /** Merge server-side catalog_data with any unsaved local draft for this row. */
   const getMerged = (it: ProposalItem): Record<string, unknown> => ({
-    ...(it.catalog_data as Record<string, unknown>),
+    ...(it.catalog_data as unknown as Record<string, unknown>),
     ...(draft[it.id] || {}),
   })
 
