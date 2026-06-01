@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Layout from "@/components/Layout";
 import ClientInfoForm from "@/components/ClientInfoForm";
 import ProductTable, { validateProductRow } from "@/components/ProductTable";
@@ -111,6 +111,7 @@ async function syncAutoNotes(reqId: string, products: RequirementProduct[]) {
 export default function RequirementForm() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isEdit = Boolean(id);
   const currentUser = useAuthStore((s) => s.user);
 
@@ -162,8 +163,21 @@ export default function RequirementForm() {
   const dirtyMetaRef = useRef(false);
   const autoSaveTimerRef = useRef<number | null>(null);
 
+  // If navigated here as "new requirement for existing client" (?client=PHONE),
+  // fetch that client's details and pre-fill the form — skip the draft banner.
+  useEffect(() => {
+    const prefillPhone = searchParams.get('client')
+    if (!id && prefillPhone) {
+      clientService.get(prefillPhone)
+        .then((c) => setClient(c))
+        .catch(() => {/* client not found — start blank */})
+    }
+  }, [id, searchParams])
+
   useEffect(() => {
     if (!id) {
+      // Don't show draft banner if a client was pre-filled via URL
+      if (searchParams.get('client')) return;
       const rawDraft = localStorage.getItem(DRAFT_KEY);
       if (!rawDraft) return;
       try {

@@ -6,6 +6,7 @@ import { crmApi } from '@/services/crm'
 import type { CRMProjectList } from '@/types/crm'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { StatusBadge } from '@/components/crm/StatusBadge'
+import { CLIENT_STATUS_LABEL, CLIENT_STATUS_COLOR } from '@/constants/clientStatus'
 
 interface Client {
   phone_no: string
@@ -52,11 +53,6 @@ export default function CRMClientDetail() {
       .finally(() => setLoading(false))
   }, [phoneNo])
 
-  const STATUS_LABEL: Record<string, string> = {
-    new_lead: 'New Lead – Not Contacted',
-    interested_started: 'Interested – Project Started',
-    not_interested_closed: 'Not Interested – Closed',
-  }
 
   if (loading) {
     return (
@@ -118,7 +114,7 @@ export default function CRMClientDetail() {
             <DetailField label="Email" value={client.email} />
             <DetailField label="City" value={client.city} />
             <DetailField label="GST Details" value={client.gst_details} />
-            <DetailField label="Status" value={STATUS_LABEL[client.status] || client.status} />
+            <DetailField label="Status" value={CLIENT_STATUS_LABEL[client.status as keyof typeof CLIENT_STATUS_LABEL] || client.status} />
             {client.physical_address && (
               <div className="col-span-full">
                 <DetailField label="Address" value={client.physical_address} />

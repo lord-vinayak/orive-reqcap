@@ -17,7 +17,7 @@ export interface Client {
   physical_address: string
   poc: string | null
   poc_name?: string
-  status: 'new_lead' | 'interested_started' | 'not_interested_closed'
+  status: 'call_back' | 'catalogue_shared' | 'costing_shared' | 'interested' | 'language_barrier' | 'not_interested' | 'not_responding' | 'unanswered'
   created_at: string
   updated_at: string
 }

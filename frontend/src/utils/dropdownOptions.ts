@@ -35,4 +35,25 @@ export const KEY_BENEFITS: Record<string, string[]> = {
 
 export const SIZES = ['8', '15', '30', '50', '100', '150', '200'] as const
 export const PACKAGING = ['Jar', 'Bottle', 'Tube'] as const
-export const PRODUCT_COUNTS = Array.from({ length: 20 }, (_, i) => String(i + 1))
+
+/**
+ * Number-of-products options.
+ * `value` is the integer stored in the DB; `label` is what the user sees.
+ * "10 and more" stores 10 — matches the `10_and_more_` bucket in the Excel upload template.
+ */
+export const PRODUCT_COUNTS: { label: string; value: string }[] = [
+  { label: '1',           value: '1' },
+  { label: '2',           value: '2' },
+  { label: '3',           value: '3' },
+  { label: '4',           value: '4' },
+  { label: '5',           value: '5' },
+  { label: '6',           value: '6' },
+  { label: '7',           value: '7' },
+  { label: '8',           value: '8' },
+  { label: '9',           value: '9' },
+  { label: '10 and more', value: '10' },
+]
+
+/** Reverse-lookup: numeric DB value → display label */
+export const PRODUCT_COUNT_LABEL: Record<number, string> =
+  Object.fromEntries(PRODUCT_COUNTS.map(({ label, value }) => [Number(value), label]))

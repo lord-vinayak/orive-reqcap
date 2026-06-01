@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { clientService, userService } from '@/services'
 import type { User } from '@/types'
+import type { ClientStatus } from '@/constants/clientStatus'
+import { CLIENT_STATUS_OPTIONS } from '@/constants/clientStatus'
 
 interface FormState {
   phone_no: string
@@ -13,7 +15,7 @@ interface FormState {
   gst_details: string
   physical_address: string
   poc: string
-  status: 'new_lead' | 'interested_started' | 'not_interested_closed'
+  status: ClientStatus
 }
 
 export default function CRMClientCreate() {
@@ -39,7 +41,7 @@ export default function CRMClientCreate() {
     gst_details: '',
     physical_address: '',
     poc: '',
-    status: 'new_lead',
+    status: 'unanswered',
   })
 
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
@@ -276,9 +278,9 @@ export default function CRMClientCreate() {
                 onChange={set('status')}
                 className="w-full border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
               >
-                <option value="new_lead">New Lead – Not Contacted</option>
-                <option value="interested_started">Interested – Project Started</option>
-                <option value="not_interested_closed">Not Interested – Closed</option>
+                {CLIENT_STATUS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
             </div>
             

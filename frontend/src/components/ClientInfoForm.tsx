@@ -2,12 +2,7 @@ import type { Client, RequirementProduct } from "@/types";
 import { PRODUCT_COUNTS } from "@/utils/dropdownOptions";
 import { useAuthStore } from "@/store/authStore";
 import AudioCaptureButton from "./AudioCaptureButton";
-
-const CLIENT_STATUS_OPTIONS: { value: Client["status"]; label: string }[] = [
-  { value: "new_lead", label: "New Lead" },
-  { value: "interested_started", label: "Interested – Project Started" },
-  { value: "not_interested_closed", label: "Not Interested – Closed" },
-];
+import { CLIENT_STATUS_OPTIONS } from "@/constants/clientStatus";
 
 interface Props {
   client: Partial<Client>;
@@ -133,7 +128,7 @@ export default function ClientInfoForm({
           </label>
           <select
             id="ci_status"
-            value={client.status || "new_lead"}
+            value={client.status || "unanswered"}
             onChange={(e) =>
               onClientChange({
                 ...client,
@@ -168,8 +163,8 @@ export default function ClientInfoForm({
             className="w-full">
             <option value="">—</option>
             {PRODUCT_COUNTS.map((n) => (
-              <option key={n} value={n}>
-                {n}
+              <option key={n.value} value={n.value}>
+                {n.label}
               </option>
             ))}
           </select>

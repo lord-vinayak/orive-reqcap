@@ -3,18 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { clientService, requirementService, userService } from '@/services'
 import type { Client, Requirement, User } from '@/types'
-
-const STATUS_LABELS: Record<string, string> = {
-  new_lead: 'New Lead',
-  interested_started: 'Interested – Project Started',
-  not_interested_closed: 'Not Interested – Closed',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  new_lead: 'bg-blue-50 text-blue-700 border-blue-200',
-  interested_started: 'bg-green-50 text-green-700 border-green-200',
-  not_interested_closed: 'bg-red-50 text-red-700 border-red-200',
-}
+import { CLIENT_STATUS_LABEL, CLIENT_STATUS_COLOR } from '@/constants/clientStatus'
 
 export default function RequirementSearch() {
   const navigate = useNavigate()
@@ -87,7 +76,7 @@ export default function RequirementSearch() {
       const res = await requirementService.listForClient(phone)
       const list = Array.isArray(res) ? res : (res as any).results ?? []
       setRequirements(list)
-      if (list.length === 0) setReqError('No requirements yet for this client.')
+      // if (list.length === 0) setReqError('No requirements yet for this client.')
     } catch {
       setReqError('Failed to load requirements.')
     } finally {
@@ -188,8 +177,8 @@ export default function RequirementSearch() {
                     <td>{c.poc_name || '—'}</td>
                     <td>
                       {c.status ? (
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${STATUS_COLORS[c.status] || 'bg-black/5 text-black/60 border-black/10'}`}>
-                          {STATUS_LABELS[c.status] || c.status}
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${CLIENT_STATUS_COLOR[c.status as keyof typeof CLIENT_STATUS_COLOR] || 'bg-black/5 text-black/60 border-black/10'}`}>
+                          {CLIENT_STATUS_LABEL[c.status as keyof typeof CLIENT_STATUS_LABEL] || c.status}
                         </span>
                       ) : '—'}
                     </td>
@@ -210,10 +199,27 @@ export default function RequirementSearch() {
                     <tr key={`${c.phone_no}-reqs`}>
                       <td colSpan={6} className="p-0">
                         <div className="bg-black/[0.015] dark:bg-white/[0.03] px-6 py-4 border-t border-black/5 dark:border-white/5">
+                          {/* Always show a Create button for this client */}
+                          {!loadingReqs && (
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs text-black/50 dark:text-slate-500">
+                                {requirements.length > 0
+                                  ? `${requirements.length} requirement${requirements.length !== 1 ? 's' : ''}`
+                                  : 'No requirements yet'}
+                              </span>
+                              <button
+                                onClick={() => navigate(`/requirements/new?client=${c.phone_no}`)}
+                                className="btn-primary text-xs py-1 px-3"
+                                aria-label={`Create a new requirement for ${c.name}`}
+                              >
+                                + New Requirement
+                              </button>
+                            </div>
+                          )}
                           {loadingReqs && (
                             <p className="text-sm text-black/60 dark:text-slate-400">Loading requirements…</p>
                           )}
-                          {reqError && (
+                          {reqError && !requirements.length && (
                             <p className="text-sm text-black/60 dark:text-slate-400">{reqError}</p>
                           )}
                           {!loadingReqs && requirements.length > 0 && (

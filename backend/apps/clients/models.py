@@ -19,12 +19,17 @@ class Client(models.Model):
     )
 
     STATUS_CHOICES = [
-        ('new_lead', 'New Lead'),
-        ('interested_started', 'Interested – Project Started'),
-        ('not_interested_closed', 'Not Interested – Closed'),
+        ('call_back', 'Call Back'),
+        ('catalogue_shared', 'Catalogue Shared'),
+        ('costing_shared', 'Costing Shared'),
+        ('interested', 'Interested'),
+        ('language_barrier', 'Language Barrier'),
+        ('not_interested', 'Not Interested'),
+        ('not_responding', 'Not Responding after Multiple Attempts'),
+        ('unanswered', 'Unanswered'),
     ]
     status = models.CharField(
-        max_length=30, choices=STATUS_CHOICES, default='new_lead', blank=True,
+        max_length=30, choices=STATUS_CHOICES, default='unanswered', blank=True,
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

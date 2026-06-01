@@ -4,6 +4,22 @@ import type {
   CatalogItem, Proposal, ProposalItem, User,
 } from '@/types'
 
+export interface BulkUploadRow {
+  row: number
+  name: string
+  phone: string
+  warning?: string
+}
+
+export interface BulkUploadSkipRow extends BulkUploadRow {
+  reason: string
+}
+
+export interface BulkUploadResult {
+  created: BulkUploadRow[]
+  skipped: BulkUploadSkipRow[]
+}
+
 export const clientService = {
   list: async (params: { q?: string; poc?: string } = {}) =>
     (await api.get<{ results: Client[] } | Client[]>('/clients/', { params })).data,
@@ -11,6 +27,26 @@ export const clientService = {
   create: async (data: Partial<Client>) => (await api.post<Client>('/clients/', data)).data,
   update: async (phone: string, data: Partial<Client>) =>
     (await api.put<Client>(`/clients/${phone}/`, data)).data,
+
+  /** Upload an Excel file; returns per-row created/skipped breakdown. */
+  bulkUpload: async (file: File): Promise<BulkUploadResult> => {
+    const form = new FormData()
+    form.append('file', file)
+    return (await api.post<BulkUploadResult>('/clients/bulk-upload/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data
+  },
+
+  /** Download the blank upload template .xlsx */
+  downloadTemplate: () =>
+    api.get('/clients/upload-template/', { responseType: 'blob' }).then((r) => {
+      const url = URL.createObjectURL(new Blob([r.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'client_upload_template.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+    }),
 }
 
 export const requirementService = {

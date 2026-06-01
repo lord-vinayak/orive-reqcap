@@ -8,17 +8,8 @@ import type { FileRecord, Note, Proposal, Requirement } from '@/types'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-const STATUS_LABELS: Record<string, string> = {
-  new_lead: 'New Lead',
-  interested_started: 'Interested – Project Started',
-  not_interested_closed: 'Not Interested – Closed',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  new_lead: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
-  interested_started: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700',
-  not_interested_closed: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700',
-}
+import { CLIENT_STATUS_LABEL, CLIENT_STATUS_COLOR } from '@/constants/clientStatus'
+import { PRODUCT_COUNT_LABEL } from '@/utils/dropdownOptions'
 
 const REQ_STATUS_COLORS: Record<string, string> = {
   draft: 'bg-black/5 text-black/60 border-black/10',
@@ -150,7 +141,12 @@ export default function RequirementView() {
             <InfoRow label="Phone" value={client?.phone_no} />
             <InfoRow label="POC" value={client?.poc_name} />
             <InfoRow label="Target Audience Age" value={requirement.target_audience_age} />
-            <InfoRow label="No. of Products" value={requirement.no_of_products?.toString()} />
+            <InfoRow
+              label="No. of Products"
+              value={requirement.no_of_products != null
+                ? (PRODUCT_COUNT_LABEL[requirement.no_of_products] ?? requirement.no_of_products.toString())
+                : undefined}
+            />
             <div>
               <dt className="text-xs font-medium text-black/60 dark:text-slate-400 mb-1">Requirement Status</dt>
               <dd>
@@ -165,8 +161,8 @@ export default function RequirementView() {
                 <dt className="text-xs font-medium text-black/60 dark:text-slate-400 mb-1">Client Status</dt>
                 <dd>
                   <Badge
-                    text={STATUS_LABELS[client.status] || client.status}
-                    cls={STATUS_COLORS[client.status] || 'bg-black/5 text-black/60 border-black/10'}
+                    text={CLIENT_STATUS_LABEL[client.status as keyof typeof CLIENT_STATUS_LABEL] || client.status}
+                    cls={CLIENT_STATUS_COLOR[client.status as keyof typeof CLIENT_STATUS_COLOR] || 'bg-black/5 text-black/60 border-black/10'}
                   />
                 </dd>
               </div>

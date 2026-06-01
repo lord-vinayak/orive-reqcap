@@ -2,6 +2,7 @@ import { useEffect, useState, useId } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { api } from '@/services/api'
+import { CLIENT_STATUS_LABEL, CLIENT_STATUS_COLOR } from '@/constants/clientStatus'
 
 interface Client {
   phone_no: string
@@ -38,12 +39,6 @@ export default function CRMClientList() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     fetchClients(search.trim())
-  }
-
-  const STATUS_LABEL: Record<string, string> = {
-    new_lead: 'New Lead',
-    interested_started: 'Interested – Project Started',
-    not_interested_closed: 'Not Interested – Closed',
   }
 
   return (
@@ -114,8 +109,8 @@ export default function CRMClientList() {
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.phone_no}</td>
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.city || '—'}</td>
                     <td className="px-4 py-3">
-                      <span className="text-xs text-black/60 dark:text-slate-400">
-                        {STATUS_LABEL[c.status] || c.status}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${CLIENT_STATUS_COLOR[c.status as keyof typeof CLIENT_STATUS_COLOR] || 'bg-black/5 text-black/60 border-black/10'}`}>
+                        {CLIENT_STATUS_LABEL[c.status as keyof typeof CLIENT_STATUS_LABEL] || c.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">

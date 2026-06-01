@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import Layout from '@/components/Layout'
-import {Plus, Search} from 'lucide-react'
+import { Plus, Search, Upload } from 'lucide-react'
  
 
 export default function RequirementsLanding() {
@@ -11,7 +11,7 @@ export default function RequirementsLanding() {
         <h1 className="text-3xl font-semibold text-black dark:text-slate-100 mb-2">Requirements</h1>
         <p className="text-black/60 dark:text-slate-400 mb-10">Capture a new requirement or edit an existing one.</p>
 
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-3 gap-4">
           <button
             onClick={() => navigate('/requirements/new')}
             className="card text-left hover:border-mustard transition-colors group"
@@ -32,6 +32,17 @@ export default function RequirementsLanding() {
             </div>
             <h2 className="text-lg font-semibold text-black dark:text-slate-100 mb-1">Edit Old Requirement</h2>
             <p className="text-sm text-black/60 dark:text-slate-400">Search by client phone number.</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/requirements/import')}
+            className="card text-left hover:border-mustard transition-colors group"
+          >
+            <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center mb-4 group-hover:bg-mustard transition-colors">
+              <span className="text-2xl text-mustard-700"><Upload /></span>
+            </div>
+            <h2 className="text-lg font-semibold text-black dark:text-slate-100 mb-1">Import Clients from Excel</h2>
+            <p className="text-sm text-black/60 dark:text-slate-400">Bulk-add clients from a spreadsheet.</p>
           </button>
         </div>
       </div>
