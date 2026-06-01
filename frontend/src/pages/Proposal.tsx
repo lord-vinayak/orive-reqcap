@@ -10,8 +10,41 @@ type Tab = 'edit' | 'preview' | 'export'
 const RATE_CATEGORIES = ['Basic', 'Premium', 'Luxury']
 
 function fmt(val: number | null | undefined) {
-  if (val === null || val === undefined || val === 0) return '—'
-  return `₹${Number(val).toLocaleString('en-IN')}`
+  if (val === null || val === undefined) return '—'
+  return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+/** Extract a leading number from a string like "100g", "500ml", "250". */
+function parseNumeric(val: unknown): number {
+  if (val === null || val === undefined || val === '') return NaN
+  const s = String(val)
+  const m = s.match(/^[\d.]+/)
+  return m ? parseFloat(m[0]) : NaN
+}
+
+/** Compute the four derived cost columns from a merged row data object. */
+function computedCosts(data: Record<string, unknown>) {
+  const perKg  = parseNumeric(data.per_kg_rate)
+  const size   = parseNumeric(data.size)               // handles "100g" → 100
+  const mfg    = parseNumeric(data.manufacturing_cost)
+  const pkg    = parseNumeric(data.tentative_packaging_cost)
+  const label  = parseNumeric(data.label_cost)
+  const mono   = parseNumeric(data.tentative_monocarton_cost)
+
+  const rawPerUnit = (!isNaN(perKg) && !isNaN(size))   ? (perKg / 1000) * size          : null
+  const estUnit    = (rawPerUnit !== null && !isNaN(mfg)) ? rawPerUnit + mfg               : null
+  const total      = estUnit !== null
+    ? estUnit + (!isNaN(pkg) ? pkg : 0) + (!isNaN(label) ? label : 0) + (!isNaN(mono) ? mono : 0)
+    : null
+  const mrp        = total !== null ? total * 6 : null
+
+  return { rawPerUnit, estUnit, total, mrp }
+}
+
+/** Format a computed (derived) value — always 2 dp with locale thousands separator. */
+function fmtCalc(val: number | null): string {
+  if (val === null || isNaN(val as number)) return '—'
+  return `₹${(val as number).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 export default function ProposalPage() {
@@ -161,14 +194,18 @@ export default function ProposalPage() {
       </div>
 
       {tab === 'edit' && (
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Catalog search */}
+        <div className="flex flex-col gap-6">
+
+          {/* ── Top pane: Catalog search ── */}
           <section className="card" aria-labelledby="catalog-search-heading">
             <h2 id="catalog-search-heading" className="text-lg font-semibold mb-3">Search catalog</h2>
-            <div className="grid grid-cols-2 gap-3 mb-3">
+
+            {/* Filter bar — one row across full width */}
+            <div className="flex flex-wrap gap-2 mb-3">
 
               {/* Body Part */}
               <select
+                className="flex-1 min-w-[130px] text-sm h-9 px-2"
                 value={filters.body_part}
                 onChange={(e) => setFilters((f) => ({ ...f, body_part: e.target.value, product_type: '', sub_product_type: '' }))}
               >
@@ -178,6 +215,7 @@ export default function ProposalPage() {
 
               {/* Product Type */}
               <select
+                className="flex-1 min-w-[130px] text-sm h-9 px-2"
                 value={filters.product_type}
                 onChange={(e) => setFilters((f) => ({ ...f, product_type: e.target.value, sub_product_type: '' }))}
               >
@@ -187,6 +225,7 @@ export default function ProposalPage() {
 
               {/* Sub Product Type */}
               <select
+                className="flex-1 min-w-[130px] text-sm h-9 px-2"
                 value={filters.sub_product_type}
                 onChange={(e) => setFilters((f) => ({ ...f, sub_product_type: e.target.value }))}
               >
@@ -195,14 +234,14 @@ export default function ProposalPage() {
               </select>
 
               {/* Key Benefits — multi-select dropdown */}
-              <div ref={kbWrapRef} className="relative">
+              <div ref={kbWrapRef} className="flex-1 min-w-[130px] relative">
                 <button
                   ref={kbBtnRef}
                   type="button"
                   onClick={openKbDrop}
                   aria-haspopup="true"
                   aria-expanded={kbOpen}
-                  className="w-full text-left px-2 py-1 border border-black/15 rounded bg-white text-sm truncate hover:border-mustard"
+                  className="w-full h-9 text-left px-2 border border-black/15 rounded bg-white text-sm truncate hover:border-mustard"
                 >
                   {filters.key_benefits.length === 0
                     ? 'Key Benefits —'
@@ -237,6 +276,7 @@ export default function ProposalPage() {
 
               {/* Rate Category */}
               <select
+                className="flex-1 min-w-[120px] text-sm h-9 px-2"
                 value={filters.rate_category}
                 onChange={(e) => setFilters((f) => ({ ...f, rate_category: e.target.value }))}
               >
@@ -248,14 +288,21 @@ export default function ProposalPage() {
 
               {/* Free text */}
               <input
-                placeholder="Free text search"
+                className="flex-1 min-w-[140px] text-sm h-9 px-2"
+                placeholder="Free text search…"
                 value={filters.q}
                 onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
               />
             </div>
 
-            <p className="text-xs text-black/60 mb-2">{results.length} results</p>
-            <div className="overflow-x-auto max-h-[480px]">
+            {/* Result count */}
+            <p className="text-xs text-black/60 mb-2">
+              {results.length <= 10
+                ? `${results.length} result${results.length !== 1 ? 's' : ''}`
+                : `Showing 10 of ${results.length} — refine filters to narrow down`}
+            </p>
+
+            <div className="overflow-x-auto">
               <table className="table-clean">
                 <thead>
                   <tr>
@@ -264,12 +311,14 @@ export default function ProposalPage() {
                     <th scope="col">Sub Type</th>
                     <th scope="col">Key Benefits</th>
                     <th scope="col">Size</th>
+                    <th scope="col">Packaging</th>
+                    <th scope="col">Rate Category</th>
                     <th scope="col">Potential MRP</th>
                     <th scope="col"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((c) => {
+                  {results.slice(0, 10).map((c) => {
                     const isSelected = selectedIds.has(c.id)
                     const kb = [c.kb_tag1, c.kb_tag2, c.kb_tag3].filter(Boolean).join(', ')
                     return (
@@ -279,6 +328,8 @@ export default function ProposalPage() {
                         <td>{c.sub_product_type}</td>
                         <td className="text-xs">{kb}</td>
                         <td>{c.size}</td>
+                        <td>{c.packaging_type}</td>
+                        <td>{c.rate_category || '—'}</td>
                         <td>{fmt(c.potential_mrp)}</td>
                         <td>
                           <button
@@ -297,13 +348,13 @@ export default function ProposalPage() {
             </div>
           </section>
 
-          {/* Selected items — fully editable inline (item #7) */}
+          {/* ── Bottom pane: editable costing table — full width ── */}
           <section className="card" aria-labelledby="selected-heading">
             <h2 id="selected-heading" className="text-lg font-semibold mb-3">
               In this Client Costing ({proposal.items.length})
             </h2>
             {proposal.items.length === 0 ? (
-              <p className="text-sm text-black/60">No items added yet. Use the catalog on the left or click “→Cost” on a product row.</p>
+              <p className="text-sm text-black/60">No items added yet. Search the catalog above and click Add.</p>
             ) : (
               <EditableItemsTable
                 items={proposal.items}
@@ -315,6 +366,7 @@ export default function ProposalPage() {
               />
             )}
           </section>
+
         </div>
       )}
 
@@ -344,30 +396,38 @@ export default function ProposalPage() {
 
 
 // ---------------------------------------------------------------------------
-// Editable items table — every cell can be edited; changes PATCH the snapshot.
-// (Item #7) Edits only affect the costing's local snapshot, never the catalog.
+// Editable items table — directly-entered cells PATCH the snapshot;
+// derived (auto) cells are computed on the fly and shown read-only.
 // ---------------------------------------------------------------------------
-const EDITABLE_FIELDS: { key: keyof CatalogItem; label: string; numeric?: boolean }[] = [
-  { key: 'body_part',           label: 'Body Part' },
-  { key: 'product_type',        label: 'Product Type' },
-  { key: 'sub_product_type',    label: 'Sub Type' },
-  { key: 'kb_tag1',             label: 'KB 1' },
-  { key: 'kb_tag2',             label: 'KB 2' },
-  { key: 'kb_tag3',             label: 'KB 3' },
-  { key: 'specific_ingredients',label: 'Specific Ingredients' },
-  { key: 'color',               label: 'Color' },
-  { key: 'fragrance',           label: 'Fragrance' },
-  { key: 'size',                label: 'Size' },
-  { key: 'packaging_type',      label: 'Packaging' },
-  { key: 'rate_category',       label: 'Rate Category' },
-  { key: 'per_kg_rate',         label: 'Per KG Rate',         numeric: true },
-  { key: 'manufacturing_cost',  label: 'Mfg Cost',            numeric: true },
-  { key: 'rate_per_unit',       label: 'Rate / Unit',         numeric: true },
-  { key: 'tentative_packaging_cost', label: 'Packaging Cost', numeric: true },
-  { key: 'label_cost',          label: 'Label Cost',          numeric: true },
-  { key: 'tentative_monocarton_cost', label: 'Monocarton',    numeric: true },
-  { key: 'total_cost',          label: 'Total Cost',          numeric: true },
-  { key: 'potential_mrp',       label: 'Potential MRP',       numeric: true },
+
+/** Column descriptor — either an editable input or an auto-computed display cell. */
+type ColSpec =
+  | { kind: 'edit'; key: string; label: string; numeric?: boolean }
+  | { kind: 'calc'; key: string; label: string }
+
+const TABLE_COLUMNS: ColSpec[] = [
+  { kind: 'edit', key: 'body_part',                 label: 'Body Part' },
+  { kind: 'edit', key: 'product_type',              label: 'Product Type' },
+  { kind: 'edit', key: 'sub_product_type',          label: 'Sub Type' },
+  { kind: 'edit', key: 'kb_tag1',                   label: 'KB 1' },
+  { kind: 'edit', key: 'kb_tag2',                   label: 'KB 2' },
+  { kind: 'edit', key: 'kb_tag3',                   label: 'KB 3' },
+  { kind: 'edit', key: 'specific_ingredients',      label: 'Specific Ingredients' },
+  { kind: 'edit', key: 'color',                     label: 'Color' },
+  { kind: 'edit', key: 'fragrance',                 label: 'Fragrance' },
+  { kind: 'edit', key: 'size',                      label: 'Size' },
+  { kind: 'edit', key: 'packaging_type',            label: 'Packaging' },
+  { kind: 'edit', key: 'rate_category',             label: 'Rate Category' },
+  // Cost columns — editable inputs first, then auto-computed cells interleaved
+  { kind: 'edit', key: 'per_kg_rate',               label: 'RM Cost/kg',      numeric: true },
+  { kind: 'calc', key: 'raw_per_unit',              label: 'RM Cost/unit' },
+  { kind: 'edit', key: 'manufacturing_cost',        label: 'Mfg Cost',        numeric: true },
+  { kind: 'calc', key: 'est_unit',                  label: 'Est. Unit Cost' },
+  { kind: 'edit', key: 'tentative_packaging_cost',  label: 'Pkg Cost',        numeric: true },
+  { kind: 'edit', key: 'label_cost',                label: 'Label Cost',      numeric: true },
+  { kind: 'edit', key: 'tentative_monocarton_cost', label: 'Monocarton',      numeric: true },
+  { kind: 'calc', key: 'total_cost',                label: 'Total Cost' },
+  { kind: 'calc', key: 'potential_mrp',             label: 'Potential MRP' },
 ]
 
 function EditableItemsTable({
@@ -380,9 +440,15 @@ function EditableItemsTable({
   // Local editable buffer — PATCH only fires on blur to avoid spam.
   const [draft, setDraft] = useState<Record<string, Record<string, string>>>({})
 
-  const cellValue = (it: ProposalItem, field: keyof CatalogItem) => {
-    if (draft[it.id]?.[field as string] !== undefined) return draft[it.id][field as string]
-    const v = (it.catalog_data as any)[field]
+  /** Merge server-side catalog_data with any unsaved local draft for this row. */
+  const getMerged = (it: ProposalItem): Record<string, unknown> => ({
+    ...(it.catalog_data as Record<string, unknown>),
+    ...(draft[it.id] || {}),
+  })
+
+  const cellValue = (it: ProposalItem, key: string): string => {
+    if (draft[it.id]?.[key] !== undefined) return draft[it.id][key]
+    const v = (it.catalog_data as any)[key]
     return v === null || v === undefined ? '' : String(v)
   }
 
@@ -390,22 +456,22 @@ function EditableItemsTable({
     setDraft((prev) => ({ ...prev, [itemId]: { ...(prev[itemId] || {}), [field]: value } }))
   }
 
-  const commit = async (it: ProposalItem, field: typeof EDITABLE_FIELDS[number]) => {
-    const newVal = draft[it.id]?.[field.key as string]
+  const commit = async (it: ProposalItem, col: Extract<ColSpec, { kind: 'edit' }>) => {
+    const newVal = draft[it.id]?.[col.key]
     if (newVal === undefined) return
-    const original = (it.catalog_data as any)[field.key]
+    const original = (it.catalog_data as any)[col.key]
     const originalStr = original === null || original === undefined ? '' : String(original)
     if (newVal === originalStr) return
-    const patchVal: unknown = field.numeric
+    const patchVal: unknown = col.numeric
       ? (newVal === '' ? null : Number(newVal))
       : newVal
     try {
-      await onItemChange(it.id, { [field.key]: patchVal })
+      await onItemChange(it.id, { [col.key]: patchVal })
     } finally {
       setDraft((prev) => {
         const next = { ...prev }
         if (next[it.id]) {
-          const { [field.key as string]: _, ...rest } = next[it.id]
+          const { [col.key]: _, ...rest } = next[it.id]
           if (Object.keys(rest).length === 0) delete next[it.id]
           else next[it.id] = rest
         }
@@ -416,13 +482,22 @@ function EditableItemsTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs border-collapse" aria-label="Client Costing items — all cells editable">
+      <table className="w-full text-sm border-collapse" aria-label="Client Costing items">
         <thead>
           <tr className="bg-mustard-50 text-black/80">
             <th scope="col" className="px-2 py-1 text-left font-medium w-8">#</th>
-            {EDITABLE_FIELDS.map((f) => (
-              <th key={f.key as string} scope="col" className="px-2 py-1 text-left font-medium whitespace-nowrap">
-                {f.label}
+            {TABLE_COLUMNS.map((col) => (
+              <th
+                key={col.key}
+                scope="col"
+                className={`px-2 py-1 text-left font-medium whitespace-nowrap ${
+                  col.kind === 'calc' ? 'text-black/50 italic' : ''
+                }`}
+              >
+                {col.label}
+                {col.kind === 'calc' && (
+                  <span className="ml-1 text-[9px] font-normal not-italic">(auto)</span>
+                )}
               </th>
             ))}
             <th scope="col" className="px-2 py-1 text-center font-medium w-16">
@@ -431,33 +506,57 @@ function EditableItemsTable({
           </tr>
         </thead>
         <tbody>
-          {items.map((it, idx) => (
-            <tr key={it.id} className={idx % 2 === 1 ? 'bg-black/[0.02]' : ''}>
-              <td className="px-2 py-1 text-center text-black/50 font-medium">{idx + 1}</td>
-              {EDITABLE_FIELDS.map((f) => (
-                <td key={f.key as string} className="px-1 py-1">
-                  <input
-                    type={f.numeric ? 'number' : 'text'}
-                    value={cellValue(it, f.key)}
-                    onChange={(e) => updateLocal(it.id, f.key as string, e.target.value)}
-                    onBlur={() => commit(it, f)}
-                    className="w-full px-1 py-0.5 border border-transparent rounded bg-transparent hover:bg-mustard-50/50 focus:bg-white focus:border-mustard text-xs"
-                    aria-label={`Item ${idx + 1} ${f.label}`}
-                  />
+          {items.map((it, idx) => {
+            const merged = getMerged(it)
+            const cv = computedCosts(merged)
+            const calcValues: Record<string, number | null> = {
+              raw_per_unit:  cv.rawPerUnit,
+              est_unit:      cv.estUnit,
+              total_cost:    cv.total,
+              potential_mrp: cv.mrp,
+            }
+            return (
+              <tr key={it.id} className={idx % 2 === 1 ? 'bg-black/[0.02]' : ''}>
+                <td className="px-2 py-1 text-center text-black/50 font-medium">{idx + 1}</td>
+                {TABLE_COLUMNS.map((col) => {
+                  if (col.kind === 'calc') {
+                    const val = calcValues[col.key]
+                    return (
+                      <td
+                        key={col.key}
+                        className="px-2 py-1 text-right bg-amber-50/50 text-black/60 font-medium tabular-nums whitespace-nowrap"
+                        title="Auto-calculated"
+                      >
+                        {fmtCalc(val)}
+                      </td>
+                    )
+                  }
+                  return (
+                    <td key={col.key} className="px-1 py-1">
+                      <input
+                        type={col.numeric ? 'number' : 'text'}
+                        value={cellValue(it, col.key)}
+                        onChange={(e) => updateLocal(it.id, col.key, e.target.value)}
+                        onBlur={() => commit(it, col as Extract<ColSpec, { kind: 'edit' }>)}
+                        className="w-full px-1 py-0.5 border border-transparent rounded bg-transparent hover:bg-mustard-50/50 focus:bg-white focus:border-mustard text-sm"
+                        aria-label={`Item ${idx + 1} ${col.label}`}
+                      />
+                    </td>
+                  )
+                })}
+                <td className="px-2 py-1 text-center">
+                  <button
+                    type="button"
+                    onClick={() => onRemove(it.id)}
+                    className="text-red-700 hover:underline text-xs"
+                    aria-label={`Remove item ${idx + 1} from Client Costing`}
+                  >
+                    Remove
+                  </button>
                 </td>
-              ))}
-              <td className="px-2 py-1 text-center">
-                <button
-                  type="button"
-                  onClick={() => onRemove(it.id)}
-                  className="text-red-700 hover:underline text-xs"
-                  aria-label={`Remove item ${idx + 1} from Client Costing`}
-                >
-                  Remove
-                </button>
-              </td>
-            </tr>
-          ))}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
@@ -466,33 +565,31 @@ function EditableItemsTable({
 
 
 // ---------------------------------------------------------------------------
-// Preview component — shows all catalog cost fields
+// Preview component — mirrors the XLSX layout exactly.
+// Calculated columns shown with a light amber background.
 // ---------------------------------------------------------------------------
 function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requirement: Requirement }) {
   const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
   const client = requirement.client_data
+  const TOTAL_COLS = 19
   return (
     <section className="card max-w-6xl overflow-x-auto">
       <p className="text-xs text-black/60 mb-3">Preview of the Excel that will be exported.</p>
-      <div className="border border-black/15 min-w-[900px]">
-        {/* Single table so header rows stretch to match the data columns */}
+      <div className="border border-black/15 min-w-[1100px]">
         <table className="w-full text-sm">
           <thead>
-            {/* Company header */}
             <tr>
-              <th colSpan={18} className="bg-mustard text-black font-bold text-center py-3 text-xl">
+              <th colSpan={TOTAL_COLS} className="bg-mustard text-black font-bold text-center py-3 text-xl">
                 SKINOVATION SCIENCES
               </th>
             </tr>
-            {/* Sub-header */}
             <tr>
-              <th colSpan={18} className="bg-mustard-50 text-center py-2 font-semibold border-b border-black/10">
+              <th colSpan={TOTAL_COLS} className="bg-mustard-50 text-center py-2 font-semibold border-b border-black/10">
                 Client Costing
               </th>
             </tr>
-            {/* Client info */}
             <tr>
-              <td colSpan={18} className="px-4 py-3 border-b border-black/10">
+              <td colSpan={TOTAL_COLS} className="px-4 py-3 border-b border-black/10">
                 <div className="grid grid-cols-[180px_1fr] gap-y-1 text-sm">
                   <div className="font-medium">Date</div><div>{today}</div>
                   <div className="font-medium">Client Name</div><div>{client?.name || ''}</div>
@@ -501,8 +598,7 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
                 </div>
               </td>
             </tr>
-            {/* Column headers */}
-            <tr className="bg-mustard text-black">
+            <tr className="bg-mustard text-black text-xs">
               <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Body Part</th>
               <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Product Type</th>
               <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Sub Product Type</th>
@@ -513,9 +609,10 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
               <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Size</th>
               <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Packaging</th>
               <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Rate Category</th>
-              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Per KG Rate</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">RM Cost (per kg)</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">RM Cost (per unit)</th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Manufacturing Cost</th>
-              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Rate Per Unit</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Estimated Unit Cost</th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Tentative Packaging Cost</th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Label Cost</th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Tentative Monocarton Cost</th>
@@ -525,33 +622,35 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
           </thead>
           <tbody>
             {proposal.items.map((it, i) => {
-              const c = it.catalog_data
+              const c = it.catalog_data as Record<string, any>
               const kb = [c.kb_tag1, c.kb_tag2, c.kb_tag3].filter(Boolean).join(', ')
+              const cv = computedCosts(c as Record<string, unknown>)
               return (
                 <tr key={it.id} className={i % 2 === 1 ? 'bg-black/[0.02]' : ''}>
-                  <td className="px-3 py-2 border-t border-black/5">{c.body_part}</td>
-                  <td className="px-3 py-2 border-t border-black/5">{c.product_type}</td>
-                  <td className="px-3 py-2 border-t border-black/5">{c.sub_product_type}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs">{c.body_part}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs">{c.product_type}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs">{c.sub_product_type}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs">{kb}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs">{c.specific_ingredients}</td>
-                  <td className="px-3 py-2 border-t border-black/5">{c.color || '—'}</td>
-                  <td className="px-3 py-2 border-t border-black/5">{c.fragrance || '—'}</td>
-                  <td className="px-3 py-2 border-t border-black/5">{c.size}</td>
-                  <td className="px-3 py-2 border-t border-black/5">{c.packaging_type}</td>
-                  <td className="px-3 py-2 border-t border-black/5">{c.rate_category || '—'}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-right">{fmt(c.per_kg_rate)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-right">{fmt(c.manufacturing_cost)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-right">{fmt(c.rate_per_unit)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-right">{fmt(c.tentative_packaging_cost)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-right">{fmt(c.label_cost)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-right">{fmt(c.tentative_monocarton_cost)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-right">{fmt(c.total_cost)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-right">{fmt(c.potential_mrp)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs">{c.color || '—'}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs">{c.fragrance || '—'}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs">{c.size}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs">{c.packaging_type}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs">{c.rate_category || '—'}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.per_kg_rate)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-medium">{fmtCalc(cv.rawPerUnit)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.manufacturing_cost)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-medium">{fmtCalc(cv.estUnit)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.tentative_packaging_cost)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.label_cost)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.tentative_monocarton_cost)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-semibold">{fmtCalc(cv.total)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-semibold">{fmtCalc(cv.mrp)}</td>
                 </tr>
               )
             })}
           </tbody>
-        </table>  {/* single unified table ends here */}
+        </table>
       </div>
     </section>
   )

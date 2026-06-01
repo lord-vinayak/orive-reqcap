@@ -48,16 +48,32 @@ class ProposalItemSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         snapshot = validated_data.pop('snapshot', None) or {}
         catalog_item = validated_data.get('catalog_item')
-        # When linking to a catalog item, snapshot its fields so future edits
-        # don't touch the master Catalog.
+
+        # Inject fixed cost defaults FIRST so the catalog loop below cannot
+        # override them.  These are the standard starting values regardless of
+        # whatever the catalog row says.
+        COST_DEFAULTS = {
+            'manufacturing_cost': '20.00',
+            'tentative_packaging_cost': '30.00',
+            'label_cost': '10.00',
+            'tentative_monocarton_cost': '15.00',
+        }
+        for field, default_val in COST_DEFAULTS.items():
+            if field not in snapshot:          # respect an explicit caller-supplied value
+                snapshot[field] = default_val
+
+        # When linking to a catalog item, snapshot its remaining fields so
+        # future edits don't touch the master Catalog.  Fields already in
+        # snapshot (the cost defaults above) are left untouched.
         if catalog_item:
             for f in CATALOG_FIELDS:
-                if f not in snapshot:
+                if f not in snapshot:          # cost defaults already occupy their slots
                     val = getattr(catalog_item, f, None)
                     if val is None or val == '':
                         continue
                     # Decimal isn't JSON-serializable; coerce to str.
                     snapshot[f] = str(val) if hasattr(val, 'as_tuple') else val
+
         validated_data['snapshot'] = snapshot
         return super().create(validated_data)
 
