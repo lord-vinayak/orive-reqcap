@@ -1,4 +1,4 @@
-from datetime import date
+from django.utils import timezone
 from rest_framework import serializers
 from .models import (
     CRMProject, StageCompletion, SubStageCompletion,
@@ -158,9 +158,20 @@ class CRMProjectWriteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = self.context['request'].user
         project = CRMProject.objects.create(created_by=user, **validated_data)
+
         # Initialise StageCompletion rows for all 16 stages
         StageCompletion.objects.bulk_create([
             StageCompletion(project=project, stage_key=s['key'])
             for s in STAGE_DEFINITIONS
         ])
+
+        # Auto-complete all stages that come BEFORE the selected initial stage.
+        # e.g. if project starts at "sample" (index 6), stages 0-5 are pre-completed.
+        initial_index = STAGE_KEY_TO_INDEX.get(project.project_stage, 0)
+        if initial_index > 0:
+            prior_keys = [s['key'] for s in STAGE_DEFINITIONS if s['index'] < initial_index]
+            StageCompletion.objects.filter(
+                project=project, stage_key__in=prior_keys
+            ).update(is_complete=True, completed_at=timezone.now(), completed_by=user)
+
         return project

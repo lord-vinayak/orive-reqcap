@@ -41,7 +41,7 @@ export default function CRMClientDetail() {
     Promise.all([
       api.get<Client>(`/clients/${phoneNo}/`),
       crmApi.listProjects({ client: phoneNo }),
-      api.get<{ results: Requirement[] }>('/requirements/', { params: { client: phoneNo } }),
+      api.get<{ results: Requirement[] }>('/requirements/', { params: { client_phone: phoneNo } }),
     ])
       .then(([clientRes, projectsRes, reqRes]) => {
         setClient(clientRes.data)

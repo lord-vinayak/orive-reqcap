@@ -1,4 +1,4 @@
-import { useEffect, useState, useId } from 'react'
+import { useEffect, useState, useId, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
@@ -61,6 +61,19 @@ export default function CRMProjectDetail() {
 
   const isStageComplete = (stageKey: string): boolean =>
     project.stage_completions.find((s) => s.stage_key === stageKey)?.is_complete ?? false
+
+  /**
+   * A stage is locked when the immediately preceding stage is not yet complete.
+   * Stage 0 (New Lead) is always unlocked.
+   * Stages auto-completed at project creation are always considered unlocked.
+   */
+  const isStageLocked = (stageKey: string): boolean => {
+    const stageDef = project.stage_definitions.find((s) => s.key === stageKey)
+    if (!stageDef || stageDef.index === 0) return false
+    const prevDef = project.stage_definitions.find((s) => s.index === stageDef.index - 1)
+    if (!prevDef) return false
+    return !isStageComplete(prevDef.key)
+  }
 
   const handleToggleSubStage = async (stageKey: string, subKey: string, completed: boolean) => {
     if (!id || !project) return
@@ -164,7 +177,23 @@ export default function CRMProjectDetail() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {project.stage_definitions.map((s) => {
               const complete = isStageComplete(s.key)
+              const locked = isStageLocked(s.key)
               const isActive = s.key === activeStage
+
+              // Compute partial fill for stages that have sub-stages
+              const totalSubs = s.sub_stages?.length ?? 0
+              const checkedSubs = totalSubs > 0
+                ? project.sub_stage_completions.filter(
+                    (sc) => sc.stage_key === s.key && sc.completed
+                  ).length
+                : 0
+              // fillPct: 100 if fully complete, partial if sub-stages in progress, 0 otherwise
+              const fillPct = complete
+                ? 100
+                : totalSubs > 0
+                ? Math.round((checkedSubs / totalSubs) * 100)
+                : 0
+
               return (
                 <button
                   key={s.key}
@@ -172,16 +201,31 @@ export default function CRMProjectDetail() {
                   className={`text-left p-2 rounded border text-xs transition-colors focus-visible:ring-2 focus-visible:ring-mustard ${
                     isActive
                       ? 'border-mustard bg-mustard/10'
+                      : locked
+                      ? 'border-black/5 dark:border-white/5 opacity-50 cursor-default'
                       : 'border-black/10 dark:border-white/10 hover:border-mustard/50'
                   }`}
                   aria-pressed={isActive}
-                  aria-label={`${s.display} stage, ${complete ? 'complete' : 'in progress'}`}
+                  aria-label={`${s.display} stage, ${complete ? 'complete' : locked ? 'locked — complete previous stage first' : `${fillPct}% done`}`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-medium text-black dark:text-white truncate">{s.display}</span>
-                    {complete && <span aria-hidden="true" className="text-green-500 ml-1">✓</span>}
+                    {complete
+                      ? <span aria-hidden="true" className="text-green-500 ml-1">✓</span>
+                      : locked
+                      ? <span aria-hidden="true" className="text-black/30 dark:text-white/30 ml-1">🔒</span>
+                      : totalSubs > 0 && checkedSubs > 0
+                      ? <span className="text-black/40 dark:text-slate-500 tabular-nums ml-1">{checkedSubs}/{totalSubs}</span>
+                      : null}
                   </div>
-                  <div className={`h-1 rounded-full ${complete ? 'bg-green-500' : 'bg-black/10 dark:bg-white/10'}`} />
+                  {/* Track (grey) with filled portion on top */}
+                  <div className="h-1 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${complete ? 'bg-green-500' : 'bg-mustard'}`}
+                      style={{ width: `${fillPct}%` }}
+                      aria-hidden="true"
+                    />
+                  </div>
                 </button>
               )
             })}
@@ -197,6 +241,7 @@ export default function CRMProjectDetail() {
                 stageDef={project.stage_definitions.find((s) => s.key === activeStage)!}
                 subStageCompletions={project.sub_stage_completions.filter((s) => s.stage_key === activeStage)}
                 stageComplete={isStageComplete(activeStage)}
+                isLocked={isStageLocked(activeStage)}
                 files={project.files.filter((f) => f.stage_key === activeStage)}
                 notes={activeStageNotes}
                 onToggleSubStage={handleToggleSubStage}
@@ -209,22 +254,7 @@ export default function CRMProjectDetail() {
           {/* ── Right: Project meta + notes ── */}
           <div className="space-y-4">
             {/* Project meta */}
-            <section
-              aria-labelledby="project-meta-heading"
-              className="bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg p-4 space-y-3"
-            >
-              <h2 id="project-meta-heading" className="font-semibold text-black dark:text-white">Project Info</h2>
-              <dl className="space-y-2 text-sm">
-                <MetaField label="Products" value={project.no_of_products?.toString() ?? '—'} />
-                <MetaField label="MOQ" value={project.moq?.toString() ?? '—'} />
-                <MetaField label="Manufacturer" value={project.manufacturer_name ?? '—'} />
-                <MetaField label="Sales POC" value={project.sales_poc_name ?? '—'} />
-                <MetaField label="Formulation POC" value={project.formulation_poc_name ?? '—'} />
-                {project.sample_booked_date && (
-                  <MetaField label="Sample Booked" value={project.sample_booked_date} />
-                )}
-              </dl>
-            </section>
+            <ProjectInfoPanel project={project} onRefresh={fetchProject} />
 
             {/* Timeline milestones */}
             {project.milestones.length > 0 && (
@@ -306,6 +336,117 @@ export default function CRMProjectDetail() {
         <KeyLearningsSection projectId={project.id} />
       </div>
     </Layout>
+  )
+}
+
+// ── Project Info panel with inline Sample Booked Date edit ─────────────────────
+
+function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefresh: () => void }) {
+  const dateInputId = useId()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [editing, setEditing] = useState(false)
+  const [dateValue, setDateValue] = useState(project.sample_booked_date ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
+  const startEdit = () => {
+    setDateValue(project.sample_booked_date ?? '')
+    setSaveError('')
+    setEditing(true)
+    // Focus the input on next tick after it mounts
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    setSaveError('')
+    try {
+      await crmApi.updateProject(project.id, { sample_booked_date: dateValue || null })
+      setEditing(false)
+      onRefresh()
+    } catch {
+      setSaveError('Failed to save. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleCancel = () => {
+    setEditing(false)
+    setSaveError('')
+  }
+
+  return (
+    <section
+      aria-labelledby="project-meta-heading"
+      className="bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg p-4 space-y-3"
+    >
+      <h2 id="project-meta-heading" className="font-semibold text-black dark:text-white">Project Info</h2>
+      <dl className="space-y-2 text-sm">
+        <MetaField label="Products" value={project.no_of_products?.toString() ?? '—'} />
+        <MetaField label="MOQ" value={project.moq?.toString() ?? '—'} />
+        <MetaField label="Manufacturer" value={project.manufacturer_name ?? '—'} />
+        <MetaField label="Sales POC" value={project.sales_poc_name ?? '—'} />
+        <MetaField label="Formulation POC" value={project.formulation_poc_name ?? '—'} />
+
+        {/* Sample Booked Date — inline editable */}
+        <div>
+          <div className="flex justify-between items-center gap-2">
+            <dt className="text-black/50 dark:text-slate-500 shrink-0">Sample Booked</dt>
+            {!editing && (
+              <dd className="flex items-center gap-2">
+                <span className="font-medium text-black dark:text-white text-right">
+                  {project.sample_booked_date ?? <span className="text-black/30 dark:text-slate-600 font-normal">Not set</span>}
+                </span>
+                <button
+                  onClick={startEdit}
+                  className="text-xs text-mustard hover:underline focus-visible:ring-1 focus-visible:ring-mustard rounded"
+                  aria-label={project.sample_booked_date ? 'Edit sample booked date' : 'Set sample booked date'}
+                >
+                  {project.sample_booked_date ? 'Edit' : 'Set date'}
+                </button>
+              </dd>
+            )}
+          </div>
+
+          {editing && (
+            <div className="mt-2 space-y-1">
+              <label htmlFor={dateInputId} className="sr-only">Sample booked date</label>
+              <div className="flex items-center gap-2">
+                <input
+                  id={dateInputId}
+                  ref={inputRef}
+                  type="date"
+                  value={dateValue}
+                  onChange={(e) => setDateValue(e.target.value)}
+                  className="flex-1 border border-mustard rounded px-2 py-1 text-xs bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+                  disabled={saving}
+                />
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="btn-primary text-xs py-1 px-2"
+                  aria-label="Save sample booked date"
+                >
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="btn-secondary text-xs py-1 px-2"
+                  aria-label="Cancel editing"
+                >
+                  Cancel
+                </button>
+              </div>
+              {saveError && (
+                <p role="alert" className="text-xs text-red-600 dark:text-red-400">{saveError}</p>
+              )}
+            </div>
+          )}
+        </div>
+      </dl>
+    </section>
   )
 }
 

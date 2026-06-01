@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { clientService, requirementService, userService } from '@/services'
 import type { Client, Requirement, User } from '@/types'
@@ -18,10 +18,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function RequirementSearch() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  // Filter state
+  // Filter state — initialise textFilter from ?phone= URL param (cross-link from CRM Client page)
   const [pocFilter, setPocFilter] = useState('')
-  const [textFilter, setTextFilter] = useState('')
+  const [textFilter, setTextFilter] = useState(() => searchParams.get('phone') ?? '')
 
   // Data
   const [users, setUsers] = useState<User[]>([])

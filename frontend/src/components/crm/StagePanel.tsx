@@ -8,6 +8,8 @@ interface StagePanelProps {
   stageDef: StageDef
   subStageCompletions: SubStageCompletion[]
   stageComplete: boolean
+  /** When true, the previous stage is incomplete — all interactions are disabled */
+  isLocked: boolean
   files: ProjectFile[]
   notes: ProjectNote[]
   onToggleSubStage: (stageKey: string, subKey: string, completed: boolean) => void
@@ -16,7 +18,7 @@ interface StagePanelProps {
 }
 
 export function StagePanel({
-  projectId, stageDef, subStageCompletions, stageComplete,
+  projectId, stageDef, subStageCompletions, stageComplete, isLocked,
   files, notes, onToggleSubStage, onCompleteStage, onRefresh,
 }: StagePanelProps) {
   const noteInputId = useId()
@@ -52,8 +54,24 @@ export function StagePanel({
   return (
     <section
       aria-labelledby={`stage-panel-${stageDef.key}`}
-      className="bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg p-5 space-y-5"
+      className={`bg-white dark:bg-slate-800 border rounded-lg p-5 space-y-5 ${
+        isLocked
+          ? 'border-black/5 dark:border-white/5 opacity-70'
+          : 'border-black/10 dark:border-white/10'
+      }`}
+      aria-disabled={isLocked}
     >
+      {/* Locked banner */}
+      {isLocked && (
+        <div
+          role="status"
+          className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded px-3 py-2"
+        >
+          <span aria-hidden="true">🔒</span>
+          <span>Complete the previous stage first to unlock this stage.</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <h3 id={`stage-panel-${stageDef.key}`} className="text-lg font-semibold text-black dark:text-white">
@@ -70,7 +88,7 @@ export function StagePanel({
             <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
               <span aria-hidden="true">✓</span> Complete
             </span>
-          ) : !hasSubStages ? (
+          ) : !hasSubStages && !isLocked ? (
             <button
               onClick={() => onCompleteStage(stageDef.key, true)}
               className="btn-primary text-xs py-1 px-3"
@@ -79,7 +97,7 @@ export function StagePanel({
               Mark Complete
             </button>
           ) : null}
-          {stageComplete && !hasSubStages && (
+          {stageComplete && !hasSubStages && !isLocked && (
             <button
               onClick={() => onCompleteStage(stageDef.key, false)}
               className="btn-secondary text-xs py-1 px-3"
@@ -115,9 +133,10 @@ export function StagePanel({
                     id={checkId}
                     type="checkbox"
                     checked={checked}
-                    onChange={(e) => onToggleSubStage(stageDef.key, ss.key, e.target.checked)}
-                    className="mt-0.5 accent-mustard w-4 h-4 cursor-pointer"
-                    aria-label={`${ss.display}${ss.mandatory ? ' (required)' : ''}`}
+                    onChange={(e) => !isLocked && onToggleSubStage(stageDef.key, ss.key, e.target.checked)}
+                    disabled={isLocked}
+                    className={`mt-0.5 accent-mustard w-4 h-4 ${isLocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                    aria-label={`${ss.display}${ss.mandatory ? ' (required)' : ''}${isLocked ? ' — locked' : ''}`}
                   />
                   <div className="flex-1 min-w-0">
                     <label htmlFor={checkId} className={`text-sm cursor-pointer ${checked ? 'line-through text-black/40 dark:text-slate-500' : 'text-black dark:text-white'}`}>
@@ -188,36 +207,38 @@ export function StagePanel({
           </ul>
         )}
 
-        {/* Add note form */}
-        <form onSubmit={handleAddNote} aria-label={`Add note to ${stageDef.display} stage`}>
-          <label htmlFor={noteInputId} className="sr-only">
-            Add note to {stageDef.display} stage
-          </label>
-          <textarea
-            id={noteInputId}
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
-            placeholder={`Add note to ${stageDef.display}…`}
-            rows={2}
-            className="w-full border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard resize-none"
-            disabled={addingNote}
-            aria-invalid={!!noteError}
-            aria-describedby={noteError ? `note-error-${stageDef.key}` : undefined}
-          />
-          {noteError && (
-            <p id={`note-error-${stageDef.key}`} role="alert" className="text-red-600 dark:text-red-400 text-xs mt-1">
-              {noteError}
-            </p>
-          )}
-          <button
-            type="submit"
-            className="mt-2 btn-secondary text-xs"
-            disabled={addingNote || !newNote.trim()}
-            aria-label={`Save note to ${stageDef.display} stage`}
-          >
-            {addingNote ? 'Saving…' : 'Add Note'}
-          </button>
-        </form>
+        {/* Add note form — hidden when stage is locked */}
+        {!isLocked && (
+          <form onSubmit={handleAddNote} aria-label={`Add note to ${stageDef.display} stage`}>
+            <label htmlFor={noteInputId} className="sr-only">
+              Add note to {stageDef.display} stage
+            </label>
+            <textarea
+              id={noteInputId}
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              placeholder={`Add note to ${stageDef.display}…`}
+              rows={2}
+              className="w-full border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard resize-none"
+              disabled={addingNote}
+              aria-invalid={!!noteError}
+              aria-describedby={noteError ? `note-error-${stageDef.key}` : undefined}
+            />
+            {noteError && (
+              <p id={`note-error-${stageDef.key}`} role="alert" className="text-red-600 dark:text-red-400 text-xs mt-1">
+                {noteError}
+              </p>
+            )}
+            <button
+              type="submit"
+              className="mt-2 btn-secondary text-xs"
+              disabled={addingNote || !newNote.trim()}
+              aria-label={`Save note to ${stageDef.display} stage`}
+            >
+              {addingNote ? 'Saving…' : 'Add Note'}
+            </button>
+          </form>
+        )}
       </div>
     </section>
   )
