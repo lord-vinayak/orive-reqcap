@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
 from .serializers import UserSerializer, CreateUserSerializer, LoginSerializer, GoogleAuthSerializer
-from .permissions import IsAdmin
+from .permissions import IsAdmin, IsAdminOrReadOnly
 
 GOOGLE_TOKEN_CLOCK_SKEW_SECONDS = 30
 
@@ -20,10 +20,9 @@ def _tokens_for_user(user):
         'refresh': str(refresh),
     }
 
-
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_serializer_class(self):
         if self.action == 'create':
