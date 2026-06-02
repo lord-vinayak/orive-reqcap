@@ -174,7 +174,7 @@ Frontend will be at http://localhost:5173
 4. **Environment Variables:**
    - `VITE_API_URL` = `https://your-app.up.railway.app`
    - `VITE_GOOGLE_CLIENT_ID` = (same as backend)
-5. Deploy. Vercel will give you a URL like `https://orive-reqcap.vercel.app`
+5. Deploy. Vercel will give you a URL like `https://your-app.vercel.app`
 6. **Back in Railway**, update `CORS_ALLOWED_ORIGINS` to include the Vercel URL
 
 ---
