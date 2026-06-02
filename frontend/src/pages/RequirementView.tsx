@@ -508,6 +508,7 @@ export default function RequirementView() {
       {/* Send Email modal */}
       {emailModalProposalId && requirement && (
         <SendEmailModal
+          requirementId={requirement.id}
           proposals={proposals}
           clientEmail={requirement.client_data?.email ?? ''}
           clientName={requirement.client_data?.name ?? ''}

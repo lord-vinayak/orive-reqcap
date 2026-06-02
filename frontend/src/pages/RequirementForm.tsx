@@ -6,12 +6,13 @@ import ProductTable, { validateProductRow } from "@/components/ProductTable";
 import CatalogSuggestions from "@/components/CatalogSuggestions";
 import NotesSection from "@/components/NotesSection";
 import FileUploadSection from "@/components/FileUploadSection";
+import ProposalDocumentsModal from "@/components/ProposalDocumentsModal";
 import {
-  clientService, requirementService, notesService, proposalService,
+  clientService, requirementService, notesService, proposalService, proposalDocService,
   AUTO_NOTE_MARKER_RE, buildAutoNoteText,
 } from "@/services";
 import { useAuthStore } from "@/store/authStore";
-import type { Client, Note, Requirement, RequirementProduct } from "@/types";
+import type { Client, Note, Requirement, RequirementProduct, ProposalDocument } from "@/types";
 
 const DRAFT_KEY = "skinovation-draft-requirement";
 const AUTOSAVE_DEBOUNCE_MS = 3000;
@@ -159,6 +160,13 @@ export default function RequirementForm() {
   // Bumped when a product row is added to the Client Costing so CatalogSuggestions refetches.
   const [proposalRefreshKey, setProposalRefreshKey] = useState(0);
 
+  // Proposal documents (PDF/Word) uploaded for this requirement
+  const [proposalDocs, setProposalDocs] = useState<ProposalDocument[]>([]);
+  const [showProposalModal, setShowProposalModal] = useState(false);
+  const proposalFileInputRef = useRef<HTMLInputElement>(null);
+  const [proposalUploading, setProposalUploading] = useState(false);
+  const [proposalUploadError, setProposalUploadError] = useState('');
+
   const dirtyProductsRef = useRef<Set<string>>(new Set());
   const dirtyMetaRef = useRef(false);
   const autoSaveTimerRef = useRef<number | null>(null);
@@ -206,6 +214,8 @@ export default function RequirementForm() {
         setSavedAt(new Date(r.updated_at));
         dirtyProductsRef.current.clear();
         dirtyMetaRef.current = false;
+        // Load proposal documents
+        proposalDocService.list(id).then(setProposalDocs).catch(() => {});
       })
       .catch(() => setError("Failed to load requirement."))
       .finally(() => setLoadingRequirement(false));
@@ -491,6 +501,25 @@ export default function RequirementForm() {
     if (req) navigate(`/requirements/${req.id}/proposal`);
   };
 
+  // ---- Upload proposal document (PDF/Word) ----
+  const handleProposalUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !requirement) return;
+    setProposalUploadError('');
+    setProposalUploading(true);
+    try {
+      const doc = await proposalDocService.upload(requirement.id, file);
+      setProposalDocs((prev) => [doc, ...prev]);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        ?? 'Upload failed. Please try again.';
+      setProposalUploadError(msg);
+    } finally {
+      setProposalUploading(false);
+      if (proposalFileInputRef.current) proposalFileInputRef.current.value = '';
+    }
+  };
+
   // ---- Add a single product row directly to the Client Costing as a freeform item (item #6) ----
   const handleAddRowToCosting = async (idx: number) => {
     const row = products[idx];
@@ -660,13 +689,48 @@ export default function RequirementForm() {
       )}
 
       {/* Sticky action bar */}
-      <div className="flex items-center gap-2 pt-4 mt-6 sticky bottom-0 bg-white dark:bg-slate-900 py-3 border-t border-black/10 dark:border-white/10">
+      <div className="flex items-center gap-2 pt-4 mt-6 sticky bottom-0 bg-white dark:bg-slate-900 py-3 border-t border-black/10 dark:border-white/10 flex-wrap">
         <button onClick={handleSave} disabled={manualSaving} className="btn-primary">
           {manualSaving ? "Saving…" : "Save requirements"}
         </button>
         <button onClick={handleCreateProposal} disabled={manualSaving} className="btn-secondary">
           Open Client Costing →
         </button>
+
+        {/* Proposal document upload / view — only when requirement exists */}
+        {requirement && (
+          <>
+            {proposalDocs.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => proposalFileInputRef.current?.click()}
+                disabled={proposalUploading}
+                className="btn-secondary"
+              >
+                {proposalUploading ? "Uploading…" : "Upload Proposal"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowProposalModal(true)}
+                className="btn-secondary"
+              >
+                View Proposals ({proposalDocs.length})
+              </button>
+            )}
+            <input
+              ref={proposalFileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx"
+              className="hidden"
+              onChange={handleProposalUpload}
+            />
+            {proposalUploadError && (
+              <p className="text-xs text-red-600 dark:text-red-400 w-full mt-1">{proposalUploadError}</p>
+            )}
+          </>
+        )}
+
         {/* Bulk "Add to Client Costing" — lifted up from CatalogSuggestions (item #3) */}
         {pendingCatalog && pendingCatalog.count > 0 && (
           <button
@@ -680,6 +744,18 @@ export default function RequirementForm() {
           </button>
         )}
       </div>
+
+      {/* Proposal Documents modal */}
+      {showProposalModal && requirement && (
+        <ProposalDocumentsModal
+          requirementId={requirement.id}
+          onClose={() => setShowProposalModal(false)}
+          onUploaded={(doc) => setProposalDocs((prev) => {
+            if (prev.some((d) => d.id === doc.id)) return prev;
+            return [doc, ...prev];
+          })}
+        />
+      )}
     </Layout>
   );
 }

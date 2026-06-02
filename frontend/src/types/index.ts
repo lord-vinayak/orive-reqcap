@@ -123,6 +123,17 @@ export interface ProposalItem {
   added_at: string
 }
 
+export interface ProposalDocument {
+  id: string
+  requirement: string
+  drive_file_id: string
+  drive_url: string
+  filename: string
+  uploaded_by: string | null
+  uploaded_by_name?: string
+  uploaded_at: string
+}
+
 export interface SentEmail {
   id: string
   proposal: string

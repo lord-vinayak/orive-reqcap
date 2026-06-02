@@ -4,11 +4,18 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, NotFound
+from rest_framework.views import APIView
 
-from .models import FileRecord
-from .serializers import FileSerializer
+from .models import FileRecord, ProposalDocument
+from .serializers import FileSerializer, ProposalDocumentSerializer
 from .drive_service import upload_file, delete_file
 from apps.requirements_app.models import Requirement
+
+ALLOWED_PROPOSAL_DOC_MIMETYPES = {
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
 
 
 def _classify(mimetype):
@@ -61,6 +68,52 @@ class RequirementFilesView(viewsets.ViewSet):
             uploaded_by=request.user,
         )
         return Response(FileSerializer(record).data, status=status.HTTP_201_CREATED)
+
+
+class ProposalDocumentsView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get(self, request, requirement_id):
+        docs = ProposalDocument.objects.filter(requirement_id=requirement_id).select_related('uploaded_by')
+        return Response(ProposalDocumentSerializer(docs, many=True).data)
+
+    def post(self, request, requirement_id):
+        try:
+            req = Requirement.objects.select_related('client').get(pk=requirement_id)
+        except Requirement.DoesNotExist:
+            raise NotFound('Requirement not found')
+
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({'detail': 'No file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        mimetype = file_obj.content_type or ''
+        if mimetype not in ALLOWED_PROPOSAL_DOC_MIMETYPES:
+            return Response(
+                {'detail': 'Unsupported file type. Please upload a PDF or Word document (.pdf, .doc, .docx).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            result = upload_file(
+                file_bytes=file_obj.read(),
+                filename=file_obj.name,
+                mimetype=mimetype,
+                client_name=req.client.name,
+                subfolder='Proposals',
+            )
+        except Exception as e:
+            return Response({'detail': f'Drive upload failed: {e}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        doc = ProposalDocument.objects.create(
+            requirement=req,
+            drive_file_id=result['drive_file_id'],
+            drive_url=result['drive_url'],
+            filename=file_obj.name,
+            uploaded_by=request.user,
+        )
+        return Response(ProposalDocumentSerializer(doc).data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['DELETE'])

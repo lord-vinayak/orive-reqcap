@@ -1,12 +1,13 @@
 import { api } from './api'
 import type {
   Client, Requirement, RequirementProduct, Note, FileRecord,
-  CatalogItem, Proposal, ProposalItem, User,
+  CatalogItem, Proposal, ProposalItem, User, ProposalDocument,
 } from '@/types'
 
 export interface SendEmailPayload {
   to_email: string
   save_email: boolean
+  proposal_doc_ids?: string[]
 }
 
 export interface SendEmailResult {
@@ -111,6 +112,19 @@ export const fileService = {
     return data
   },
   delete: async (id: string) => api.delete(`/files/${id}/`),
+}
+
+export const proposalDocService = {
+  list: async (reqId: string): Promise<ProposalDocument[]> =>
+    (await api.get<ProposalDocument[]>(`/requirements/${reqId}/proposal-documents/`)).data,
+
+  upload: async (reqId: string, file: File): Promise<ProposalDocument> => {
+    const form = new FormData()
+    form.append('file', file)
+    return (await api.post<ProposalDocument>(`/requirements/${reqId}/proposal-documents/`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data
+  },
 }
 
 export const catalogService = {

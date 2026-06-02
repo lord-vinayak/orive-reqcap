@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { proposalService } from '@/services'
-import type { Proposal } from '@/types'
+import { proposalService, proposalDocService } from '@/services'
+import type { Proposal, ProposalDocument } from '@/types'
 
 interface Props {
+  requirementId: string
   proposals: Proposal[]
   clientEmail: string
   clientName: string
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function SendEmailModal({
+  requirementId,
   proposals,
   clientEmail,
   clientName,
@@ -28,10 +30,29 @@ export default function SendEmailModal({
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
 
+  // Proposal documents for attachment selection
+  const [proposalDocs, setProposalDocs] = useState<ProposalDocument[]>([])
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set())
+
   // If the email field starts empty, default the checkbox to true (save to client)
   useEffect(() => {
     if (!clientEmail) setSaveEmail(true)
   }, [clientEmail])
+
+  // Fetch proposal documents
+  useEffect(() => {
+    if (!requirementId) return
+    proposalDocService.list(requirementId).then(setProposalDocs).catch(() => {/* non-critical */})
+  }, [requirementId])
+
+  const toggleDoc = (id: string) => {
+    setSelectedDocIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const handleSend = async () => {
     setError('')
@@ -49,6 +70,7 @@ export default function SendEmailModal({
       await proposalService.sendEmail(selectedProposalId, {
         to_email: emailTrimmed,
         save_email: saveEmail,
+        proposal_doc_ids: [...selectedDocIds],
       })
       onSent()
       onClose()
@@ -80,7 +102,7 @@ export default function SendEmailModal({
       aria-modal="true"
       aria-labelledby="send-email-modal-title"
     >
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <h2 id="send-email-modal-title" className="text-lg font-semibold dark:text-slate-100">
             Send Client Costing
@@ -161,9 +183,43 @@ export default function SendEmailModal({
             </p>
           </div>
 
+          {/* Proposal document attachment picker */}
+          <div>
+            <label className="block text-xs font-medium text-black/60 dark:text-slate-400 mb-1">
+              Attach Proposal Document(s)
+            </label>
+            {proposalDocs.length === 0 ? (
+              <p className="text-xs text-black/50 dark:text-slate-500 italic">
+                No proposal documents uploaded yet.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {proposalDocs.map((doc) => (
+                  <li key={doc.id}>
+                    <label className="flex items-center gap-2 cursor-pointer select-none py-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedDocIds.has(doc.id)}
+                        onChange={() => toggleDoc(doc.id)}
+                        disabled={sending}
+                        className="w-4 h-4 accent-mustard flex-shrink-0"
+                      />
+                      <span className="text-xs text-black/70 dark:text-slate-300 truncate" title={doc.filename}>
+                        {doc.filename}
+                      </span>
+                      <span className="text-xs text-black/40 dark:text-slate-500 whitespace-nowrap ml-auto">
+                        {new Date(doc.uploaded_at).toLocaleDateString()}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           {/* Attachment note */}
           <p className="text-xs text-black/50 dark:text-slate-500">
-            📎 The Client Costing XLSX will be attached automatically.
+            📎 The Client Costing XLSX is always attached automatically.
           </p>
 
           {error && (

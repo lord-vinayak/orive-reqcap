@@ -406,6 +406,7 @@ export default function ProposalPage() {
       {/* Email modal */}
       {showEmailModal && requirement && (
         <SendEmailModal
+          requirementId={requirement.id}
           proposals={[proposal]}
           clientEmail={requirement.client_data?.email ?? ''}
           clientName={requirement.client_data?.name ?? ''}

@@ -68,8 +68,13 @@ def _get_or_create_folder(service, name, parent_id):
     return folder['id']
 
 
-def upload_file(file_bytes, filename, mimetype, client_name):
-    """Upload to /<root>/<client_name>/<YYYY-MM-DD>/<filename>."""
+def upload_file(file_bytes, filename, mimetype, client_name, subfolder=None):
+    """Upload a file to Google Drive.
+
+    Folder structure:
+      - subfolder given: /<root>/<client_name>/<subfolder>/<filename>
+      - subfolder None:  /<root>/<client_name>/<YYYY-MM-DD>/<filename>  (existing behaviour)
+    """
     from googleapiclient.http import MediaIoBaseUpload
 
     service = _build_drive_service()
@@ -78,7 +83,10 @@ def upload_file(file_bytes, filename, mimetype, client_name):
         raise RuntimeError('GOOGLE_DRIVE_ROOT_FOLDER_ID not configured')
 
     client_folder_id = _get_or_create_folder(service, client_name or 'unknown', root_id)
-    date_folder_id = _get_or_create_folder(service, date.today().isoformat(), client_folder_id)
+    if subfolder:
+        date_folder_id = _get_or_create_folder(service, subfolder, client_folder_id)
+    else:
+        date_folder_id = _get_or_create_folder(service, date.today().isoformat(), client_folder_id)
 
     media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mimetype, resumable=False)
     metadata = {'name': filename, 'parents': [date_folder_id]}
@@ -110,3 +118,17 @@ def delete_file(drive_file_id):
         service.files().delete(fileId=drive_file_id, supportsAllDrives=True).execute()
     except Exception:
         pass
+
+
+def download_file(drive_file_id) -> bytes:
+    """Download a file's raw bytes from Google Drive (for email attachments)."""
+    from googleapiclient.http import MediaIoBaseDownload
+
+    service = _build_drive_service()
+    request = service.files().get_media(fileId=drive_file_id, supportsAllDrives=True)
+    buf = io.BytesIO()
+    downloader = MediaIoBaseDownload(buf, request)
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+    return buf.getvalue()

@@ -15,6 +15,10 @@ from .serializers import ProposalSerializer, ProposalItemSerializer
 from .xlsx_export import build_proposal_xlsx
 from . import email_templates
 from apps.requirements_app.models import Requirement
+from apps.files.models import ProposalDocument
+from apps.files.drive_service import upload_file as drive_upload_file, download_file as drive_download_file
+
+XLSX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 
 @api_view(['GET'])
@@ -71,11 +75,17 @@ class ProposalViewSet(viewsets.ModelViewSet):
         proposal.last_exported_at = datetime.now(timezone.utc)
         proposal.save(update_fields=['status', 'last_exported_at'])
 
-        filename = f'ClientCosting_{proposal.requirement.client.name}_{datetime.now().date().isoformat()}.xlsx'
-        response = HttpResponse(
-            data,
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        )
+        client_name = proposal.requirement.client.name
+        date_str = datetime.now().date().isoformat()
+        filename = f'ClientCosting_{client_name}_{date_str}.xlsx'
+
+        # Silently archive a copy to Drive — never fail the download if Drive is unavailable
+        try:
+            drive_upload_file(data, filename, XLSX_MIMETYPE, client_name, subfolder='Client Costings')
+        except Exception:
+            pass
+
+        response = HttpResponse(data, content_type=XLSX_MIMETYPE)
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
@@ -124,6 +134,12 @@ class ProposalViewSet(viewsets.ModelViewSet):
         date_str = datetime.now().strftime('%Y%m%d')
         attachment_name = f'ClientCosting_{client_name_clean}_{date_str}.xlsx'
 
+        # Silently archive XLSX to Drive
+        try:
+            drive_upload_file(xlsx_data, attachment_name, XLSX_MIMETYPE, client.name, subfolder='Client Costings')
+        except Exception:
+            pass
+
         # Build and send email
         msg = EmailMultiAlternatives(
             subject=subject,
@@ -134,8 +150,29 @@ class ProposalViewSet(viewsets.ModelViewSet):
         msg.attach(
             attachment_name,
             xlsx_data if isinstance(xlsx_data, bytes) else xlsx_data.getvalue(),
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            XLSX_MIMETYPE,
         )
+
+        # Attach selected proposal documents
+        proposal_doc_ids = request.data.get('proposal_doc_ids') or []
+        if isinstance(proposal_doc_ids, str):
+            proposal_doc_ids = [proposal_doc_ids]
+        for doc_id in proposal_doc_ids:
+            try:
+                doc = ProposalDocument.objects.get(pk=doc_id)
+                doc_bytes = drive_download_file(doc.drive_file_id)
+                # Determine MIME type from filename extension
+                ext = doc.filename.rsplit('.', 1)[-1].lower() if '.' in doc.filename else ''
+                mime_map = {
+                    'pdf': 'application/pdf',
+                    'doc': 'application/msword',
+                    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                }
+                doc_mime = mime_map.get(ext, 'application/octet-stream')
+                msg.attach(doc.filename, doc_bytes, doc_mime)
+            except Exception:
+                pass  # skip individual attachment failures silently
+
         msg.send()
 
         # Record the send in the audit log
