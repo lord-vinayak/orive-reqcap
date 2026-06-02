@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Proposal, ProposalItem
+from .models import Proposal, ProposalItem, SentEmail
 from apps.catalog.serializers import CatalogItemSerializer
 
 
@@ -90,14 +90,24 @@ class ProposalItemSerializer(serializers.ModelSerializer):
         return instance
 
 
+class SentEmailSerializer(serializers.ModelSerializer):
+    sent_by_name = serializers.CharField(source='sent_by.name', read_only=True, default='')
+
+    class Meta:
+        model = SentEmail
+        fields = ['id', 'proposal', 'sent_to', 'subject', 'sent_by', 'sent_by_name', 'sent_at']
+        read_only_fields = ['id', 'sent_at', 'sent_by', 'sent_by_name']
+
+
 class ProposalSerializer(serializers.ModelSerializer):
     items = ProposalItemSerializer(many=True, read_only=True)
     created_by_name = serializers.CharField(source='created_by.name', read_only=True)
+    sent_emails = SentEmailSerializer(many=True, read_only=True)
 
     class Meta:
         model = Proposal
         fields = [
             'id', 'requirement', 'status', 'created_by', 'created_by_name',
-            'items', 'created_at', 'updated_at', 'last_exported_at',
+            'items', 'sent_emails', 'created_at', 'updated_at', 'last_exported_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'created_by', 'last_exported_at']

@@ -1,4 +1,8 @@
+import io
 from datetime import datetime, timezone
+from django.core.mail import EmailMultiAlternatives
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
@@ -6,9 +10,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 
-from .models import Proposal, ProposalItem
+from .models import Proposal, ProposalItem, SentEmail
 from .serializers import ProposalSerializer, ProposalItemSerializer
 from .xlsx_export import build_proposal_xlsx
+from . import email_templates
 from apps.requirements_app.models import Requirement
 
 
@@ -73,6 +78,80 @@ class ProposalViewSet(viewsets.ModelViewSet):
         )
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
+
+    @action(detail=True, methods=['post'], url_path='send-email')
+    def send_email(self, request, pk=None):
+        """Send the Client Costing as an XLSX attachment to the client's email."""
+        proposal = self.get_object()
+        client = proposal.requirement.client
+
+        to_email = (request.data.get('to_email') or '').strip()
+        save_email = bool(request.data.get('save_email', False))
+
+        # Validate recipient email
+        if not to_email:
+            return Response({'detail': 'to_email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            validate_email(to_email)
+        except DjangoValidationError:
+            return Response({'detail': 'Invalid email address.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Persist email on client record if requested
+        if save_email and not client.email:
+            client.email = to_email
+            client.save(update_fields=['email'])
+
+        # Build template context
+        proposal_index = (
+            Proposal.objects.filter(requirement=proposal.requirement)
+            .order_by('created_at')
+            .values_list('id', flat=True)
+        )
+        proposal_number = list(proposal_index).index(proposal.id) + 1
+        ctx = {
+            'client_name': client.name,
+            'sent_by_name': request.user.name if hasattr(request.user, 'name') else request.user.email,
+            'proposal_item_count': proposal.items.count(),
+            'proposal_label': f'Client Costing #{proposal_number}',
+        }
+        subject = email_templates.SUBJECT
+        html_body = email_templates.HTML_BODY.format(**ctx)
+        text_body = email_templates.TEXT_BODY.format(**ctx)
+
+        # Generate XLSX in memory (reuse existing export logic)
+        xlsx_data = build_proposal_xlsx(proposal)
+        client_name_clean = ''.join(c for c in client.name if c.isalnum() or c in ' _-').strip()
+        date_str = datetime.now().strftime('%Y%m%d')
+        attachment_name = f'ClientCosting_{client_name_clean}_{date_str}.xlsx'
+
+        # Build and send email
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=text_body,
+            to=[to_email],
+        )
+        msg.attach_alternative(html_body, 'text/html')
+        msg.attach(
+            attachment_name,
+            xlsx_data if isinstance(xlsx_data, bytes) else xlsx_data.getvalue(),
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        msg.send()
+
+        # Record the send in the audit log
+        sent = SentEmail.objects.create(
+            proposal=proposal,
+            sent_to=to_email,
+            subject=subject,
+            sent_by=request.user,
+        )
+
+        return Response({
+            'sent_at': sent.sent_at.isoformat(),
+            'sent_to': sent.sent_to,
+            'subject': sent.subject,
+            'sent_by_name': ctx['sent_by_name'],
+        }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='items')
     def add_item(self, request, pk=None):

@@ -24,6 +24,22 @@ class Proposal(models.Model):
     last_exported_at = models.DateTimeField(null=True, blank=True)
 
 
+class SentEmail(models.Model):
+    """Audit log of every Client Costing email sent to a client."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    proposal = models.ForeignKey(Proposal, on_delete=models.CASCADE, related_name='sent_emails')
+    sent_to = models.EmailField()
+    subject = models.CharField(max_length=500)
+    sent_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name='sent_emails',
+    )
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-sent_at']
+
+
 class ProposalItem(models.Model):
     """A single row inside a Client Costing.
 

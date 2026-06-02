@@ -4,6 +4,18 @@ import type {
   CatalogItem, Proposal, ProposalItem, User,
 } from '@/types'
 
+export interface SendEmailPayload {
+  to_email: string
+  save_email: boolean
+}
+
+export interface SendEmailResult {
+  sent_at: string
+  sent_to: string
+  subject: string
+  sent_by_name: string
+}
+
 export interface BulkUploadRow {
   row: number
   name: string
@@ -149,26 +161,12 @@ export const proposalService = {
   /** Create a fresh blank proposal alongside existing ones. */
   createNew: async (reqId: string) =>
     (await api.post<Proposal>(`/requirements/${reqId}/proposals/new/`)).data,
-  addItem: async (proposalId: string, catalogItemId: string) => {
-    const item = (await api.post<ProposalItem>(`/proposals/${proposalId}/items/`, { catalog_item: catalogItemId })).data
-    const defaults = {
-      manufacturing_cost: 30.00,
-      tentative_packaging_cost: 30.00,
-      label_cost: 10.00,
-      tentative_monocarton_cost: 15.00,
-    }
-    return (await api.patch<ProposalItem>(`/proposal-items/${item.id}/`, { snapshot: defaults })).data
-  },
-  /** Add a freeform (non-catalog) item to a Client Costing — copies snapshot fields directly. */
-  addFreeformItem: async (proposalId: string, snapshot: Partial<ProposalItem['catalog_data']>) => {
-    const defaults = {
-      manufacturing_cost: 30.00,
-      tentative_packaging_cost: 30.00,
-      label_cost: 10.00,
-      tentative_monocarton_cost: 15.00,
-    }
-    return (await api.post<ProposalItem>(`/proposals/${proposalId}/items/`, { snapshot: { ...defaults, ...snapshot } })).data
-  },
+  /** Add a catalog-linked item. The backend snapshots catalog fields and injects cost defaults. */
+  addItem: async (proposalId: string, catalogItemId: string) =>
+    (await api.post<ProposalItem>(`/proposals/${proposalId}/items/`, { catalog_item: catalogItemId })).data,
+  /** Add a freeform (non-catalog) item. The backend injects cost defaults for any fields not supplied. */
+  addFreeformItem: async (proposalId: string, snapshot: Partial<ProposalItem['catalog_data']>) =>
+    (await api.post<ProposalItem>(`/proposals/${proposalId}/items/`, { snapshot })).data,
   /** Update any snapshot field of an existing Client Costing item. */
   updateItem: async (itemId: string, patch: Partial<ProposalItem['catalog_data']>) =>
     (await api.patch<ProposalItem>(`/proposal-items/${itemId}/`, { snapshot: patch })).data,
@@ -177,6 +175,8 @@ export const proposalService = {
     const response = await api.get(`/proposals/${proposalId}/export/`, { responseType: 'blob' })
     return response.data as Blob
   },
+  sendEmail: async (proposalId: string, payload: SendEmailPayload): Promise<SendEmailResult> =>
+    (await api.post<SendEmailResult>(`/proposals/${proposalId}/send-email/`, payload)).data,
 }
 
 export const audioService = {

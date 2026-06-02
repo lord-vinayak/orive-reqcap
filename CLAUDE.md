@@ -201,3 +201,148 @@ Two new Django apps added to the same project:
 - Gantt chart: simplified to milestone table (planned vs actual) for v1
 - Bulk Excel upload: templates needed (not yet implemented — v2)
 - Project "Create" form page: not yet implemented — needs `src/pages/crm/CRMProjectCreate.tsx`
+
+---
+
+## Client Statuses (updated 2026-06-02)
+
+Old 3 statuses replaced with 8 new ones everywhere (model, frontend constants, UI):
+```python
+STATUS_CHOICES = [
+    ('call_back', 'Call Back'),
+    ('catalogue_shared', 'Catalogue Shared'),
+    ('costing_shared', 'Costing Shared'),
+    ('interested', 'Interested'),
+    ('language_barrier', 'Language Barrier'),
+    ('not_interested', 'Not Interested'),
+    ('not_responding', 'Not Responding after Multiple Attempts'),
+    ('unanswered', 'Unanswered'),
+]
+# default = 'unanswered'
+```
+- Migration `backend/apps/clients/migrations/0004_client_status_update.py` handles old→new data migration
+- Single source of truth: `frontend/src/constants/clientStatus.ts` exports `CLIENT_STATUS_OPTIONS`, `CLIENT_STATUS_LABEL`, `CLIENT_STATUS_COLOR`
+
+---
+
+## Excel Bulk Client Import (added 2026-06-02)
+
+- Route: `/requirements/import` → `src/pages/ClientBulkUpload.tsx`
+- Third card on Requirements Landing page
+- Backend: `GET /api/clients/upload-template/` (download template), `POST /api/clients/bulk-upload/` (upload)
+- Logic: strip `p:+91`, take last 10 digits for phone; skip duplicates + invalid rows (report both); default status `unanswered`; ignore product columns; save email
+- Template download available via `clientService.downloadTemplate()`
+- Upload via `clientService.bulkUpload(file)` — must pass `headers: { 'Content-Type': 'multipart/form-data' }` to override axios instance default
+
+---
+
+## Number of Products Dropdown
+
+`frontend/src/utils/dropdownOptions.ts` — `PRODUCT_COUNTS` changed from `string[]` to `{ label: string; value: string }[]`:
+- Values 1–9 display as-is
+- `{ label: '10 and more', value: '10' }` — Excel import uses `10_and_more_` format which maps to `'10'`
+- `PRODUCT_COUNT_LABEL: Record<number, string>` for display lookup
+
+---
+
+## Client Costing (Proposal) — Major Overhaul (2026-06-02)
+
+### Column Structure (19 columns in XLSX, 21 in edit table)
+
+**Non-cost editable columns** (body_part, product_type, sub_product_type, kb_tag1, kb_tag2, kb_tag3, specific_ingredients, color, fragrance, size, packaging_type, rate_category):
+
+**Cost columns in order:**
+| # | Column | Type | Formula / Notes |
+|---|--------|------|-----------------|
+| 1 | Raw Material Cost (per kg) | Editable | `per_kg_rate` field — renamed from "Per KG Rate" |
+| 2 | Raw Material Cost (per unit) | **Auto-calc** | `(per_kg_rate / 1000) * size` |
+| 3 | Manufacturing Cost | Editable | **Default: 20.00** |
+| 4 | Estimated Unit Cost | **Auto-calc** | `RM Cost/unit + Mfg Cost` |
+| 5 | Tentative Packaging Cost | Editable | **Default: 30.00** |
+| 6 | Label Cost | Editable | **Default: 10.00** |
+| 7 | Tentative Monocarton Cost | Editable | **Default: 15.00** |
+| 8 | Total Cost | **Auto-calc** | `Est. Unit Cost + Pkg + Label + Mono` |
+| 9 | Potential MRP | **Auto-calc** | `Total Cost × 6` |
+
+- `rate_per_unit` field removed from UI entirely (still in DB/catalog)
+- Auto-calc cells shown with amber background; show `↑ size?` hint when size is missing
+
+### Backend Defaults (proposals/serializers.py)
+
+In `ProposalItemSerializer.create()`:
+```python
+COST_DEFAULTS = {
+    'manufacturing_cost': '20.00',
+    'tentative_packaging_cost': '30.00',
+    'label_cost': '10.00',
+    'tentative_monocarton_cost': '15.00',
+}
+# Injected FIRST (before catalog loop) so catalog values cannot override them
+```
+- Catalog loop: `if f not in snapshot` — defaults are pre-set so they're protected
+- `per_kg_rate` and `size` from catalog ARE copied to snapshot (not in COST_DEFAULTS, so catalog loop handles them)
+
+### Frontend Service (services/index.ts)
+
+**CRITICAL**: `addItem` is a single POST — no PATCH after. The old code had a redundant PATCH with wrong `manufacturing_cost: 30.00` that overrode backend defaults. Now:
+```typescript
+addItem: (proposalId, catalogItemId) =>
+  api.post(`/proposals/${proposalId}/items/`, { catalog_item: catalogItemId })
+addFreeformItem: (proposalId, snapshot) =>
+  api.post(`/proposals/${proposalId}/items/`, { snapshot })
+```
+
+### Proposal.tsx Layout
+
+- Edit tab: **stacked layout** (top pane = catalog search, bottom pane = editable table — both full width)
+- Catalog search shows max 10 results; "Showing 10 of N — refine filters" hint when more
+- Filter bar: `flex flex-wrap` with `text-sm h-9 px-2` on all controls for consistent sizing
+- Edit table: `text-sm` (was `text-xs`)
+- `TABLE_COLUMNS: ColSpec[]` — union type `{ kind: 'edit' | 'calc', key, label, numeric? }`
+- `computedCosts(data)` — pure function, takes `Record<string, unknown>`, returns `{ rawPerUnit, estUnit, total, mrp }`
+- `getMerged(it)` — spreads `catalog_data` + `draft[it.id]` so derived cells update live as user types
+- `fmt(val)` — locale-formatted with 2dp; returns `—` only for null/undefined (not 0)
+- `fmtCalc(val)` — same format for derived cells
+
+### XLSX Export (xlsx_export.py)
+
+- Banner rows (`SKINOVATION SCIENCES`, `Client Costing`) now merged dynamically: `get_column_letter(len(columns))` so they always span full table width
+- `_compute_costs(m)` helper calculates the 4 derived columns server-side for XLSX
+- Column widths array updated for 19 columns: `[14, 16, 18, 26, 32, 12, 12, 10, 14, 14, 22, 22, 18, 20, 22, 14, 22, 14, 14]`
+
+---
+
+## CRM Bug Fixes (2026-06-02)
+
+- **CRMClientDetail**: Requirements filter fixed — `{ client: phone }` → `{ client_phone: phone }`
+- **RequirementSearch**: Auto-fills phone from URL param `?phone=` via `useSearchParams`
+- **RequirementForm**: Pre-fills client when navigated from `?client=PHONE`; "New Requirement" button added in RequirementSearch expanded rows
+- **Stage ordering**: Backend auto-completes stages before `project_stage` on create; frontend `isStageLocked()` prevents editing future stages
+- **Mini progress bar**: Fixed to show partial fill based on completed sub-stages ratio
+- **Sample Booked Date**: Editable in `ProjectInfoPanel` on `CRMProjectDetail` page
+
+---
+
+## Key Architectural Patterns
+
+### Snapshot + catalog_data merge (proposals)
+```
+catalog_data = merge(CatalogItemSerializer(catalog_item).data, snapshot)
+# snapshot wins on any key where v is not None and v != ''
+```
+- Frontend reads `catalog_data` exclusively (never raw snapshot)
+- Edits PATCH only the `snapshot` field via `updateItem(itemId, { field: value })`
+- `getMerged(it)` in `EditableItemsTable` overlays draft state on top for live computation
+
+### Axios Content-Type for file uploads
+Axios instance sets `Content-Type: application/json` by default. Override per-request:
+```typescript
+api.post(url, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+```
+Without this, Django's `MultiPartParser` won't run and `request.FILES` is empty.
+
+### TypeScript cast for CatalogItem → Record
+```typescript
+it.catalog_data as unknown as Record<string, unknown>
+// Direct cast fails — must go through `unknown` first
+```

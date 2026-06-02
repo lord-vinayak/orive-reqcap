@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
+import SendEmailModal from '@/components/SendEmailModal'
 import {
   requirementService, notesService, fileService, proposalService,
 } from '@/services'
-import type { FileRecord, Note, Proposal, Requirement } from '@/types'
+import type { FileRecord, Note, Proposal, Requirement, SentEmail } from '@/types'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,13 @@ export default function RequirementView() {
   // Creating a new proposal
   const [creatingProposal, setCreatingProposal] = useState(false)
 
+  // Send email modal
+  const [emailModalProposalId, setEmailModalProposalId] = useState<string | null>(null)
+  const [emailToast, setEmailToast] = useState('')
+
+  // Email history section collapse
+  const [emailHistoryExpanded, setEmailHistoryExpanded] = useState(true)
+
   useEffect(() => {
     if (!id) return
     setLoading(true)
@@ -70,6 +78,12 @@ export default function RequirementView() {
       else next.add(proposalId)
       return next
     })
+  }
+
+  const reloadProposals = async () => {
+    if (!id) return
+    const p = await proposalService.listForRequirement(id)
+    setProposals(p)
   }
 
   const handleCreateNewProposal = async () => {
@@ -291,7 +305,76 @@ export default function RequirementView() {
           )}
         </section>
 
-        {/* ── Section 5: Proposals ── */}
+        {/* ── Section 5: Email History ── */}
+        {(() => {
+          const allEmails: (SentEmail & { proposalLabel: string })[] = proposals
+            .flatMap((p, idx) =>
+              (p.sent_emails ?? []).map((e) => ({
+                ...e,
+                proposalLabel: `Client Costing ${proposals.length - idx}`,
+              }))
+            )
+            .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime())
+          return (
+            <section className="card" aria-labelledby="view-emails-heading">
+              <button
+                type="button"
+                className="w-full flex items-center justify-between text-left"
+                onClick={() => setEmailHistoryExpanded((v) => !v)}
+                aria-expanded={emailHistoryExpanded}
+              >
+                <h2 id="view-emails-heading" className="text-lg font-semibold">
+                  Email History{' '}
+                  <span className="text-sm font-normal text-black/60 dark:text-slate-400">
+                    ({allEmails.length})
+                  </span>
+                </h2>
+                <span className="text-black/40 dark:text-slate-500 text-xs" aria-hidden="true">
+                  {emailHistoryExpanded ? '▲' : '▼'}
+                </span>
+              </button>
+
+              {emailHistoryExpanded && (
+                <div className="mt-3">
+                  {allEmails.length === 0 ? (
+                    <p className="text-sm text-black/60 dark:text-slate-400">No emails sent yet.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="text-xs text-black/60 dark:text-slate-400 border-b border-black/8 dark:border-white/8">
+                            <th className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Sent To</th>
+                            <th className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Subject</th>
+                            <th className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Proposal</th>
+                            <th className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Date &amp; Time</th>
+                            <th className="text-left font-medium py-1.5 whitespace-nowrap">Sent By</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {allEmails.map((e) => (
+                            <tr key={e.id} className="border-b border-black/5 dark:border-white/5">
+                              <td className="py-2 pr-4 dark:text-slate-200">{e.sent_to}</td>
+                              <td className="py-2 pr-4 text-xs text-black/70 dark:text-slate-300 max-w-[200px] truncate" title={e.subject}>{e.subject}</td>
+                              <td className="py-2 pr-4 text-xs text-black/60 dark:text-slate-400 whitespace-nowrap">{e.proposalLabel}</td>
+                              <td className="py-2 pr-4 text-xs text-black/60 dark:text-slate-400 whitespace-nowrap">
+                                {new Date(e.sent_at).toLocaleString()}
+                              </td>
+                              <td className="py-2 text-xs text-black/60 dark:text-slate-400 whitespace-nowrap">
+                                {e.sent_by_name ?? '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )
+        })()}
+
+        {/* ── Section 6: Proposals ── */}
         <section aria-labelledby="view-proposals-heading">
           <div className="flex items-center justify-between mb-3">
             <h2 id="view-proposals-heading" className="text-lg font-semibold">
@@ -397,8 +480,15 @@ export default function RequirementView() {
                           </tbody>
                         </table>
                       </div>
-                      {/* Link to full proposal page for editing/exporting */}
-                      <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 bg-white dark:bg-slate-800 flex justify-end">
+                      {/* Actions row */}
+                      <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 bg-white dark:bg-slate-800 flex items-center justify-between gap-3 flex-wrap">
+                        <button
+                          onClick={() => setEmailModalProposalId(proposal.id)}
+                          className="btn-secondary text-xs"
+                          aria-label={`Send ${proposalLabel} by email`}
+                        >
+                          ✉ Send Email
+                        </button>
                         <button
                           onClick={() => navigate(`/requirements/${id}/proposal`)}
                           className="btn-secondary text-xs"
@@ -415,6 +505,33 @@ export default function RequirementView() {
           </div>
         </section>
       </div>
+      {/* Send Email modal */}
+      {emailModalProposalId && requirement && (
+        <SendEmailModal
+          proposals={proposals}
+          clientEmail={requirement.client_data?.email ?? ''}
+          clientName={requirement.client_data?.name ?? ''}
+          defaultProposalId={emailModalProposalId}
+          onClose={() => setEmailModalProposalId(null)}
+          onSent={async () => {
+            await reloadProposals()
+            const name = requirement.client_data?.name ?? 'client'
+            setEmailToast(`Email sent to ${name} successfully.`)
+            setTimeout(() => setEmailToast(''), 4000)
+          }}
+        />
+      )}
+
+      {/* Success toast */}
+      {emailToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg"
+        >
+          ✓ {emailToast}
+        </div>
+      )}
     </Layout>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
+import SendEmailModal from '@/components/SendEmailModal'
 import { catalogService, proposalService, requirementService } from '@/services'
 import type { CatalogItem, Proposal, ProposalItem, Requirement } from '@/types'
 
@@ -53,6 +54,8 @@ export default function ProposalPage() {
   const [proposal, setProposal] = useState<Proposal | null>(null)
   const [requirement, setRequirement] = useState<Requirement | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [emailToast, setEmailToast] = useState('')
 
   // Catalog search state
   const [facets, setFacets] = useState<{
@@ -385,10 +388,46 @@ export default function ProposalPage() {
               Last exported: {new Date(proposal.last_exported_at).toLocaleString()}
             </p>
           )}
-          <button onClick={handleExport} disabled={proposal.items.length === 0} className="btn-primary">
-            ⬇ Download XLSX
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button onClick={handleExport} disabled={proposal.items.length === 0} className="btn-primary">
+              ⬇ Download XLSX
+            </button>
+            <button
+              onClick={() => setShowEmailModal(true)}
+              disabled={proposal.items.length === 0}
+              className="btn-secondary"
+            >
+              ✉ Send Email
+            </button>
+          </div>
         </section>
+      )}
+
+      {/* Email modal */}
+      {showEmailModal && requirement && (
+        <SendEmailModal
+          proposals={[proposal]}
+          clientEmail={requirement.client_data?.email ?? ''}
+          clientName={requirement.client_data?.name ?? ''}
+          defaultProposalId={proposal.id}
+          onClose={() => setShowEmailModal(false)}
+          onSent={() => {
+            const name = requirement.client_data?.name ?? 'client'
+            setEmailToast(`Email sent to ${name} successfully.`)
+            setTimeout(() => setEmailToast(''), 4000)
+          }}
+        />
+      )}
+
+      {/* Success toast */}
+      {emailToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg"
+        >
+          ✓ {emailToast}
+        </div>
       )}
     </Layout>
   )
@@ -521,13 +560,26 @@ function EditableItemsTable({
                 {TABLE_COLUMNS.map((col) => {
                   if (col.kind === 'calc') {
                     const val = calcValues[col.key]
+                    // Explain WHY a cell is blank so users know what to fill in.
+                    const perKgSet = !isNaN(parseNumeric(merged.per_kg_rate))
+                    const sizeSet  = !isNaN(parseNumeric(merged.size))
+                    let hint = 'Auto-calculated'
+                    if (val === null) {
+                      if (col.key === 'raw_per_unit') {
+                        hint = perKgSet ? 'Enter Size to calculate' : 'Enter RM Cost/kg and Size to calculate'
+                      } else {
+                        hint = sizeSet && perKgSet ? 'Waiting on upstream values' : 'Enter RM Cost/kg and Size to calculate'
+                      }
+                    }
                     return (
                       <td
                         key={col.key}
                         className="px-2 py-1 text-right bg-amber-50/50 text-black/60 font-medium tabular-nums whitespace-nowrap"
-                        title="Auto-calculated"
+                        title={hint}
                       >
-                        {fmtCalc(val)}
+                        {val === null
+                          ? <span className="text-black/30 italic text-xs">{perKgSet && !sizeSet && col.key === 'raw_per_unit' ? '↑ size?' : '—'}</span>
+                          : fmtCalc(val)}
                       </td>
                     )
                   }

@@ -123,6 +123,16 @@ export interface ProposalItem {
   added_at: string
 }
 
+export interface SentEmail {
+  id: string
+  proposal: string
+  sent_to: string
+  subject: string
+  sent_by: string | null
+  sent_by_name?: string
+  sent_at: string
+}
+
 export interface Proposal {
   id: string
   requirement: string
@@ -130,6 +140,7 @@ export interface Proposal {
   created_by: string | null
   created_by_name?: string
   items: ProposalItem[]
+  sent_emails: SentEmail[]
   created_at: string
   updated_at: string
   last_exported_at: string | null
