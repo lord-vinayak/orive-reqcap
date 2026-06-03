@@ -3,7 +3,8 @@ import type {
   CRMProject, CRMProjectList, DashboardStats, PaginatedResponse,
   ProjectNote, ProjectFile, KeyLearning, ProjectMilestone,
   Manufacturer, Vendor, InternalTeamMember, VendorRating,
-  VendorProjectPayment, DropdownOption, ProjectPayment,
+  VendorProjectPayment, DropdownOption, ProjectPayment, PaymentVendorOption,
+  StageStatusResponse, StageCompletion, TaskItem, TaskStatus,
 } from '@/types/crm'
 
 // ─── Projects ────────────────────────────────────────────────────────────────
@@ -42,11 +43,40 @@ export const crmApi = {
   getSimilarLearnings: (projectId: string) =>
     api.get<KeyLearning[]>(`/crm/projects/${projectId}/similar-learnings/`),
 
-  toggleSubStage: (projectId: string, stageKey: string, subStageKey: string, completed: boolean) =>
-    api.post(`/crm/projects/${projectId}/toggle-sub-stage/`, { stage_key: stageKey, sub_stage_key: subStageKey, completed }),
+  // Stage actions
+  getStageStatus: (projectId: string) =>
+    api.get<StageStatusResponse>(`/crm/projects/${projectId}/stage-status/`),
 
   completeStage: (projectId: string, stageKey: string, isComplete: boolean) =>
-    api.post(`/crm/projects/${projectId}/complete-stage/`, { stage_key: stageKey, is_complete: isComplete }),
+    api.post<StageCompletion>(`/crm/projects/${projectId}/complete-stage/`, { stage_key: stageKey, is_complete: isComplete }),
+
+  approveSample: (projectId: string, approved: boolean) =>
+    api.post<StageStatusResponse>(`/crm/projects/${projectId}/approve-sample/`, { approved }),
+
+  setOrderGate: (projectId: string, data: { order_advance_received: boolean; order_booked: boolean }) =>
+    api.post<StageStatusResponse>(`/crm/projects/${projectId}/set-order-gate/`, data),
+
+  resetBatch: (projectId: string) =>
+    api.post<StageStatusResponse>(`/crm/projects/${projectId}/reset-batch/`),
+
+  // Task assignment
+  assignStage: (projectId: string, stageKey: string, assignedTo: string) =>
+    api.post<TaskItem>(`/crm/projects/${projectId}/assign-stage/`, {
+      stage_key: stageKey,
+      assigned_to: assignedTo,
+    }),
+
+  updateTaskStatus: (projectId: string, stageKey: string, taskStatus: TaskStatus) =>
+    api.patch<TaskItem>(`/crm/projects/${projectId}/task-status/`, {
+      stage_key: stageKey,
+      task_status: taskStatus,
+    }),
+
+  listTasks: () =>
+    api.get<PaginatedResponse<TaskItem>>('/crm/tasks/'),
+
+  allTeamMembers: () =>
+    api.get<PaginatedResponse<InternalTeamMember>>('/crm/team-members/'),
 
   // Notes (append-only)
   listNotes: (projectId: string, stageKey?: string) =>
@@ -112,6 +142,9 @@ export const crmApi = {
   manufacturerDropdown: () =>
     api.get<DropdownOption[]>('/crm/manufacturers/dropdown/'),
 
+  allVendorsForPayment: () =>
+    api.get<PaymentVendorOption[]>('/crm/manufacturers/all-for-payment/'),
+
   // Vendors
   listVendors: (params?: Record<string, string>) =>
     api.get<PaginatedResponse<Vendor>>('/crm/vendors/', { params }),
@@ -169,6 +202,11 @@ export const crmApi = {
   listProjectPayments: (projectId: string) =>
     api.get<PaginatedResponse<ProjectPayment>>('/crm/project-payments/', {
       params: { project: projectId },
+    }),
+
+  listVendorPayments: (kind: 'vendor' | 'manufacturer', entityId: string) =>
+    api.get<PaginatedResponse<ProjectPayment>>('/crm/project-payments/', {
+      params: kind === 'manufacturer' ? { manufacturer: entityId } : { vendor: entityId },
     }),
 
   createProjectPayment: (formData: FormData) =>

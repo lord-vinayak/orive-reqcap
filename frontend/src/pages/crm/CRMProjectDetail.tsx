@@ -1,38 +1,45 @@
-import { useEffect, useState, useId, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useEffect, useId, useRef, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
-import type { CRMProject, StageDef, ProjectNote, SubStageCompletion } from '@/types/crm'
+import type { CRMProject, ProjectNote, StageStatusResponse, ProjectPayment, InternalTeamMember, TaskItem } from '@/types/crm'
 import { ProgressBar } from '@/components/crm/ProgressBar'
-import { StatusBadge } from '@/components/crm/StatusBadge'
-import { StagePanel } from '@/components/crm/StagePanel'
 import { MilestoneTable } from '@/components/crm/MilestoneTable'
 import { VendorSidePanel } from '@/components/crm/VendorSidePanel'
 import { PaymentSidePanel } from '@/components/crm/PaymentSidePanel'
-import type { ProjectPayment } from '@/types/crm'
+import { SamplePhaseView } from '@/components/crm/SamplePhaseView'
+import { OrderPhaseView } from '@/components/crm/OrderPhaseView'
+import { useTaskSocket } from '@/hooks/useTaskSocket'
 
 export default function CRMProjectDetail() {
   const { id } = useParams<{ id: string }>()
   const [project, setProject] = useState<CRMProject | null>(null)
+  const [stageStatus, setStageStatus] = useState<StageStatusResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [activeStage, setActiveStage] = useState<string | null>(null)
+  const [activePhase, setActivePhase] = useState<'sample' | 'order'>('sample')
+  const [activeStageKey, setActiveStageKey] = useState<string | null>(null)
   const [notesView, setNotesView] = useState<'stage' | 'all'>('stage')
   const [vendorPanelOpen, setVendorPanelOpen] = useState(false)
   const [paymentPanelOpen, setPaymentPanelOpen] = useState(false)
   const [payments, setPayments] = useState<ProjectPayment[]>([])
+  const [actionSaving, setActionSaving] = useState(false)
+  const [teamMembers, setTeamMembers] = useState<InternalTeamMember[]>([])
 
   const fetchProject = () => {
     if (!id) return
-    crmApi.getProject(id)
-      .then((r) => {
-        setProject(r.data)
-        if (!activeStage && r.data.stage_definitions.length > 0) {
-          setActiveStage(r.data.project_stage)
-        }
-      })
+    return crmApi.getProject(id)
+      .then((r) => setProject(r.data))
       .catch(() => setError('Failed to load project.'))
-      .finally(() => setLoading(false))
+  }
+
+  const fetchStageStatus = () => {
+    if (!id) return
+    return crmApi.getStageStatus(id)
+      .then((r) => {
+        setStageStatus(r.data)
+        setActivePhase(r.data.phase)
+      })
   }
 
   const fetchPayments = () => {
@@ -43,7 +50,82 @@ export default function CRMProjectDetail() {
     })
   }
 
-  useEffect(() => { fetchProject(); fetchPayments() }, [id])
+  useEffect(() => {
+    if (!id) return
+    Promise.all([fetchProject(), fetchStageStatus(), fetchPayments()])
+      .finally(() => setLoading(false))
+    crmApi.allTeamMembers().then((r) => {
+      const arr = Array.isArray(r.data) ? r.data : (r.data as any).results ?? []
+      setTeamMembers(arr)
+    })
+  }, [id])
+
+  // WS: when a task is assigned/updated by anyone, refresh stage status
+  useTaskSocket((_task: TaskItem) => {
+    fetchStageStatus()
+  })
+
+  const refresh = async () => {
+    await Promise.all([fetchProject(), fetchStageStatus()])
+  }
+
+  // ── Stage action handlers ──────────────────────────────────────────────────
+
+  const handleCompleteStage = async (key: string, complete: boolean) => {
+    if (!id) return
+    setActionSaving(true)
+    try {
+      await crmApi.completeStage(id, key, complete)
+      await refresh()
+    } finally {
+      setActionSaving(false)
+    }
+  }
+
+  const handleApproveSample = async (approved: boolean) => {
+    if (!id) return
+    setActionSaving(true)
+    try {
+      const res = await crmApi.approveSample(id, approved)
+      setStageStatus(res.data)
+      await fetchProject()
+    } finally {
+      setActionSaving(false)
+    }
+  }
+
+  const handleSetOrderGate = async (data: { order_advance_received: boolean; order_booked: boolean }) => {
+    if (!id) return
+    setActionSaving(true)
+    try {
+      const res = await crmApi.setOrderGate(id, data)
+      setStageStatus(res.data)
+      if (data.order_booked) setActivePhase('order')
+      await fetchProject()
+    } finally {
+      setActionSaving(false)
+    }
+  }
+
+  const handleResetBatch = async () => {
+    if (!id) return
+    setActionSaving(true)
+    try {
+      const res = await crmApi.resetBatch(id)
+      setStageStatus(res.data)
+      await fetchProject()
+    } finally {
+      setActionSaving(false)
+    }
+  }
+
+  const handleAssignStage = async (stageKey: string, memberId: string) => {
+    if (!id) return
+    await crmApi.assignStage(id, stageKey, memberId)
+    await fetchStageStatus()
+  }
+
+  // ── Loading / error states ──────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -58,79 +140,24 @@ export default function CRMProjectDetail() {
   if (error || !project) {
     return (
       <Layout title="Project">
-        <div role="alert" className="text-red-600 dark:text-red-400 text-sm">{error || 'Project not found.'}</div>
+        <div role="alert" className="text-red-600 dark:text-red-400 text-sm">
+          {error || 'Project not found.'}
+        </div>
       </Layout>
     )
   }
 
   const delayedCount = project.delayed_count
   const atRiskCount = project.at_risk_count
-  const activeStageNotes = project.notes.filter((n) => n.stage_key === activeStage)
+  const progress = stageStatus?.progress
+
+  // Notes filtered for the active stage key (shown in the right sidebar area)
+  const activeStageNotes = activeStageKey
+    ? project.notes.filter((n) => n.stage_key === activeStageKey)
+    : []
   const allNotes = [...project.notes].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   )
-
-  const getSubStageCompletion = (stageKey: string, subKey: string): SubStageCompletion | undefined =>
-    project.sub_stage_completions.find((s) => s.stage_key === stageKey && s.sub_stage_key === subKey)
-
-  const isStageComplete = (stageKey: string): boolean =>
-    project.stage_completions.find((s) => s.stage_key === stageKey)?.is_complete ?? false
-
-  /**
-   * A stage is locked when the immediately preceding stage is not yet complete.
-   * Stage 0 (New Lead) is always unlocked.
-   * Stages auto-completed at project creation are always considered unlocked.
-   */
-  const isStageLocked = (stageKey: string): boolean => {
-    const stageDef = project.stage_definitions.find((s) => s.key === stageKey)
-    if (!stageDef || stageDef.index === 0) return false
-    const prevDef = project.stage_definitions.find((s) => s.index === stageDef.index - 1)
-    if (!prevDef) return false
-    return !isStageComplete(prevDef.key)
-  }
-
-  const handleToggleSubStage = async (stageKey: string, subKey: string, completed: boolean) => {
-    if (!id || !project) return
-    // Optimistic update — flip the checkbox immediately in local state
-    setProject((prev) => {
-      if (!prev) return prev
-      const exists = prev.sub_stage_completions.find(
-        (s) => s.stage_key === stageKey && s.sub_stage_key === subKey
-      )
-      const updated = exists
-        ? prev.sub_stage_completions.map((s) =>
-            s.stage_key === stageKey && s.sub_stage_key === subKey
-              ? { ...s, completed }
-              : s
-          )
-        : [
-            ...prev.sub_stage_completions,
-            {
-              id: `optimistic-${stageKey}-${subKey}`,
-              stage_key: stageKey,
-              sub_stage_key: subKey,
-              completed,
-              completed_at: completed ? new Date().toISOString() : null,
-              completed_by: null,
-              completed_by_name: null,
-            },
-          ]
-      return { ...prev, sub_stage_completions: updated }
-    })
-    // Sync with server and refresh progress
-    try {
-      await crmApi.toggleSubStage(id, stageKey, subKey, completed)
-    } catch {
-      // Revert on failure by re-fetching ground truth
-    }
-    fetchProject()
-  }
-
-  const handleCompleteStage = async (stageKey: string, isComplete: boolean) => {
-    if (!id) return
-    await crmApi.completeStage(id, stageKey, isComplete)
-    fetchProject()
-  }
 
   return (
     <Layout title={project.project_no}>
@@ -171,18 +198,20 @@ export default function CRMProjectDetail() {
               Vendors
             </button>
             <div className="text-sm text-black/60 dark:text-slate-400 text-right">
-              <div>Stage: <span className="font-medium capitalize text-black dark:text-white">{project.project_stage.replace(/_/g, ' ')}</span></div>
+              <div>
+                Phase:{' '}
+                <span className={`font-medium ${project.phase === 'order' ? 'text-green-600 dark:text-green-400' : 'text-mustard'}`}>
+                  {project.phase === 'order' ? 'Order/Production' : 'Sample'}
+                </span>
+              </div>
               <div className="mt-0.5">Started: {new Date(project.start_date).toLocaleDateString('en-IN')}</div>
             </div>
           </div>
         </div>
 
-        {/* ── Red flag section ── */}
+        {/* ── Red flags ── */}
         {(delayedCount > 0 || atRiskCount > 0) && (
-          <section
-            aria-labelledby="flags-heading"
-            className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
-          >
+          <section aria-labelledby="flags-heading" className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
             <h2 id="flags-heading" className="font-semibold text-red-700 dark:text-red-300 mb-2 flex items-center gap-2">
               <span aria-hidden="true">🚩</span> Flags
             </h2>
@@ -201,102 +230,121 @@ export default function CRMProjectDetail() {
           </section>
         )}
 
-        {/* ── Overall progress ── */}
-        <section aria-labelledby="progress-heading">
-          <h2 id="progress-heading" className="sr-only">Overall project progress</h2>
-          <ProgressBar value={project.progress_percentage} label="Overall Progress" />
-        </section>
+        {/* ── Progress bars ── */}
+        {progress && (
+          <section aria-labelledby="progress-heading" className="space-y-2">
+            <h2 id="progress-heading" className="sr-only">Project progress</h2>
+            <ProgressBar
+              value={progress.overall_pct}
+              label={`Overall Progress — ${progress.overall_pct}%`}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-black/50 dark:text-slate-500 mb-1">
+                  Sample Phase ({progress.sample_done}/{progress.sample_total})
+                </p>
+                <ProgressBar
+                  value={Math.round((progress.sample_done / progress.sample_total) * 100)}
+                  size="sm"
+                />
+              </div>
+              <div>
+                <p className="text-xs text-black/50 dark:text-slate-500 mb-1">
+                  {stageStatus?.order_phase.locked ? '🔒 ' : ''}Order Phase ({progress.order_done}/{progress.order_total})
+                </p>
+                <ProgressBar
+                  value={Math.round((progress.order_done / progress.order_total) * 100)}
+                  size="sm"
+                />
+              </div>
+            </div>
+          </section>
+        )}
 
-        {/* ── Per-stage progress micro-bars ── */}
-        <section aria-labelledby="stage-progress-heading">
-          <h2 id="stage-progress-heading" className="text-sm font-semibold text-black/60 dark:text-slate-400 uppercase tracking-wide mb-3">
-            Stage Progress
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {project.stage_definitions.map((s) => {
-              const complete = isStageComplete(s.key)
-              const locked = isStageLocked(s.key)
-              const isActive = s.key === activeStage
-
-              // Compute partial fill for stages that have sub-stages
-              const totalSubs = s.sub_stages?.length ?? 0
-              const checkedSubs = totalSubs > 0
-                ? project.sub_stage_completions.filter(
-                    (sc) => sc.stage_key === s.key && sc.completed
-                  ).length
-                : 0
-              // fillPct: 100 if fully complete, partial if sub-stages in progress, 0 otherwise
-              const fillPct = complete
-                ? 100
-                : totalSubs > 0
-                ? Math.round((checkedSubs / totalSubs) * 100)
-                : 0
-
+        {/* ── Phase tabs ── */}
+        {stageStatus && (
+          <nav aria-label="Project phase" role="tablist" className="flex border-b border-black/10 dark:border-white/10">
+            {(['sample', 'order'] as const).map((phase) => {
+              const isLocked = phase === 'order' && stageStatus.order_phase.locked
               return (
                 <button
-                  key={s.key}
-                  onClick={() => setActiveStage(s.key)}
-                  className={`text-left p-2 rounded border text-xs transition-colors focus-visible:ring-2 focus-visible:ring-mustard ${
-                    isActive
-                      ? 'border-mustard bg-mustard/10'
-                      : locked
-                      ? 'border-black/5 dark:border-white/5 opacity-50 cursor-default'
-                      : 'border-black/10 dark:border-white/10 hover:border-mustard/50'
+                  key={phase}
+                  role="tab"
+                  aria-selected={activePhase === phase}
+                  aria-controls={`panel-${phase}`}
+                  onClick={() => !isLocked && setActivePhase(phase)}
+                  disabled={isLocked}
+                  className={`px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors focus-visible:ring-2 focus-visible:ring-mustard ${
+                    activePhase === phase
+                      ? 'border-mustard text-mustard'
+                      : isLocked
+                      ? 'border-transparent text-black/30 dark:text-slate-600 cursor-not-allowed'
+                      : 'border-transparent text-black/60 dark:text-slate-400 hover:text-black dark:hover:text-white hover:border-black/20'
                   }`}
-                  aria-pressed={isActive}
-                  aria-label={`${s.display} stage, ${complete ? 'complete' : locked ? 'locked — complete previous stage first' : `${fillPct}% done`}`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-black dark:text-white truncate">{s.display}</span>
-                    {complete
-                      ? <span aria-hidden="true" className="text-green-500 ml-1">✓</span>
-                      : locked
-                      ? <span aria-hidden="true" className="text-black/30 dark:text-white/30 ml-1">🔒</span>
-                      : totalSubs > 0 && checkedSubs > 0
-                      ? <span className="text-black/40 dark:text-slate-500 tabular-nums ml-1">{checkedSubs}/{totalSubs}</span>
-                      : null}
-                  </div>
-                  {/* Track (grey) with filled portion on top */}
-                  <div className="h-1 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-300 ${complete ? 'bg-green-500' : 'bg-mustard'}`}
-                      style={{ width: `${fillPct}%` }}
-                      aria-hidden="true"
-                    />
-                  </div>
+                  {phase === 'sample' ? 'Sample Phase' : 'Order Phase'}
+                  {phase === 'order' && !isLocked && ' ✓'}
                 </button>
               )
             })}
-          </div>
-        </section>
+          </nav>
+        )}
 
+        {/* ── Main content grid ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* ── Left: Stage panel ── */}
-          <div className="lg:col-span-2 space-y-4">
-            {activeStage && (
-              <StagePanel
+
+          {/* Left: Phase view */}
+          <div
+            className="lg:col-span-2"
+            role="tabpanel"
+            id={`panel-${activePhase}`}
+            aria-labelledby={`tab-${activePhase}`}
+          >
+            {stageStatus && activePhase === 'sample' && (
+              <SamplePhaseView
+                stageStatus={stageStatus}
                 projectId={project.id}
-                stageDef={project.stage_definitions.find((s) => s.key === activeStage)!}
-                subStageCompletions={project.sub_stage_completions.filter((s) => s.stage_key === activeStage)}
-                stageComplete={isStageComplete(activeStage)}
-                isLocked={isStageLocked(activeStage)}
-                files={project.files.filter((f) => f.stage_key === activeStage)}
-                notes={activeStageNotes}
-                onToggleSubStage={handleToggleSubStage}
+                activeStageKey={activeStageKey}
+                setActiveStageKey={setActiveStageKey}
                 onCompleteStage={handleCompleteStage}
-                onRefresh={fetchProject}
+                onApproveSample={handleApproveSample}
+                onSetOrderGate={handleSetOrderGate}
+                saving={actionSaving}
+                teamMembers={teamMembers}
+                onAssign={handleAssignStage}
+              />
+            )}
+            {stageStatus && activePhase === 'order' && (
+              <OrderPhaseView
+                stageStatus={stageStatus}
+                activeStageKey={activeStageKey}
+                setActiveStageKey={setActiveStageKey}
+                onCompleteStage={handleCompleteStage}
+                onResetBatch={handleResetBatch}
+                saving={actionSaving}
+                teamMembers={teamMembers}
+                onAssign={handleAssignStage}
               />
             )}
           </div>
 
-          {/* ── Right: Project meta + notes ── */}
+          {/* Right: Project info + notes/files for active stage */}
           <div className="space-y-4">
-            {/* Project meta */}
             <ProjectInfoPanel project={project} onRefresh={fetchProject} />
 
-            {/* Timeline milestones */}
             {project.milestones.length > 0 && (
               <MilestoneTable milestones={project.milestones} projectId={project.id} onRefresh={fetchProject} />
+            )}
+
+            {/* Active stage notes + files panel */}
+            {activeStageKey && (
+              <ActiveStagePanel
+                stageKey={activeStageKey}
+                projectId={project.id}
+                notes={activeStageNotes}
+                files={project.files.filter((f) => f.stage_key === activeStageKey)}
+                onRefresh={refresh}
+              />
             )}
           </div>
         </div>
@@ -304,34 +352,33 @@ export default function CRMProjectDetail() {
         {/* ── Consolidated Notes ── */}
         <section aria-labelledby="notes-heading">
           <div className="flex items-center justify-between mb-3">
-            <h2 id="notes-heading" className="text-lg font-semibold text-black dark:text-white">Notes</h2>
+            <h2 id="notes-heading" className="text-lg font-semibold text-black dark:text-white">All Notes</h2>
             <div role="group" aria-label="Notes view toggle" className="flex border border-black/10 dark:border-white/10 rounded overflow-hidden">
-              <button
-                onClick={() => setNotesView('stage')}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-mustard ${notesView === 'stage' ? 'bg-mustard text-black' : 'text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'}`}
-                aria-pressed={notesView === 'stage'}
-              >
-                By Stage
-              </button>
-              <button
-                onClick={() => setNotesView('all')}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-mustard ${notesView === 'all' ? 'bg-mustard text-black' : 'text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'}`}
-                aria-pressed={notesView === 'all'}
-              >
-                Timeline
-              </button>
+              {(['stage', 'all'] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setNotesView(v)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-mustard ${
+                    notesView === v ? 'bg-mustard text-black' : 'text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'
+                  }`}
+                  aria-pressed={notesView === v}
+                >
+                  {v === 'stage' ? 'By Stage' : 'Timeline'}
+                </button>
+              ))}
             </div>
           </div>
 
           {notesView === 'stage' ? (
-            <div className="space-y-4">
-              {project.stage_definitions.map((s) => {
-                const stageNotes = project.notes.filter((n) => n.stage_key === s.key)
-                if (stageNotes.length === 0) return null
+            <div className="space-y-3">
+              {/* Group notes by stage key */}
+              {Array.from(new Set(project.notes.map((n) => n.stage_key || ''))).map((stageKey) => {
+                const stageNotes = project.notes.filter((n) => (n.stage_key || '') === stageKey)
+                const label = stageKey ? stageKey.replace(/_c[23]$/, '').replace(/_/g, ' ') : 'Project level'
                 return (
-                  <details key={s.key} className="border border-black/10 dark:border-white/10 rounded-lg">
-                    <summary className="px-4 py-3 cursor-pointer font-medium text-black dark:text-white text-sm select-none hover:bg-black/2 dark:hover:bg-white/2">
-                      {s.display} ({stageNotes.length})
+                  <details key={stageKey || '__project__'} className="border border-black/10 dark:border-white/10 rounded-lg">
+                    <summary className="px-4 py-3 cursor-pointer font-medium text-black dark:text-white text-sm select-none hover:bg-black/2 dark:hover:bg-white/2 capitalize">
+                      {label} ({stageNotes.length})
                     </summary>
                     <div className="px-4 pb-4 space-y-2">
                       {stageNotes.map((note) => <NoteItem key={note.id} note={note} />)}
@@ -339,16 +386,6 @@ export default function CRMProjectDetail() {
                   </details>
                 )
               })}
-              {project.notes.filter((n) => !n.stage_key).length > 0 && (
-                <details className="border border-black/10 dark:border-white/10 rounded-lg">
-                  <summary className="px-4 py-3 cursor-pointer font-medium text-black dark:text-white text-sm select-none hover:bg-black/2 dark:hover:bg-white/2">
-                    Project-level notes ({project.notes.filter((n) => !n.stage_key).length})
-                  </summary>
-                  <div className="px-4 pb-4 space-y-2">
-                    {project.notes.filter((n) => !n.stage_key).map((note) => <NoteItem key={note.id} note={note} />)}
-                  </div>
-                </details>
-              )}
               {project.notes.length === 0 && (
                 <p className="text-black/60 dark:text-slate-400 text-sm">No notes yet.</p>
               )}
@@ -360,8 +397,8 @@ export default function CRMProjectDetail() {
               )}
               {allNotes.map((note) => (
                 <div key={note.id} className="flex gap-3">
-                  <div className="text-xs text-mustard font-medium w-28 shrink-0 pt-1">
-                    {note.stage_key ? note.stage_key.replace(/_/g, ' ') : 'Project'}
+                  <div className="text-xs text-mustard font-medium w-32 shrink-0 pt-1 capitalize">
+                    {note.stage_key ? note.stage_key.replace(/_c[23]$/, '').replace(/_/g, ' ') : 'Project'}
                   </div>
                   <NoteItem note={note} />
                 </div>
@@ -400,7 +437,96 @@ export default function CRMProjectDetail() {
   )
 }
 
-// ── Project Info panel with inline Sample Booked Date edit ─────────────────────
+// ── Active stage notes / files panel ──────────────────────────────────────────
+
+function ActiveStagePanel({
+  stageKey, projectId, notes, files, onRefresh,
+}: {
+  stageKey: string
+  projectId: string
+  notes: ProjectNote[]
+  files: import('@/types/crm').ProjectFile[]
+  onRefresh: () => void
+}) {
+  const textareaId = useId()
+  const [noteText, setNoteText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const displayKey = stageKey.replace(/_c[23]$/, '').replace(/_/g, ' ')
+
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!noteText.trim()) return
+    setSubmitting(true)
+    try {
+      await crmApi.addNote({ project: projectId, stage_key: stageKey, text: noteText.trim() })
+      setNoteText('')
+      onRefresh()
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <section
+      aria-labelledby="active-stage-heading"
+      className="bg-white dark:bg-slate-800 border border-mustard/30 rounded-lg p-4 space-y-3"
+    >
+      <h3 id="active-stage-heading" className="font-semibold text-sm text-black dark:text-white capitalize">
+        {displayKey}
+      </h3>
+
+      {files.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-black/50 dark:text-slate-400 mb-1.5">Attachments ({files.length})</p>
+          <ul className="space-y-1">
+            {files.map((f) => (
+              <li key={f.id}>
+                <a
+                  href={f.drive_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-mustard hover:underline flex items-center gap-1"
+                >
+                  <span aria-hidden="true">📎</span> {f.filename}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {notes.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-black/50 dark:text-slate-400">Notes ({notes.length})</p>
+          {notes.map((note) => <NoteItem key={note.id} note={note} />)}
+        </div>
+      )}
+
+      <form onSubmit={handleAddNote} className="space-y-1.5">
+        <label htmlFor={textareaId} className="sr-only">Add a note for {displayKey}</label>
+        <textarea
+          id={textareaId}
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+          placeholder="Add a note…"
+          rows={2}
+          disabled={submitting}
+          className="w-full border border-black/15 dark:border-white/15 rounded px-2 py-1.5 text-xs bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard resize-none"
+        />
+        <button
+          type="submit"
+          disabled={submitting || !noteText.trim()}
+          className="btn-primary text-xs py-1 px-3 disabled:opacity-50"
+        >
+          {submitting ? 'Saving…' : 'Add Note'}
+        </button>
+      </form>
+    </section>
+  )
+}
+
+// ── Project Info panel ─────────────────────────────────────────────────────────
 
 function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefresh: () => void }) {
   const dateInputId = useId()
@@ -414,7 +540,6 @@ function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefre
     setDateValue(project.sample_booked_date ?? '')
     setSaveError('')
     setEditing(true)
-    // Focus the input on next tick after it mounts
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
@@ -422,7 +547,7 @@ function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefre
     setSaving(true)
     setSaveError('')
     try {
-      await crmApi.updateProject(project.id, { sample_booked_date: dateValue || null })
+      await crmApi.updateProject(project.id, { sample_booked_date: dateValue || null } as any)
       setEditing(false)
       onRefresh()
     } catch {
@@ -430,11 +555,6 @@ function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefre
     } finally {
       setSaving(false)
     }
-  }
-
-  const handleCancel = () => {
-    setEditing(false)
-    setSaveError('')
   }
 
   return (
@@ -446,16 +566,16 @@ function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefre
       <dl className="space-y-2 text-sm">
         <MetaField label="Products" value={project.no_of_products?.toString() ?? '—'} />
         <MetaField label="MOQ" value={project.moq?.toString() ?? '—'} />
-        <MetaField label="Manufacturer" value={project.manufacturer_name ?? '—'} />
-        <MetaField label="Designer" value={project.designer_name ?? '—'} />
-        <MetaField label="Packaging Vendor" value={project.packaging_vendor_name ?? '—'} />
-        <MetaField label="Printer" value={project.printer_name ?? '—'} />
-        <MetaField label="Batch Testing" value={project.batch_testing_vendor_name ?? '—'} />
-        <MetaField label="Derma Testing" value={project.derma_testing_vendor_name ?? '—'} />
+        <MetaField label="Manufacturer" value={project.manufacturers?.length ? project.manufacturers.map((m) => m.company_name).join(', ') : '—'} />
+        <MetaField label="Designer" value={project.designers?.length ? project.designers.map((v) => v.company_name).join(', ') : '—'} />
+        <MetaField label="Packaging Vendor" value={project.packaging_vendors?.length ? project.packaging_vendors.map((v) => v.company_name).join(', ') : '—'} />
+        <MetaField label="Printer" value={project.printers?.length ? project.printers.map((v) => v.company_name).join(', ') : '—'} />
+        <MetaField label="Batch Testing" value={project.batch_testing_vendors?.length ? project.batch_testing_vendors.map((v) => v.company_name).join(', ') : '—'} />
+        <MetaField label="Derma Testing" value={project.derma_testing_vendors?.length ? project.derma_testing_vendors.map((v) => v.company_name).join(', ') : '—'} />
         <MetaField label="Sales POC" value={project.sales_poc_name ?? '—'} />
         <MetaField label="Formulation POC" value={project.formulation_poc_name ?? '—'} />
 
-        {/* Sample Booked Date — inline editable */}
+        {/* Sample Booked Date */}
         <div>
           <div className="flex justify-between items-center gap-2">
             <dt className="text-black/50 dark:text-slate-500 shrink-0">Sample Booked</dt>
@@ -474,7 +594,6 @@ function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefre
               </dd>
             )}
           </div>
-
           {editing && (
             <div className="mt-2 space-y-1">
               <label htmlFor={dateInputId} className="sr-only">Sample booked date</label>
@@ -488,26 +607,14 @@ function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefre
                   className="flex-1 border border-mustard rounded px-2 py-1 text-xs bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
                   disabled={saving}
                 />
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="btn-primary text-xs py-1 px-2"
-                  aria-label="Save sample booked date"
-                >
-                  {saving ? 'Saving…' : 'Save'}
+                <button onClick={handleSave} disabled={saving} className="btn-primary text-xs py-1 px-2">
+                  {saving ? '…' : 'Save'}
                 </button>
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="btn-secondary text-xs py-1 px-2"
-                  aria-label="Cancel editing"
-                >
+                <button onClick={() => setEditing(false)} disabled={saving} className="btn-secondary text-xs py-1 px-2">
                   Cancel
                 </button>
               </div>
-              {saveError && (
-                <p role="alert" className="text-xs text-red-600 dark:text-red-400">{saveError}</p>
-              )}
+              {saveError && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{saveError}</p>}
             </div>
           )}
         </div>
@@ -515,6 +622,8 @@ function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefre
     </section>
   )
 }
+
+// ── Shared components ──────────────────────────────────────────────────────────
 
 function NoteItem({ note }: { note: ProjectNote }) {
   return (
@@ -534,78 +643,57 @@ function NoteItem({ note }: { note: ProjectNote }) {
   )
 }
 
-// ── P&L Section ───────────────────────────────────────────────────────────────
-
-const PAYMENT_TYPE_LABELS: Record<string, string> = {
-  sample: 'Sample',
-  advance: 'Advance',
-  packaging: 'Packaging',
-  printing: 'Printing',
-  derma_testing: 'Derma Testing',
-  other_service: 'Other Service',
-  shipment_printing: 'Shipment - Printing',
-  shipment_packaging: 'Shipment - Packaging',
-  shipment_testing: 'Shipment - Testing',
+function MetaField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-2">
+      <dt className="text-black/50 dark:text-slate-500">{label}</dt>
+      <dd className="font-medium text-black dark:text-white text-right">{value}</dd>
+    </div>
+  )
 }
+
+// ── P&L Section ───────────────────────────────────────────────────────────────
 
 function PLSection({ payments }: { payments: import('@/types/crm').ProjectPayment[] }) {
   const [open, setOpen] = useState(false)
+  const fmt = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-  if (payments.length === 0 && !open) {
+  if (payments.length === 0) {
     return (
       <section aria-labelledby="pl-heading">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
+        <button type="button" onClick={() => setOpen((v) => !v)}
           className="flex items-center gap-2 text-sm font-semibold text-black dark:text-white hover:text-mustard transition-colors"
-          aria-expanded={false}
-        >
-          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+          aria-expanded={open}>
+          <svg className={`w-4 h-4 shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
-          P&L Summary
-          <span className="text-xs font-normal text-black/40 dark:text-slate-500">(no payments yet)</span>
+          P&L Summary <span className="text-xs font-normal text-black/40 dark:text-slate-500">(no payments yet)</span>
         </button>
       </section>
     )
   }
 
-  // Aggregate by payment type
-  const byType: Record<string, { paid: number; received: number }> = {}
+  const bySubType: Record<string, { label: string; paid: number; received: number }> = {}
   for (const p of payments) {
-    if (!byType[p.payment_type]) byType[p.payment_type] = { paid: 0, received: 0 }
-    byType[p.payment_type].paid += Number(p.amount_paid)
-    byType[p.payment_type].received += Number(p.amount_received)
+    const key = `${p.direction}::${p.sub_type}`
+    if (!bySubType[key]) bySubType[key] = { label: p.sub_type_display, paid: 0, received: 0 }
+    if (p.direction === 'paid') bySubType[key].paid += Number(p.amount)
+    else bySubType[key].received += Number(p.amount)
   }
-
-  const rows = Object.entries(byType).map(([type, vals]) => ({
-    type,
-    label: PAYMENT_TYPE_LABELS[type] ?? type,
-    paid: vals.paid,
-    received: vals.received,
-    net: vals.received - vals.paid,
+  const rows = Object.entries(bySubType).map(([key, vals]) => ({
+    key, label: vals.label, direction: key.startsWith('paid') ? 'paid' : 'received',
+    paid: vals.paid, received: vals.received, net: vals.received - vals.paid,
   }))
-
-  const totalPaid = rows.reduce((s, r) => s + r.paid, 0)
-  const totalReceived = rows.reduce((s, r) => s + r.received, 0)
+  const totalPaid = payments.filter((p) => p.direction === 'paid').reduce((s, p) => s + Number(p.amount), 0)
+  const totalReceived = payments.filter((p) => p.direction === 'received').reduce((s, p) => s + Number(p.amount), 0)
   const totalNet = totalReceived - totalPaid
-
-  const fmt = (n: number) =>
-    n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   return (
     <section aria-labelledby="pl-heading">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
+      <button type="button" onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 text-lg font-semibold text-black dark:text-white hover:text-mustard transition-colors mb-3"
-        aria-expanded={open}
-        id="pl-heading"
-      >
-        <svg
-          className={`w-4 h-4 shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"
-        >
+        aria-expanded={open} id="pl-heading">
+        <svg className={`w-4 h-4 shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
         P&L Summary
@@ -615,13 +703,13 @@ function PLSection({ payments }: { payments: import('@/types/crm').ProjectPaymen
           </span>
         )}
       </button>
-
       {open && (
         <div className="overflow-x-auto rounded-lg border border-black/10 dark:border-white/10">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-black/5 dark:bg-white/5 text-left">
-                <th className="px-4 py-2 font-semibold text-black/70 dark:text-slate-300">Payment Type</th>
+                <th className="px-4 py-2 font-semibold text-black/70 dark:text-slate-300">Type</th>
+                <th className="px-4 py-2 font-semibold text-black/70 dark:text-slate-300">Sub Type</th>
                 <th className="px-4 py-2 font-semibold text-red-600 dark:text-red-400 text-right">Total Paid (₹)</th>
                 <th className="px-4 py-2 font-semibold text-green-600 dark:text-green-400 text-right">Total Received (₹)</th>
                 <th className="px-4 py-2 font-semibold text-black/70 dark:text-slate-300 text-right">Net (₹)</th>
@@ -629,10 +717,15 @@ function PLSection({ payments }: { payments: import('@/types/crm').ProjectPaymen
             </thead>
             <tbody className="divide-y divide-black/5 dark:divide-white/5">
               {rows.map((r) => (
-                <tr key={r.type} className="hover:bg-black/2 dark:hover:bg-white/2">
+                <tr key={r.key} className="hover:bg-black/2 dark:hover:bg-white/2">
+                  <td className="px-4 py-2">
+                    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${r.direction === 'paid' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
+                      {r.direction === 'paid' ? 'Paid' : 'Received'}
+                    </span>
+                  </td>
                   <td className="px-4 py-2 text-black dark:text-white">{r.label}</td>
-                  <td className="px-4 py-2 text-right text-red-600 dark:text-red-400 tabular-nums">{fmt(r.paid)}</td>
-                  <td className="px-4 py-2 text-right text-green-600 dark:text-green-400 tabular-nums">{fmt(r.received)}</td>
+                  <td className="px-4 py-2 text-right text-red-600 dark:text-red-400 tabular-nums">{r.paid > 0 ? fmt(r.paid) : '—'}</td>
+                  <td className="px-4 py-2 text-right text-green-600 dark:text-green-400 tabular-nums">{r.received > 0 ? fmt(r.received) : '—'}</td>
                   <td className={`px-4 py-2 text-right tabular-nums font-medium ${r.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {r.net >= 0 ? '+' : ''}{fmt(r.net)}
                   </td>
@@ -641,7 +734,7 @@ function PLSection({ payments }: { payments: import('@/types/crm').ProjectPaymen
             </tbody>
             <tfoot>
               <tr className="bg-black/5 dark:bg-white/5 border-t-2 border-black/20 dark:border-white/20 font-semibold">
-                <td className="px-4 py-2 text-black dark:text-white">Total</td>
+                <td className="px-4 py-2 text-black dark:text-white" colSpan={2}>Total</td>
                 <td className="px-4 py-2 text-right text-red-600 dark:text-red-400 tabular-nums">{fmt(totalPaid)}</td>
                 <td className="px-4 py-2 text-right text-green-600 dark:text-green-400 tabular-nums">{fmt(totalReceived)}</td>
                 <td className={`px-4 py-2 text-right tabular-nums text-base ${totalNet >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -656,14 +749,7 @@ function PLSection({ payments }: { payments: import('@/types/crm').ProjectPaymen
   )
 }
 
-function MetaField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-2">
-      <dt className="text-black/50 dark:text-slate-500">{label}</dt>
-      <dd className="font-medium text-black dark:text-white text-right">{value}</dd>
-    </div>
-  )
-}
+// ── Key Learnings Section ──────────────────────────────────────────────────────
 
 function KeyLearningsSection({ projectId }: { projectId: string }) {
   const inputId = useId()
@@ -732,7 +818,6 @@ function KeyLearningsSection({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {/* Existing learnings */}
       {learnings.length > 0 && (
         <ul className="space-y-2 mb-4">
           {learnings.map((l) => (
@@ -746,7 +831,6 @@ function KeyLearningsSection({ projectId }: { projectId: string }) {
         </ul>
       )}
 
-      {/* Add new learning */}
       <form onSubmit={handleAdd} className="flex gap-2">
         <label htmlFor={inputId} className="sr-only">Add a key learning</label>
         <input
@@ -758,12 +842,7 @@ function KeyLearningsSection({ projectId }: { projectId: string }) {
           className="flex-1 border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
           disabled={submitting}
         />
-        <button
-          type="submit"
-          className="btn-primary text-sm"
-          disabled={submitting || !newText.trim()}
-          aria-label="Add key learning"
-        >
+        <button type="submit" className="btn-primary text-sm" disabled={submitting || !newText.trim()}>
           Add
         </button>
       </form>

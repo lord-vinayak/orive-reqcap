@@ -1,0 +1,363 @@
+import { useState } from 'react'
+import type { StageStatusResponse, InternalTeamMember } from '@/types/crm'
+import { StageCheckbox } from './StageCheckbox'
+
+interface Props {
+  stageStatus: StageStatusResponse
+  projectId: string
+  activeStageKey: string | null
+  setActiveStageKey: (key: string) => void
+  onCompleteStage: (key: string, complete: boolean) => Promise<void>
+  onApproveSample: (approved: boolean) => Promise<void>
+  onSetOrderGate: (data: { order_advance_received: boolean; order_booked: boolean }) => Promise<void>
+  saving: boolean
+  teamMembers?: InternalTeamMember[]
+  onAssign?: (key: string, memberId: string) => Promise<void>
+}
+
+export function SamplePhaseView({
+  stageStatus, projectId: _projectId, activeStageKey, setActiveStageKey,
+  onCompleteStage, onApproveSample, onSetOrderGate, saving,
+  teamMembers = [], onAssign,
+}: Props) {
+  const { sample_phase, order_advance_received, order_booked, sample_phase_complete, resample_cycle, max_cycles } = stageStatus
+
+  return (
+    <div className="space-y-6">
+      {/* Pre-loop section */}
+      <StageSection
+        title="Initial Steps"
+        stages={sample_phase.pre_loop}
+        activeKey={activeStageKey}
+        setActiveKey={setActiveStageKey}
+        onToggle={onCompleteStage}
+        saving={saving}
+        teamMembers={teamMembers}
+        onAssign={onAssign}
+      />
+
+      {/* Resample cycles */}
+      {sample_phase.loop_cycles.map((cycle) => (
+        <div key={cycle.cycle} className="space-y-1">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-sm font-semibold text-black dark:text-white">
+              Sample Development — Attempt {cycle.cycle}
+            </h3>
+            {cycle.cycle > 1 && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                Resample {cycle.cycle} of {max_cycles}
+              </span>
+            )}
+            {!cycle.is_active && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                Not Approved
+              </span>
+            )}
+          </div>
+
+          {cycle.is_active ? (
+            <div
+              className="border border-black/10 dark:border-white/10 rounded-xl overflow-hidden"
+              role="region"
+              aria-label={`Sample attempt ${cycle.cycle}`}
+            >
+              {cycle.stages.map((stage) =>
+                stage.is_approval_gate ? (
+                  <ApprovalGate
+                    key={stage.key}
+                    stage={stage}
+                    cycle={cycle.cycle}
+                    maxCycles={max_cycles}
+                    onApprove={onApproveSample}
+                    saving={saving}
+                  />
+                ) : (
+                  <div
+                    key={stage.key}
+                    onClick={() => !stage.is_locked && setActiveStageKey(stage.key)}
+                    className={`cursor-pointer ${activeStageKey === stage.key ? 'ring-2 ring-inset ring-mustard' : ''}`}
+                  >
+                    <StageCheckbox
+                      stage={stage} onToggle={onCompleteStage} saving={saving}
+                      teamMembers={teamMembers} onAssign={onAssign}
+                    />
+                  </div>
+                )
+              )}
+            </div>
+          ) : (
+            // Collapsed past cycle
+            <div className="border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-black/50 dark:text-slate-400 italic">
+              Attempt {cycle.cycle} — sample was not approved, resampling initiated
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Post-approval */}
+      {sample_phase.show_post_approval && (
+        <StageSection
+          title="After Sample Approval"
+          stages={sample_phase.post_approval}
+          activeKey={activeStageKey}
+          setActiveKey={setActiveStageKey}
+          onToggle={onCompleteStage}
+          saving={saving}
+          teamMembers={teamMembers}
+          onAssign={onAssign}
+        />
+      )}
+
+      {/* Order gate */}
+      {sample_phase_complete && (
+        <OrderGate
+          advanceReceived={order_advance_received}
+          orderBooked={order_booked}
+          onSave={onSetOrderGate}
+          saving={saving}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── Stage section wrapper ─────────────────────────────────────────────────────
+
+function StageSection({
+  title, stages, activeKey, setActiveKey, onToggle, saving, teamMembers, onAssign,
+}: {
+  title: string
+  stages: StageStatusResponse['sample_phase']['pre_loop']
+  activeKey: string | null
+  setActiveKey: (k: string) => void
+  onToggle: (k: string, v: boolean) => Promise<void>
+  saving: boolean
+  teamMembers?: InternalTeamMember[]
+  onAssign?: (key: string, memberId: string) => Promise<void>
+}) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-black dark:text-white mb-2">{title}</h3>
+      <div className="border border-black/10 dark:border-white/10 rounded-xl overflow-hidden" role="list">
+        {stages.map((stage) => (
+          <div
+            key={stage.key}
+            role="listitem"
+            onClick={() => !stage.is_locked && setActiveKey(stage.key)}
+            className={`cursor-pointer ${activeKey === stage.key ? 'ring-2 ring-inset ring-mustard' : ''}`}
+          >
+            <StageCheckbox
+              stage={stage} onToggle={onToggle} saving={saving}
+              teamMembers={teamMembers} onAssign={onAssign}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Sample approval gate ──────────────────────────────────────────────────────
+
+function ApprovalGate({
+  stage, cycle, maxCycles, onApprove, saving,
+}: {
+  stage: StageStatusResponse['sample_phase']['pre_loop'][number]
+  cycle: number
+  maxCycles: number
+  onApprove: (approved: boolean) => Promise<void>
+  saving: boolean
+}) {
+  const [confirming, setConfirming] = useState<'yes' | 'no' | null>(null)
+  const canResample = cycle < maxCycles
+
+  if (stage.is_complete) {
+    return (
+      <div className="flex items-center gap-3 px-3 py-2.5 bg-green-50 dark:bg-green-900/10">
+        <span className="text-green-600 dark:text-green-400 text-lg" aria-hidden="true">✓</span>
+        <div>
+          <p className="text-sm font-medium text-green-700 dark:text-green-300">Sample Approved</p>
+          {stage.completed_by_name && (
+            <p className="text-xs text-black/40 dark:text-slate-500">
+              by {stage.completed_by_name}
+              {stage.completed_at && <> · {new Date(stage.completed_at).toLocaleDateString('en-IN')}</>}
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (stage.is_locked) {
+    return (
+      <div className="flex items-center gap-3 px-3 py-2.5 opacity-50">
+        <span className="text-black/30 dark:text-slate-600 text-lg" aria-hidden="true">○</span>
+        <p className="text-sm text-black/50 dark:text-slate-500">Sample Approved? (complete previous steps first)</p>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="px-3 py-3 border-t border-black/5 dark:border-white/5 bg-amber-50/50 dark:bg-amber-900/10"
+      role="group"
+      aria-label="Sample approval decision"
+    >
+      <p className="text-sm font-medium text-black dark:text-white mb-2">
+        Sample Approved by Client?
+      </p>
+      {confirming === null ? (
+        <div className="flex gap-2" role="radiogroup" aria-label="Approval decision">
+          <button
+            type="button"
+            onClick={() => setConfirming('yes')}
+            disabled={saving}
+            aria-pressed={false}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-mustard"
+          >
+            Yes — Approved
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirming('no')}
+            disabled={saving || !canResample}
+            aria-pressed={false}
+            title={!canResample ? 'Maximum resample cycles reached' : undefined}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-mustard"
+          >
+            No — Resample
+          </button>
+          {!canResample && (
+            <p className="text-xs text-red-600 dark:text-red-400 self-center" role="alert">
+              Max {maxCycles} cycles reached
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-black/70 dark:text-slate-300">
+            {confirming === 'yes' ? 'Confirm sample is approved?' : 'Confirm resample — this starts a new development cycle.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => { onApprove(confirming === 'yes'); setConfirming(null) }}
+            disabled={saving}
+            className="px-3 py-1 rounded text-xs font-semibold bg-mustard text-black hover:bg-mustard/80 disabled:opacity-50"
+          >
+            {saving ? '…' : 'Confirm'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirming(null)}
+            disabled={saving}
+            className="px-3 py-1 rounded text-xs text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Order gate ────────────────────────────────────────────────────────────────
+
+function OrderGate({
+  advanceReceived, orderBooked, onSave, saving,
+}: {
+  advanceReceived: boolean
+  orderBooked: boolean
+  onSave: (data: { order_advance_received: boolean; order_booked: boolean }) => Promise<void>
+  saving: boolean
+}) {
+  const [localAdvance, setLocalAdvance] = useState(advanceReceived)
+  const [localBooked, setLocalBooked] = useState<boolean | null>(orderBooked || null)
+  const [saving2, setSaving2] = useState(false)
+
+  if (orderBooked) {
+    return (
+      <div className="border-2 border-green-500 rounded-xl p-4 bg-green-50 dark:bg-green-900/10">
+        <div className="flex items-center gap-2">
+          <span className="text-green-600 dark:text-green-400 text-xl" aria-hidden="true">🎉</span>
+          <p className="font-semibold text-green-700 dark:text-green-300">Order Booked — Move to Production Phase</p>
+        </div>
+      </div>
+    )
+  }
+
+  const handleSave = async () => {
+    if (localBooked === null) return
+    setSaving2(true)
+    try {
+      await onSave({ order_advance_received: localAdvance, order_booked: localBooked })
+    } finally {
+      setSaving2(false)
+    }
+  }
+
+  return (
+    <div
+      className="border-2 border-mustard rounded-xl p-5 bg-mustard/5 dark:bg-mustard/5 space-y-4"
+      role="region"
+      aria-label="Order booking gate"
+    >
+      <h3 className="font-semibold text-black dark:text-white">Order Booking</h3>
+      <p className="text-sm text-black/60 dark:text-slate-400">
+        Sample has been approved. Confirm order details to unlock the production phase.
+      </p>
+
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={localAdvance}
+          onChange={(e) => setLocalAdvance(e.target.checked)}
+          disabled={saving || saving2}
+          className="w-4 h-4 accent-mustard"
+          aria-label="Order advance received"
+        />
+        <span className="text-sm text-black dark:text-white">Order Advance Received</span>
+      </label>
+
+      <fieldset>
+        <legend className="text-sm font-medium text-black dark:text-white mb-2">Order Booked?</legend>
+        <div className="flex gap-3" role="radiogroup">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="order-booked"
+              value="yes"
+              checked={localBooked === true}
+              onChange={() => setLocalBooked(true)}
+              disabled={saving || saving2}
+              className="accent-mustard"
+              aria-label="Yes, order is booked"
+            />
+            <span className="text-sm text-black dark:text-white">Yes</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="order-booked"
+              value="no"
+              checked={localBooked === false}
+              onChange={() => setLocalBooked(false)}
+              disabled={saving || saving2}
+              className="accent-mustard"
+              aria-label="No, order not yet booked"
+            />
+            <span className="text-sm text-black dark:text-white">No</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={localBooked === null || saving || saving2}
+        className="btn-primary text-sm disabled:opacity-50"
+      >
+        {saving2 ? 'Saving…' : 'Save Order Status'}
+      </button>
+    </div>
+  )
+}

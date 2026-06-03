@@ -2,55 +2,41 @@ import { useEffect, useState, useId } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
-import type { CRMProjectList as Project, ProjectStage } from '@/types/crm'
+import type { CRMProjectList as Project } from '@/types/crm'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { StatusBadge } from '@/components/crm/StatusBadge'
 
-const STAGE_OPTIONS: { value: ProjectStage | ''; label: string }[] = [
-  { value: '', label: 'All Stages' },
-  { value: 'new_lead', label: 'New Lead' },
-  { value: 'order_closed', label: 'Order Closed' },
-  { value: 'lead_closed', label: 'Lead Closed' },
-  { value: 'not_responding', label: 'Not Responding' },
-  { value: 'proposal', label: 'Proposal' },
-  { value: 'costing', label: 'Costing' },
-  { value: 'sample', label: 'Sample' },
-  { value: 'order_booked', label: 'Order Booked' },
-  { value: 'packaging', label: 'Packaging' },
-  { value: 'design', label: 'Design' },
-  { value: 'printing', label: 'Printing' },
-  { value: 'production', label: 'Production' },
-  { value: 'batch_testing', label: 'Batch Testing' },
-  { value: 'filling', label: 'Filling' },
-  { value: 'transit', label: 'Transit' },
-  { value: 'derma_testing', label: 'Derma Testing' },
+const PHASE_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'All Phases' },
+  { value: 'sample', label: 'Sample Phase' },
+  { value: 'order', label: 'Order / Production Phase' },
 ]
 
 export default function CRMProjectList() {
   const [searchParams, setSearchParams] = useSearchParams()
   const searchId = useId()
-  const stageFilterId = useId()
+  const phaseFilterId = useId()
 
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [stageFilter, setStageFilter] = useState<string>(searchParams.get('stage') ?? '')
+  const [phaseFilter, setPhaseFilter] = useState<string>(searchParams.get('phase') ?? '')
 
-  const fetchProjects = (q = '', stage = '') => {
+  const fetchProjects = (q = '', phase = '') => {
     setLoading(true)
     const params: Record<string, string> = {}
     if (q) params.search = q
-    if (stage) params.stage = stage
+    if (phase) params.phase = phase
     crmApi.listProjects(params)
       .then((r) => setProjects(r.data.results))
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchProjects(search, stageFilter) }, [stageFilter])
+  useEffect(() => { fetchProjects(search, phaseFilter) }, [phaseFilter])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    fetchProjects(search, stageFilter)
+    fetchProjects(search, phaseFilter)
   }
 
   return (
@@ -77,15 +63,15 @@ export default function CRMProjectList() {
             />
           </div>
           <div>
-            <label htmlFor={stageFilterId} className="sr-only">Filter by stage</label>
+            <label htmlFor={phaseFilterId} className="sr-only">Filter by phase</label>
             <select
-              id={stageFilterId}
-              value={stageFilter}
-              onChange={(e) => { setStageFilter(e.target.value); setSearchParams(e.target.value ? { stage: e.target.value } : {}) }}
+              id={phaseFilterId}
+              value={phaseFilter}
+              onChange={(e) => { setPhaseFilter(e.target.value); setSearchParams(e.target.value ? { phase: e.target.value } : {}) }}
               className="border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
-              aria-label="Filter by project stage"
+              aria-label="Filter by project phase"
             >
-              {STAGE_OPTIONS.map((o) => (
+              {PHASE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
@@ -133,7 +119,13 @@ export default function CRMProjectList() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300 capitalize">
-                      {p.project_stage.replace(/_/g, ' ')}
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        p.phase === 'order'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                      }`}>
+                        {p.phase === 'order' ? 'Order Phase' : 'Sample Phase'}
+                      </span>
                     </td>
                     <td className="px-4 py-3 w-36">
                       <ProgressBar value={p.progress_percentage} size="sm" />

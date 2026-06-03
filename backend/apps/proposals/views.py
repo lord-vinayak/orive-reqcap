@@ -1,4 +1,5 @@
 import io
+import os
 from datetime import datetime, timezone
 from django.core.mail import EmailMultiAlternatives
 from django.core.validators import validate_email
@@ -9,6 +10,9 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
+
+# Static file bundled into every Client Costing email
+_STATIC_FILES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'files')
 
 from .models import Proposal, ProposalItem, SentEmail
 from .serializers import ProposalSerializer, ProposalItemSerializer
@@ -152,6 +156,14 @@ class ProposalViewSet(viewsets.ModelViewSet):
             xlsx_data if isinstance(xlsx_data, bytes) else xlsx_data.getvalue(),
             XLSX_MIMETYPE,
         )
+
+        # Auto-attach the static Fragrance Notes spreadsheet
+        _fragrance_path = os.path.join(_STATIC_FILES_DIR, 'Fragrance Notes.xlsx')
+        try:
+            with open(_fragrance_path, 'rb') as _f:
+                msg.attach('Fragrance Notes.xlsx', _f.read(), XLSX_MIMETYPE)
+        except Exception:
+            pass  # Missing file is non-fatal
 
         # Attach selected proposal documents
         proposal_doc_ids = request.data.get('proposal_doc_ids') or []

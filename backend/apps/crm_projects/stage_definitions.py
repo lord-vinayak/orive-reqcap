@@ -1,181 +1,177 @@
 """
-16-stage architecture for CRM skincare product development lifecycle.
-Stage index 0-15. Progress = (completed_stages / 16) * 100.
+Two-phase CRM project lifecycle:
+  1. Sample Phase  — pre-loop → resample loop (max 3 cycles) → post-approval
+  2. Order Phase   — 6 sequential sections unlocked after order is booked
+
+Stage keys for resample cycle 1 have no suffix.
+Cycle 2 and 3 use _c2 / _c3 suffix (created on-demand when a resample is initiated).
 """
 
-STAGE_DEFINITIONS = [
-    {
-        'key': 'new_lead',
-        'display': 'New Lead',
-        'index': 0,
-        'sub_stages': [],
-    },
-    {
-        'key': 'order_closed',
-        'display': 'Order Closed',
-        'index': 1,
-        'sub_stages': [],
-    },
-    {
-        'key': 'lead_closed',
-        'display': 'Lead Closed',
-        'index': 2,
-        'sub_stages': [],
-    },
-    {
-        'key': 'not_responding',
-        'display': 'Not Responding',
-        'index': 3,
-        'sub_stages': [],
-    },
-    {
-        'key': 'proposal',
-        'display': 'Proposal',
-        'index': 4,
-        'sub_stages': [],
-    },
-    {
-        'key': 'costing',
-        'display': 'Costing',
-        'index': 5,
-        'sub_stages': [],
-    },
-    {
-        'key': 'sample',
-        'display': 'Sample',
-        'index': 6,
-        'sub_stages': [
-            {'key': 'confirmation_email', 'display': 'Confirmation email sent to client', 'mandatory': True},
-            {'key': 'in_pipeline', 'display': 'In Pipeline', 'mandatory': False},
-            {'key': 'created_documented', 'display': 'Created, image and video captured and documented', 'mandatory': True},
-            {'key': 'transit', 'display': 'Transit', 'mandatory': False},
-            {'key': 'delivered', 'display': 'Delivered', 'mandatory': False},
-            {'key': 'testing', 'display': 'Testing', 'mandatory': False},
-            {'key': 'approved', 'display': 'Approved', 'mandatory': False},
-            {'key': 'not_approved', 'display': 'Not Approved', 'mandatory': False},
-            {'key': 'invoice_shared', 'display': 'Invoice Shared', 'mandatory': False},
-            {'key': 'invoice_pending', 'display': 'Invoice Pending', 'mandatory': False},
-        ],
-    },
-    {
-        'key': 'order_booked',
-        'display': 'Order Booked',
-        'index': 7,
-        'sub_stages': [
-            {'key': 'mou_shared', 'display': 'MOU Shared', 'mandatory': False},
-            {'key': 'fda_from_client', 'display': 'FDA Document Taken from Client', 'mandatory': False},
-            {'key': 'fda_for_vendor', 'display': 'FDA Document Created for Vendor', 'mandatory': False},
-        ],
-    },
+MAX_RESAMPLE_CYCLES = 3
+
+# ── Sample Phase ──────────────────────────────────────────────────────────────
+
+SAMPLE_PRE_LOOP = [
+    {'key': 'sample_invoice_shared',   'display': 'Sample Invoice Shared'},
+    {'key': 'sample_booked',            'display': 'Sample Booked'},
+    {'key': 'sample_payment_received',  'display': 'Sample Payment Received'},
+]
+
+# Base keys for the resample loop — suffixed at runtime for cycles 2+.
+# `sample_approved` is a Yes/No gate rendered differently in the UI.
+RESAMPLE_LOOP_BASE = [
+    {'key': 'formula_made',             'display': 'Formula Made'},
+    {'key': 'formula_reviewed',         'display': 'Formula Reviewed'},
+    {'key': 'sample_made',              'display': 'Sample Made'},
+    {'key': 'sample_shipped',           'display': 'Sample Shipped'},
+    {'key': 'sample_feedback_captured', 'display': 'Sample Feedback Captured'},
+    {'key': 'sample_approved',          'display': 'Sample Approved', 'is_approval_gate': True},
+]
+
+SAMPLE_POST_APPROVAL = [
+    {'key': 'sample_images_saved',  'display': 'Sample Images Saved in Drive'},
+    {'key': 'sample_formula_saved', 'display': 'Sample Formula Received and Saved in Drive'},
+]
+
+# ── Order Phase ───────────────────────────────────────────────────────────────
+
+ORDER_PHASE_SECTIONS = [
     {
         'key': 'packaging',
         'display': 'Packaging',
-        'index': 8,
-        'sub_stages': [
-            {'key': 'not_shared', 'display': 'Not Shared', 'mandatory': True},
-            {'key': 'shared', 'display': 'Shared', 'mandatory': True},
-            {'key': 'approved', 'display': 'Approved', 'mandatory': True},
-            {'key': 'to_be_ordered', 'display': 'To Be Ordered', 'mandatory': True},
-            {'key': 'ordered', 'display': 'Ordered', 'mandatory': True},
-            {'key': 'delivered_checked', 'display': 'Delivered & Checked', 'mandatory': True},
-            {'key': 'managed_by_client', 'display': 'Managed by Client', 'mandatory': True},
-            {'key': 'added_to_inventory', 'display': 'Added to Inventory', 'mandatory': True},
+        'stages': [
+            {'key': 'pkg_req_captured',    'display': 'Packaging Requirement Captured'},
+            {'key': 'pkg_quotes_taken',    'display': 'Packaging Quotes Taken'},
+            {'key': 'pkg_approved_client', 'display': 'Packaging Approved by Client'},
+            {'key': 'pkg_samples_ordered', 'display': 'Packaging Samples Ordered (Client, SS, Printer, KLD)'},
+            {'key': 'pkg_po_taken',        'display': 'Packaging PO / Quotation Taken'},
+            {'key': 'pkg_ordered',         'display': 'Packaging Order Placed'},
+            {'key': 'pkg_dispatched',      'display': 'Packaging Dispatched (Handle with Care Checked)'},
+            {'key': 'pkg_evaluated',       'display': 'Packaging Evaluated on Receive'},
+            {'key': 'pkg_inventory_done',  'display': 'Packaging Entry Done in Inventory Tracker'},
         ],
     },
     {
-        'key': 'design',
-        'display': 'Design',
-        'index': 9,
-        'sub_stages': [
-            {'key': 'inci_list_approved', 'display': 'Inci list approved', 'mandatory': True},
-            {'key': 'content_creation', 'display': 'Content Creation', 'mandatory': True},
-            {'key': 'batch_no_received', 'display': 'Batch No received', 'mandatory': True},
-            {'key': 'mrp_details_received', 'display': 'MRP and other details received', 'mandatory': True},
-            {'key': 'packaging_kld_received', 'display': 'Packaging KLD received', 'mandatory': True},
-            {'key': 'design_approved', 'display': 'Design approved', 'mandatory': True},
-            {'key': 'sample_printed_kld', 'display': 'Sample printed, evaluated as per KLD', 'mandatory': True},
+        'key': 'content',
+        'display': 'Content',
+        'stages': [
+            {'key': 'content_inci_created',         'display': 'INCI List Created'},
+            {'key': 'content_inci_approved',         'display': 'INCI List Approved'},
+            {'key': 'content_created',               'display': 'Content Created (Claims, Ingredients)'},
+            {'key': 'content_label_reviewed',        'display': 'Content Reviewed – Label'},
+            {'key': 'content_monocarton_reviewed',   'display': 'Content Reviewed – Mono Carton'},
         ],
     },
     {
-        'key': 'printing',
-        'display': 'Printing',
-        'index': 10,
-        'sub_stages': [
-            {'key': 'shared_for_quotation', 'display': 'Shared for Quotation', 'mandatory': True},
-            {'key': 'invoice_paid', 'display': 'Invoice Paid', 'mandatory': True},
-            {'key': 'printing_received', 'display': 'Printing Received', 'mandatory': True},
+        'key': 'design_printing',
+        'display': 'Design & Printing',
+        'stages': [
+            {'key': 'design_group_created',   'display': 'Design Group Created'},
+            {'key': 'design_created',          'display': 'Design Created'},
+            {'key': 'design_sample_boxes',     'display': 'Sample Boxes Made'},
+            {'key': 'design_approved_client',  'display': 'Approved by Client'},
+            {'key': 'design_quote_taken',      'display': 'Design Quote & Timelines Taken from Printer'},
+            {'key': 'printing_initiated',      'display': 'Printing Initiated'},
+            {'key': 'printing_delivered',      'display': 'Printing Material Delivered'},
+            {'key': 'printing_inventory',      'display': 'Printing Inventory Maintained'},
         ],
     },
     {
         'key': 'production',
         'display': 'Production',
-        'index': 11,
-        'sub_stages': [
-            {'key': 'email_to_manufacture', 'display': 'Email to manufacture', 'mandatory': True},
-            {'key': 'raw_material_purchased', 'display': 'Raw material purchased', 'mandatory': False},
+        # batch_initiated and batch_passed can be reset in-place on batch failure
+        'stages': [
+            {'key': 'batch_initiated',     'display': 'Batch Testing Initiated'},
+            {'key': 'batch_passed',        'display': 'Batch Testing Passed'},
+            {'key': 'filling_initiated',   'display': 'Filling Initiated'},
+            {'key': 'filling_videos',      'display': 'Videos Taken While Filling'},
+            {'key': 'report_shared',       'display': 'Report Shared with Client'},
+            {'key': 'bmr_captured',        'display': 'BMR Captured'},
+            {'key': 'derma_initiated',     'display': 'Derma Testing Initiated'},
+            {'key': 'derma_sample_sent',   'display': 'Sample Sent for Testing'},
+            {'key': 'derma_completed',     'display': 'Derma Testing Completed'},
+            {'key': 'derma_docs_sent',     'display': 'Documents Sent to Client'},
+            {'key': 'ctri_captured',       'display': 'CTRI Document in Internal Tracker'},
+            {'key': 'client_feedback',     'display': 'Client Feedback Captured on Google'},
         ],
     },
     {
-        'key': 'batch_testing',
-        'display': 'Batch Testing',
-        'index': 12,
-        'sub_stages': [
-            {'key': 'initiated', 'display': 'Initiated', 'mandatory': False},
-            {'key': 'invoice_paid', 'display': 'Invoice Paid', 'mandatory': False},
-            {'key': 'report_received', 'display': 'Report Received & Documented', 'mandatory': False},
-            {'key': 'report_shared_client', 'display': 'Report Shared with Client', 'mandatory': False},
+        'key': 'shipment',
+        'display': 'Shipment',
+        'stages': [
+            {'key': 'shipment_dimensions', 'display': 'Boxes and Dimensions Taken'},
+            {'key': 'shipment_hwc',        'display': 'Handle with Care Checked'},
+            {'key': 'shipment_eway',       'display': 'E-way Bill Created'},
+            {'key': 'shipment_insurance',  'display': 'Insurance Booked'},
+            {'key': 'shipment_booked',     'display': 'Shipment Booked'},
+            {'key': 'shipment_tracking',   'display': 'Tracking Details Shared with Client'},
+            {'key': 'shipment_delivered',  'display': 'Shipment Delivered (Tracked and Confirmed)'},
         ],
     },
     {
-        'key': 'filling',
-        'display': 'Filling',
-        'index': 13,
-        'sub_stages': [
-            {'key': 'video_captured', 'display': 'Video captured while filling', 'mandatory': True},
-            {'key': 'box_packing_validated', 'display': 'Box packing for final transit validated', 'mandatory': True},
-            {'key': 'dimensions_captured', 'display': 'Dimension and no of boxes captured for logistics', 'mandatory': True},
-        ],
-    },
-    {
-        'key': 'transit',
-        'display': 'Transit',
-        'index': 14,
-        'sub_stages': [
-            {'key': 'invoice_from_manufacture', 'display': 'Invoice taken from manufacture', 'mandatory': True},
-            {'key': 'invoice_for_client', 'display': 'Invoice Created for client', 'mandatory': True},
-            {'key': 'transporter_details', 'display': 'Transporter details from logistics person', 'mandatory': True},
-            {'key': 'eway_from_manufacture', 'display': 'E-way bill taken from manufacture', 'mandatory': True},
-            {'key': 'eway_for_shipment', 'display': 'E-way bill created for shipment', 'mandatory': True},
-            {'key': 'invoice_eway_shared', 'display': 'Client invoice and eway bill shared with manufacture for pickup', 'mandatory': True},
-        ],
-    },
-    {
-        'key': 'derma_testing',
-        'display': 'Derma Testing',
-        'index': 15,
-        'sub_stages': [
-            {'key': 'initiated', 'display': 'Initiated', 'mandatory': False},
-            {'key': 'invoice_paid', 'display': 'Invoice Paid', 'mandatory': False},
-            {'key': 'ctri_received', 'display': 'CTRI No Received & Documented', 'mandatory': False},
-            {'key': 'claim_doc_received', 'display': 'Claim Document Received & Documented', 'mandatory': False},
+        'key': 'compliances',
+        'display': 'Compliances',
+        'stages': [
+            {'key': 'compliance_mou_created',   'display': 'MOU Created'},
+            {'key': 'compliance_mou_signed',     'display': 'MOU Signed'},
+            {'key': 'compliance_fda_client',     'display': 'FDA Approval Taken from Client'},
+            {'key': 'compliance_fda_sent',       'display': 'FDA Documents Sent to Manufacturer'},
+            {'key': 'compliance_fda_received',   'display': 'FDA Document Received'},
         ],
     },
 ]
 
-STAGE_KEY_TO_INDEX = {s['key']: s['index'] for s in STAGE_DEFINITIONS}
-STAGE_INDEX_TO_DEF = {s['index']: s for s in STAGE_DEFINITIONS}
-STAGE_KEYS = [s['key'] for s in STAGE_DEFINITIONS]
-TOTAL_STAGES = len(STAGE_DEFINITIONS)
+BATCH_RESET_KEYS = ['batch_initiated', 'batch_passed']
 
-# Milestone timeline rules (weekday-based offsets from Day 0 = Sample Booked)
-MILESTONE_TIMELINE_RULES = {
-    'sample_transit': {'trigger': 'sample_booked', 'offset_days': 14},
-    'sample_delivered': {'trigger': 'sample_transit', 'offset_days': 7},
-    'sample_testing': {'trigger': 'sample_delivered', 'offset_days': 10},
-    'packaging_approval': {'trigger': 'sample_approved', 'offset_days': 14},
-    'design_start': {'trigger': 'packaging_closure', 'offset_days': 14},
-    'printing_start': {'trigger': 'design_closure', 'offset_days': 21},
-    'production_start': {'trigger': 'design_closure', 'offset_days': 0},  # parallel with printing
-    'batch_testing_start': {'trigger': 'production_complete', 'offset_days': 7},
-    'filling_start': {'trigger': 'batch_testing_complete', 'offset_days': 7},
-}
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def get_loop_key(base_key: str, cycle: int) -> str:
+    """Return the stage key for a given resample cycle (cycle 1 = no suffix)."""
+    return base_key if cycle == 1 else f'{base_key}_c{cycle}'
+
+
+def get_loop_stage_keys_for_cycle(cycle: int) -> list:
+    """Return all loop stage keys for a given cycle number."""
+    return [{'key': get_loop_key(s['key'], cycle), 'display': s['display'],
+             **({k: v for k, v in s.items() if k not in ('key', 'display')})}
+            for s in RESAMPLE_LOOP_BASE]
+
+
+def get_all_initial_stage_keys() -> list:
+    """
+    All stage keys to pre-create as StageCompletion rows on project creation.
+    Includes: sample pre-loop, cycle-1 loop, post-approval, all order phase stages.
+    Cycle 2 and 3 loop stages are created on-demand when resampling is initiated.
+    """
+    keys = []
+    keys += [s['key'] for s in SAMPLE_PRE_LOOP]
+    keys += [s['key'] for s in RESAMPLE_LOOP_BASE]          # cycle 1 (no suffix)
+    keys += [s['key'] for s in SAMPLE_POST_APPROVAL]
+    for section in ORDER_PHASE_SECTIONS:
+        keys += [s['key'] for s in section['stages']]
+    return keys
+
+
+ALL_INITIAL_STAGE_KEYS = get_all_initial_stage_keys()
+
+ALL_ORDER_STAGE_KEYS = [
+    s['key']
+    for section in ORDER_PHASE_SECTIONS
+    for s in section['stages']
+]
+
+SAMPLE_TOTAL_STAGES = len(SAMPLE_PRE_LOOP) + len(RESAMPLE_LOOP_BASE) + len(SAMPLE_POST_APPROVAL)  # 11
+ORDER_TOTAL_STAGES = len(ALL_ORDER_STAGE_KEYS)  # 46
+
+# Flat map of stage_key → human display name (all cycles included).
+STAGE_DISPLAY_MAP: dict[str, str] = {}
+for _s in SAMPLE_PRE_LOOP:
+    STAGE_DISPLAY_MAP[_s['key']] = _s['display']
+for _s in RESAMPLE_LOOP_BASE:
+    for _c in range(1, MAX_RESAMPLE_CYCLES + 1):
+        STAGE_DISPLAY_MAP[get_loop_key(_s['key'], _c)] = _s['display']
+for _s in SAMPLE_POST_APPROVAL:
+    STAGE_DISPLAY_MAP[_s['key']] = _s['display']
+for _sec in ORDER_PHASE_SECTIONS:
+    for _s in _sec['stages']:
+        STAGE_DISPLAY_MAP[_s['key']] = _s['display']

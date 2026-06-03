@@ -4,9 +4,26 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
+def _next_vendor_id(model_class, prefix):
+    """Generate the next sequential human-readable ID for a vendor/manufacturer."""
+    existing = model_class.objects.filter(
+        vendor_id__startswith=f'{prefix}-'
+    ).values_list('vendor_id', flat=True)
+    max_num = 0
+    for vid in existing:
+        try:
+            num = int(vid.split('-')[1])
+            if num > max_num:
+                max_num = num
+        except (IndexError, ValueError):
+            pass
+    return f'{prefix}-{max_num + 1:03d}'
+
+
 class AbstractVendor(models.Model):
     """Common fields shared by all external vendor types."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    vendor_id = models.CharField(max_length=20, unique=True, blank=True, db_index=True)
     company_name = models.CharField(max_length=255, db_index=True)
     poc_name = models.CharField(max_length=200, blank=True, default='')
     phone_no = models.CharField(max_length=20, blank=True, default='')
@@ -55,6 +72,11 @@ class Manufacturer(AbstractVendor):
         verbose_name = 'Manufacturer'
         verbose_name_plural = 'Manufacturers'
 
+    def save(self, *args, **kwargs):
+        if not self.vendor_id:
+            self.vendor_id = _next_vendor_id(Manufacturer, 'MFR')
+        super().save(*args, **kwargs)
+
 
 class Vendor(AbstractVendor):
     """All non-manufacturer external vendors."""
@@ -66,6 +88,14 @@ class Vendor(AbstractVendor):
         ('ecommerce', 'Ecommerce Agency'),
         ('logistics', 'Logistics Agency'),
     ]
+    VENDOR_TYPE_PREFIXES = {
+        'packaging': 'PKG',
+        'printing': 'PRT',
+        'testing': 'TST',
+        'designer': 'DES',
+        'ecommerce': 'ECM',
+        'logistics': 'LOG',
+    }
     vendor_type = models.CharField(
         max_length=20, choices=VENDOR_TYPES, db_index=True
     )
@@ -73,6 +103,12 @@ class Vendor(AbstractVendor):
     class Meta(AbstractVendor.Meta):
         verbose_name = 'Vendor'
         verbose_name_plural = 'Vendors'
+
+    def save(self, *args, **kwargs):
+        if not self.vendor_id:
+            prefix = self.VENDOR_TYPE_PREFIXES.get(self.vendor_type, 'VND')
+            self.vendor_id = _next_vendor_id(Vendor, prefix)
+        super().save(*args, **kwargs)
 
 
 class InternalTeamMember(models.Model):

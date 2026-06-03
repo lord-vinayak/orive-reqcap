@@ -35,8 +35,31 @@ class ManufacturerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def dropdown(self, request):
-        qs = Manufacturer.objects.values('id', 'company_name', 'city').order_by('company_name')
+        qs = Manufacturer.objects.values('id', 'vendor_id', 'company_name', 'city').order_by('company_name')
         return Response(list(qs))
+
+    @action(detail=False, methods=['get'], url_path='all-for-payment')
+    def all_for_payment(self, request):
+        """Combined list of all manufacturers + all vendors for payment vendor search."""
+        manufacturers = list(
+            Manufacturer.objects.values('id', 'vendor_id', 'company_name', 'city')
+            .order_by('company_name')
+        )
+        vendors = list(
+            Vendor.objects.values('id', 'vendor_id', 'company_name', 'city', 'vendor_type')
+            .order_by('company_name')
+        )
+        result = [
+            {'id': str(m['id']), 'vendor_id': m['vendor_id'], 'company_name': m['company_name'],
+             'city': m['city'] or '', 'kind': 'manufacturer'}
+            for m in manufacturers
+        ] + [
+            {'id': str(v['id']), 'vendor_id': v['vendor_id'], 'company_name': v['company_name'],
+             'city': v['city'] or '', 'kind': 'vendor', 'vendor_type': v['vendor_type']}
+            for v in vendors
+        ]
+        result.sort(key=lambda x: x['company_name'].lower())
+        return Response(result)
 
     def destroy(self, request, *args, **kwargs):
         if request.user.role != 'admin':
@@ -62,7 +85,7 @@ class VendorViewSet(viewsets.ModelViewSet):
     def dropdown(self, request):
         vendor_type = request.query_params.get('vendor_type', '')
         qs = Vendor.objects.filter(vendor_type=vendor_type).values(
-            'id', 'company_name', 'city'
+            'id', 'vendor_id', 'company_name', 'city'
         ).order_by('company_name')
         return Response(list(qs))
 

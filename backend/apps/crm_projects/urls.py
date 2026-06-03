@@ -2,6 +2,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CRMProjectViewSet, ProjectNoteViewSet, ProjectFileViewSet,
     KeyLearningViewSet, ProjectMilestoneViewSet, ProjectPaymentViewSet,
+    TaskListViewSet,
 )
 
 router = DefaultRouter()
@@ -11,5 +12,6 @@ router.register(r'project-files', ProjectFileViewSet, basename='crm-project-file
 router.register(r'key-learnings', KeyLearningViewSet, basename='crm-key-learning')
 router.register(r'project-milestones', ProjectMilestoneViewSet, basename='crm-project-milestone')
 router.register(r'project-payments', ProjectPaymentViewSet, basename='crm-project-payment')
+router.register(r'tasks', TaskListViewSet, basename='crm-tasks')
 
 urlpatterns = router.urls

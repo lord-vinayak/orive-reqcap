@@ -11,13 +11,13 @@ class ManufacturerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Manufacturer
         fields = [
-            'id', 'company_name', 'poc_name', 'phone_no', 'email', 'city',
+            'id', 'vendor_id', 'company_name', 'poc_name', 'phone_no', 'email', 'city',
             'state', 'address',
             'us_fda', 'cosmetic_fda', 'ayush', 'iso', 'gst_certified', 'gmp', 'stability_chamber',
             'bank_account_no', 'bank_ifsc', 'bank_name', 'pan_no', 'gst_no',
             'notes', 'average_rating', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'average_rating', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'vendor_id', 'average_rating', 'created_at', 'updated_at']
 
 
 class VendorSerializer(serializers.ModelSerializer):
@@ -26,11 +26,11 @@ class VendorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vendor
         fields = [
-            'id', 'vendor_type', 'company_name', 'poc_name', 'phone_no', 'email', 'city',
+            'id', 'vendor_id', 'vendor_type', 'company_name', 'poc_name', 'phone_no', 'email', 'city',
             'bank_account_no', 'bank_ifsc', 'bank_name', 'pan_no', 'gst_no',
             'notes', 'average_rating', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'average_rating', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'vendor_id', 'average_rating', 'created_at', 'updated_at']
 
 
 class InternalTeamMemberSerializer(serializers.ModelSerializer):

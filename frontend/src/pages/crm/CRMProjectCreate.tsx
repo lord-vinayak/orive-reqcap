@@ -4,37 +4,17 @@ import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
 import { clientService, userService } from '@/services'
 import type { Client, User } from '@/types'
-import type { DropdownOption, ProjectStage } from '@/types/crm'
+import type { DropdownOption } from '@/types/crm'
 
 interface FormState {
-  client: string          // phone_no
+  client: string
   no_of_products: string
   moq: string
   manufacturer: string
-  project_stage: ProjectStage
   sales_poc: string
   formulation_poc: string
   sample_booked_date: string
 }
-
-const STAGE_OPTIONS: { value: ProjectStage; label: string }[] = [
-  { value: 'new_lead', label: 'New Lead' },
-  { value: 'order_closed', label: 'Order Closed' },
-  { value: 'lead_closed', label: 'Lead Closed' },
-  { value: 'not_responding', label: 'Not Responding' },
-  { value: 'proposal', label: 'Proposal' },
-  { value: 'costing', label: 'Costing' },
-  { value: 'sample', label: 'Sample' },
-  { value: 'order_booked', label: 'Order Booked' },
-  { value: 'packaging', label: 'Packaging' },
-  { value: 'design', label: 'Design' },
-  { value: 'printing', label: 'Printing' },
-  { value: 'production', label: 'Production' },
-  { value: 'batch_testing', label: 'Batch Testing' },
-  { value: 'filling', label: 'Filling' },
-  { value: 'transit', label: 'Transit' },
-  { value: 'derma_testing', label: 'Derma Testing' },
-]
 
 export default function CRMProjectCreate() {
   const navigate = useNavigate()
@@ -47,7 +27,7 @@ export default function CRMProjectCreate() {
   const productsId = useId()
   const moqId = useId()
   const manufacturerId = useId()
-  const stageId = useId()
+
   const salesPocId = useId()
   const formPocId = useId()
   const sampleDateId = useId()
@@ -57,7 +37,6 @@ export default function CRMProjectCreate() {
     no_of_products: '',
     moq: '',
     manufacturer: '',
-    project_stage: 'new_lead',
     sales_poc: '',
     formulation_poc: '',
     sample_booked_date: '',
@@ -135,11 +114,10 @@ export default function CRMProjectCreate() {
     try {
       const payload: Record<string, string | number | undefined> = {
         client: form.client,
-        project_stage: form.project_stage,
       }
       if (form.no_of_products) payload.no_of_products = Number(form.no_of_products)
       if (form.moq) payload.moq = Number(form.moq)
-      if (form.manufacturer) payload.manufacturer = form.manufacturer
+      if (form.manufacturer) (payload as any).manufacturers = [form.manufacturer]
       if (form.sales_poc) payload.sales_poc = form.sales_poc
       if (form.formulation_poc) payload.formulation_poc = form.formulation_poc
       if (form.sample_booked_date) payload.sample_booked_date = form.sample_booked_date
@@ -289,21 +267,6 @@ export default function CRMProjectCreate() {
               />
             </Field>
           </div>
-
-          {/* ── Project Stage ── */}
-          <Field id={stageId} label="Initial Stage" required>
-            <select
-              id={stageId}
-              value={form.project_stage}
-              onChange={set('project_stage')}
-              className={inputClass(false)}
-              aria-required="true"
-            >
-              {STAGE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </Field>
 
           {/* ── Manufacturer ── */}
           <Field id={manufacturerId} label="Manufacturer">

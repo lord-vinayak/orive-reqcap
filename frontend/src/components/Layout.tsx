@@ -6,7 +6,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 const BASE_TITLE = "Skinovation Sciences CRM";
 
 // Routes where a Back link is suppressed.
-const NO_BACK_ROUTES = ["/home", "/login", "/", "/crm/dashboard", "/crm/clients", "/crm/projects", "/crm/master-data"];
+const NO_BACK_ROUTES = ["/home", "/login", "/", "/crm/dashboard", "/crm/clients", "/crm/projects", "/crm/master-data", "/tasks"];
 
 export default function Layout({
   children,
@@ -82,6 +82,9 @@ export default function Layout({
             </Link>
             <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data">
               Master Data
+            </Link>
+            <Link to="/tasks" className="btn-secondary text-sm" aria-label="Go to Task Tracker">
+              Tasks
             </Link>
             {user?.role === "admin" && (
               <>

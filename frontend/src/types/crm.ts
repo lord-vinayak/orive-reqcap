@@ -1,25 +1,6 @@
-// ─── Stage definitions ───────────────────────────────────────────────────────
+// ─── Project phase / stage types ─────────────────────────────────────────────
 
-export interface SubStageDef {
-  key: string
-  display: string
-  mandatory: boolean
-}
-
-export interface StageDef {
-  key: string
-  display: string
-  index: number
-  sub_stages: SubStageDef[]
-}
-
-// ─── Project models ───────────────────────────────────────────────────────────
-
-export type ProjectStage =
-  | 'new_lead' | 'order_closed' | 'lead_closed' | 'not_responding'
-  | 'proposal' | 'costing' | 'sample' | 'order_booked'
-  | 'packaging' | 'design' | 'printing' | 'production'
-  | 'batch_testing' | 'filling' | 'transit' | 'derma_testing'
+export type ProjectPhase = 'sample' | 'order'
 
 export type MilestoneStatus = 'on_track' | 'at_risk' | 'delayed'
 
@@ -32,14 +13,83 @@ export interface StageCompletion {
   completed_by_name: string | null
 }
 
-export interface SubStageCompletion {
+// ─── Stage status (returned by /stage-status/ endpoint) ──────────────────────
+
+export type TaskStatus = 'not_started' | 'wip' | 'pending' | 'closed'
+
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  not_started: 'Not Started',
+  wip: 'WIP',
+  pending: 'Pending',
+  closed: 'Closed',
+}
+
+export interface TaskItem {
   id: string
   stage_key: string
-  sub_stage_key: string
-  completed: boolean
+  stage_display: string
+  project_id: string
+  project_no: string
+  client_name: string
+  client_phone: string
+  assigned_to_id: string | null
+  assigned_to_name: string | null
+  assigned_at: string | null
+  task_status: TaskStatus
+  task_status_display: string
+}
+
+export interface StageStatusItem {
+  key: string
+  display: string
+  is_complete: boolean
+  is_locked: boolean
+  is_approval_gate?: boolean
   completed_at: string | null
-  completed_by: string | null
   completed_by_name: string | null
+  assigned_to_id?: string | null
+  assigned_to_name?: string | null
+  task_status?: TaskStatus
+}
+
+export interface LoopCycle {
+  cycle: number
+  is_active: boolean
+  stages: StageStatusItem[]
+}
+
+export interface SectionStatus {
+  key: string
+  display: string
+  is_locked: boolean
+  is_section_complete: boolean
+  stages: StageStatusItem[]
+}
+
+export interface StageStatusResponse {
+  phase: ProjectPhase
+  resample_cycle: number
+  max_cycles: number
+  order_advance_received: boolean
+  order_booked: boolean
+  sample_phase_complete: boolean
+  sample_phase: {
+    pre_loop: StageStatusItem[]
+    loop_cycles: LoopCycle[]
+    post_approval: StageStatusItem[]
+    show_post_approval: boolean
+  }
+  order_phase: {
+    locked: boolean
+    sections: SectionStatus[]
+  }
+  progress: {
+    sample_done: number
+    sample_total: number
+    order_done: number
+    order_total: number
+    overall_pct: number
+  }
 }
 
 export interface ProjectNote {
@@ -94,6 +144,13 @@ export interface NextMilestone {
   planned_date: string
 }
 
+export interface VendorMini {
+  id: string
+  vendor_id: string
+  company_name: string
+  city: string
+}
+
 export interface CRMProjectList {
   id: string
   project_no: string
@@ -102,19 +159,14 @@ export interface CRMProjectList {
   client_company: string
   no_of_products: number | null
   moq: number | null
-  manufacturer: string | null
-  manufacturer_name: string | null
-  designer: string | null
-  designer_name: string | null
-  packaging_vendor: string | null
-  packaging_vendor_name: string | null
-  printer: string | null
-  printer_name: string | null
-  batch_testing_vendor: string | null
-  batch_testing_vendor_name: string | null
-  derma_testing_vendor: string | null
-  derma_testing_vendor_name: string | null
-  project_stage: ProjectStage
+  phase: ProjectPhase
+  project_stage: string
+  manufacturers: VendorMini[]
+  designers: VendorMini[]
+  packaging_vendors: VendorMini[]
+  printers: VendorMini[]
+  batch_testing_vendors: VendorMini[]
+  derma_testing_vendors: VendorMini[]
   sales_poc: string | null
   sales_poc_name: string | null
   formulation_poc: string | null
@@ -128,13 +180,14 @@ export interface CRMProjectList {
 }
 
 export interface CRMProject extends CRMProjectList {
+  resample_cycle: number
+  order_advance_received: boolean
+  order_booked: boolean
   stage_completions: StageCompletion[]
-  sub_stage_completions: SubStageCompletion[]
   notes: ProjectNote[]
   files: ProjectFile[]
   milestones: ProjectMilestone[]
   key_learnings: KeyLearning[]
-  stage_definitions: StageDef[]
   delayed_count: number
   at_risk_count: number
 }
@@ -143,6 +196,7 @@ export interface CRMProject extends CRMProjectList {
 
 export interface Manufacturer {
   id: string
+  vendor_id: string
   company_name: string
   poc_name: string
   phone_no: string
@@ -172,6 +226,7 @@ export type VendorType = 'packaging' | 'printing' | 'testing' | 'designer' | 'ec
 
 export interface Vendor {
   id: string
+  vendor_id: string
   vendor_type: VendorType
   company_name: string
   poc_name: string
@@ -228,18 +283,37 @@ export interface VendorProjectPayment {
 
 // ─── Project Payments ────────────────────────────────────────────────────────
 
-export type PaymentType =
-  | 'sample' | 'advance' | 'packaging' | 'printing' | 'derma_testing'
-  | 'other_service' | 'shipment_printing' | 'shipment_packaging' | 'shipment_testing'
+export type PaymentDirection = 'paid' | 'received'
+
+export type PaidSubType = 'manufacturing' | 'logistics' | 'derma_testing' | 'batch_testing' | 'packaging' | 'printing' | 'samples' | 'others'
+export type ReceivedSubType = 'sample' | 'production' | 'design' | 'packaging' | 'printing' | 'logistics' | 'testing' | 'others'
+export type PaymentSubType = PaidSubType | ReceivedSubType
+
+export interface PaymentVendorOption {
+  id: string
+  vendor_id: string
+  company_name: string
+  city: string
+  kind: 'manufacturer' | 'vendor'
+  vendor_type?: string
+}
 
 export interface ProjectPayment {
   id: string
   project: string
+  project_no: string
+  project_client_name: string
   payment_date: string
-  payment_type: PaymentType
-  payment_type_display: string
-  amount_paid: string
-  amount_received: string
+  direction: PaymentDirection
+  sub_type: PaymentSubType
+  sub_type_display: string
+  amount: string
+  vendor: string | null
+  vendor_name: string | null
+  vendor_vid: string | null
+  manufacturer: string | null
+  manufacturer_name: string | null
+  manufacturer_vid: string | null
   comments: string
   invoice_drive_id: string
   invoice_drive_url: string
@@ -267,6 +341,7 @@ export interface DashboardStats {
 
 export interface DropdownOption {
   id: string
+  vendor_id?: string
   company_name: string
   city: string
 }

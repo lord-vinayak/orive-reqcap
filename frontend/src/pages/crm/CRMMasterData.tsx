@@ -1,7 +1,8 @@
 import { useEffect, useState, useId } from 'react'
+import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
-import type { Manufacturer, Vendor, InternalTeamMember, VendorType } from '@/types/crm'
+import type { Manufacturer, Vendor, InternalTeamMember, VendorType, ProjectPayment } from '@/types/crm'
 import { useAuthStore } from '@/store/authStore'
 import { Modal } from '@/components/crm/Modal'
 
@@ -90,6 +91,7 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<Manufacturer | null>(null)
+  const [txnEntity, setTxnEntity] = useState<{ id: string; vendor_id: string; company_name: string; kind: 'manufacturer' | 'vendor' } | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -130,6 +132,10 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
         </Modal>
       )}
 
+      {txnEntity && (
+        <VendorTransactionModal entity={txnEntity} onClose={() => setTxnEntity(null)} />
+      )}
+
       {items.length === 0 ? (
         <EmptyState label="manufacturers" />
       ) : (
@@ -137,17 +143,23 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
           <table className="w-full text-sm" aria-label="Manufacturers list">
             <thead>
               <tr className="bg-black/5 dark:bg-white/5 text-left">
+                <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">ID</th>
                 <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Company</th>
                 <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">POC</th>
                 <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">City / State</th>
                 <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Certifications</th>
                 <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Rating</th>
-                {isAdmin && <th scope="col" className="px-4 py-3"><span className="sr-only">Actions</span></th>}
+                <th scope="col" className="px-4 py-3"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5 dark:divide-white/5">
               {items.map((m) => (
-                <tr key={m.id} className="hover:bg-black/2 dark:hover:bg-white/2">
+                <tr
+                  key={m.id}
+                  className="hover:bg-black/2 dark:hover:bg-white/2 cursor-pointer"
+                  onClick={() => setTxnEntity({ id: m.id, vendor_id: m.vendor_id, company_name: m.company_name, kind: 'manufacturer' })}
+                >
+                  <td className="px-4 py-3 font-mono text-xs text-black/50 dark:text-slate-400">{m.vendor_id}</td>
                   <td className="px-4 py-3 font-medium text-black dark:text-white">
                     {m.company_name}
                     {m.phone_no && <div className="text-xs text-black/50 dark:text-slate-500">{m.phone_no}</div>}
@@ -166,8 +178,8 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
                     </div>
                   </td>
                   <td className="px-4 py-3"><StarRating value={m.average_rating} /></td>
-                  {isAdmin && (
-                    <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    {isAdmin && (
                       <button
                         onClick={() => { setEditing(m); setShowModal(true) }}
                         className="text-xs text-mustard hover:underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
@@ -175,12 +187,13 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
                       >
                         Edit
                       </button>
-                    </td>
-                  )}
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <p className="px-4 py-2 text-xs text-black/30 dark:text-slate-600">Click any row to view transaction history</p>
         </div>
       )}
     </div>
@@ -320,6 +333,7 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<Vendor | null>(null)
+  const [txnEntity, setTxnEntity] = useState<{ id: string; vendor_id: string; company_name: string; kind: 'manufacturer' | 'vendor' } | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -361,6 +375,10 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
         </Modal>
       )}
 
+      {txnEntity && (
+        <VendorTransactionModal entity={txnEntity} onClose={() => setTxnEntity(null)} />
+      )}
+
       {items.length === 0 ? (
         <EmptyState label={`${vendorType} vendors`} />
       ) : (
@@ -368,17 +386,23 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
           <table className="w-full text-sm" aria-label={`${vendorType} vendors list`}>
             <thead>
               <tr className="bg-black/5 dark:bg-white/5 text-left">
+                <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">ID</th>
                 <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Company</th>
                 <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">POC</th>
                 <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">City</th>
                 <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Contact</th>
                 <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Rating</th>
-                {isAdmin && <th scope="col" className="px-4 py-3"><span className="sr-only">Actions</span></th>}
+                <th scope="col" className="px-4 py-3"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5 dark:divide-white/5">
               {items.map((v) => (
-                <tr key={v.id} className="hover:bg-black/2 dark:hover:bg-white/2">
+                <tr
+                  key={v.id}
+                  className="hover:bg-black/2 dark:hover:bg-white/2 cursor-pointer"
+                  onClick={() => setTxnEntity({ id: v.id, vendor_id: v.vendor_id, company_name: v.company_name, kind: 'vendor' })}
+                >
+                  <td className="px-4 py-3 font-mono text-xs text-black/50 dark:text-slate-400">{v.vendor_id}</td>
                   <td className="px-4 py-3 font-medium text-black dark:text-white">{v.company_name}</td>
                   <td className="px-4 py-3 text-black/70 dark:text-slate-300">{v.poc_name || '—'}</td>
                   <td className="px-4 py-3 text-black/70 dark:text-slate-300">{v.city || '—'}</td>
@@ -387,8 +411,8 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
                     {v.email && <div className="text-xs">{v.email}</div>}
                   </td>
                   <td className="px-4 py-3"><StarRating value={v.average_rating} /></td>
-                  {isAdmin && (
-                    <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    {isAdmin && (
                       <button
                         onClick={() => { setEditing(v); setShowModal(true) }}
                         className="text-xs text-mustard hover:underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
@@ -396,12 +420,13 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
                       >
                         Edit
                       </button>
-                    </td>
-                  )}
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <p className="px-4 py-2 text-xs text-black/30 dark:text-slate-600">Click any row to view transaction history</p>
         </div>
       )}
     </div>
@@ -639,6 +664,146 @@ function TeamMemberForm({
         <button type="button" className="btn-secondary" onClick={onCancel}>Cancel</button>
       </div>
     </form>
+  )
+}
+
+// ── Vendor Transaction History Modal ─────────────────────────────────────────
+
+const fmtAmount = (n: string | number) =>
+  Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+interface VendorTransactionModalProps {
+  entity: { id: string; vendor_id: string; company_name: string; kind: 'manufacturer' | 'vendor' }
+  onClose: () => void
+}
+
+function VendorTransactionModal({ entity, onClose }: VendorTransactionModalProps) {
+  const [payments, setPayments] = useState<ProjectPayment[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    crmApi.listVendorPayments(entity.kind, entity.id)
+      .then((r) => {
+        const data = Array.isArray(r.data) ? r.data : (r.data as any).results ?? []
+        setPayments(data)
+      })
+      .finally(() => setLoading(false))
+  }, [entity.id, entity.kind])
+
+  const totalPaid = payments.filter((p) => p.direction === 'paid').reduce((s, p) => s + Number(p.amount), 0)
+  const totalReceived = payments.filter((p) => p.direction === 'received').reduce((s, p) => s + Number(p.amount), 0)
+
+  return (
+    <Modal
+      title={`Transactions — [${entity.vendor_id}] ${entity.company_name}`}
+      onClose={onClose}
+      size="lg"
+    >
+      {loading ? (
+        <p className="text-sm text-black/50 dark:text-slate-400 py-4">Loading…</p>
+      ) : payments.length === 0 ? (
+        <p className="text-sm text-black/50 dark:text-slate-400 py-4">No payment transactions recorded yet.</p>
+      ) : (
+        <div className="space-y-4">
+          {/* Summary strip */}
+          <div className="flex gap-6 text-sm">
+            <div>
+              <span className="text-black/50 dark:text-slate-400 text-xs">Total Paid</span>
+              <p className="font-semibold text-red-600 dark:text-red-400">₹{fmtAmount(totalPaid)}</p>
+            </div>
+            <div>
+              <span className="text-black/50 dark:text-slate-400 text-xs">Total Received</span>
+              <p className="font-semibold text-green-600 dark:text-green-400">₹{fmtAmount(totalReceived)}</p>
+            </div>
+            <div>
+              <span className="text-black/50 dark:text-slate-400 text-xs">Net</span>
+              <p className={`font-semibold ${totalReceived - totalPaid >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {totalReceived - totalPaid >= 0 ? '+' : ''}₹{fmtAmount(totalReceived - totalPaid)}
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-black/5 dark:bg-white/5 text-left">
+                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Date</th>
+                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Type</th>
+                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Sub Type</th>
+                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300 text-right">Amount (₹)</th>
+                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Project</th>
+                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Comments</th>
+                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">By</th>
+                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Invoice</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                {payments.map((p) => (
+                  <tr key={p.id} className="hover:bg-black/2 dark:hover:bg-white/2">
+                    <td className="px-3 py-2 text-black/70 dark:text-slate-300 whitespace-nowrap">
+                      {new Date(p.payment_date).toLocaleDateString('en-IN')}
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                        p.direction === 'paid'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      }`}>
+                        {p.direction === 'paid' ? 'Paid' : 'Received'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-black dark:text-white">{p.sub_type_display}</td>
+                    <td className={`px-3 py-2 text-right font-semibold tabular-nums ${
+                      p.direction === 'paid' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                    }`}>
+                      ₹{fmtAmount(p.amount)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Link
+                        to={`/crm/projects/${p.project}`}
+                        className="text-mustard hover:underline text-xs font-mono"
+                        onClick={onClose}
+                      >
+                        {p.project_no}
+                      </Link>
+                      {p.project_client_name && (
+                        <div className="text-xs text-black/40 dark:text-slate-500">{p.project_client_name}</div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-black/60 dark:text-slate-400 max-w-[120px]">
+                      <span className="truncate block">{p.comments || '—'}</span>
+                    </td>
+                    <td className="px-3 py-2 text-black/50 dark:text-slate-400 text-xs whitespace-nowrap">
+                      <div>{p.created_by_name || '—'}</div>
+                      <div className="text-black/30 dark:text-slate-600">
+                        {new Date(p.created_at).toLocaleDateString('en-IN')}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      {p.invoice_filename ? (
+                        <a
+                          href={p.invoice_drive_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-mustard hover:underline inline-flex items-center gap-1"
+                        >
+                          <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                          <span className="max-w-[80px] truncate">{p.invoice_filename}</span>
+                        </a>
+                      ) : (
+                        <span className="text-black/20 dark:text-slate-600 text-xs">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </Modal>
   )
 }
 

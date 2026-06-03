@@ -4,7 +4,11 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator
 
-from .stage_definitions import STAGE_KEYS, TOTAL_STAGES, STAGE_KEY_TO_INDEX
+from .stage_definitions import (
+    SAMPLE_PRE_LOOP, RESAMPLE_LOOP_BASE, SAMPLE_POST_APPROVAL,
+    ORDER_PHASE_SECTIONS, SAMPLE_TOTAL_STAGES, ORDER_TOTAL_STAGES,
+    get_loop_key,
+)
 
 
 def _add_weekdays(start: date, days: int) -> date:
@@ -13,12 +17,12 @@ def _add_weekdays(start: date, days: int) -> date:
     added = 0
     while added < days:
         current += timedelta(days=1)
-        if current.weekday() < 5:  # 0=Mon, 4=Fri
+        if current.weekday() < 5:
             added += 1
     return current
 
 
-STAGE_CHOICES = [(k, k.replace('_', ' ').title()) for k in STAGE_KEYS]
+PHASE_CHOICES = [('sample', 'Sample Phase'), ('order', 'Order Phase')]
 
 
 class CRMProject(models.Model):
@@ -37,80 +41,64 @@ class CRMProject(models.Model):
         validators=[MinValueValidator(1)],
         verbose_name='MOQ',
     )
-    manufacturer = models.ForeignKey(
-        'crm_master_data.Manufacturer',
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='projects',
+    manufacturers = models.ManyToManyField(
+        'crm_master_data.Manufacturer', blank=True, related_name='projects',
     )
-    designer = models.ForeignKey(
-        'crm_master_data.Vendor',
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='projects_as_designer',
+    designers = models.ManyToManyField(
+        'crm_master_data.Vendor', blank=True, related_name='projects_as_designer',
         limit_choices_to={'vendor_type': 'designer'},
     )
-    packaging_vendor = models.ForeignKey(
-        'crm_master_data.Vendor',
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='projects_as_packaging_vendor',
+    packaging_vendors = models.ManyToManyField(
+        'crm_master_data.Vendor', blank=True, related_name='projects_as_packaging_vendor',
         limit_choices_to={'vendor_type': 'packaging'},
     )
-    printer = models.ForeignKey(
-        'crm_master_data.Vendor',
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='projects_as_printer',
+    printers = models.ManyToManyField(
+        'crm_master_data.Vendor', blank=True, related_name='projects_as_printer',
         limit_choices_to={'vendor_type': 'printing'},
     )
-    batch_testing_vendor = models.ForeignKey(
-        'crm_master_data.Vendor',
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='projects_as_batch_testing',
+    batch_testing_vendors = models.ManyToManyField(
+        'crm_master_data.Vendor', blank=True, related_name='projects_as_batch_testing',
         limit_choices_to={'vendor_type': 'testing'},
     )
-    derma_testing_vendor = models.ForeignKey(
-        'crm_master_data.Vendor',
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='projects_as_derma_testing',
+    derma_testing_vendors = models.ManyToManyField(
+        'crm_master_data.Vendor', blank=True, related_name='projects_as_derma_testing',
         limit_choices_to={'vendor_type': 'testing'},
     )
+
+    # Phase tracking
+    phase = models.CharField(
+        max_length=10, choices=PHASE_CHOICES, default='sample', db_index=True,
+    )
+    resample_cycle = models.PositiveSmallIntegerField(default=1)
+    order_advance_received = models.BooleanField(default=False)
+    order_booked = models.BooleanField(default=False)
+
+    # Legacy display field — free-form, set to the current active stage key for list views
     project_stage = models.CharField(
-        max_length=30, choices=STAGE_CHOICES, default='new_lead', db_index=True
+        max_length=60, blank=True, default='sample_invoice_shared', db_index=True,
     )
+
     sales_poc = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='crm_projects_as_sales',
-        limit_choices_to={'role': 'poc_sales'},
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='crm_projects_as_sales', limit_choices_to={'role': 'poc_sales'},
     )
     formulation_poc = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='crm_projects_as_formulation',
-        limit_choices_to={'role': 'poc_formulation'},
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='crm_projects_as_formulation', limit_choices_to={'role': 'poc_formulation'},
     )
-    # Day 0 of timeline engine
     sample_booked_date = models.DateField(null=True, blank=True)
     start_date = models.DateField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
         related_name='crm_projects_created',
     )
 
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['project_stage', '-created_at']),
+            models.Index(fields=['phase', '-created_at']),
             models.Index(fields=['client', '-created_at']),
         ]
 
@@ -125,10 +113,27 @@ class CRMProject(models.Model):
         super().save(*args, **kwargs)
 
     @property
-    def progress_percentage(self):
-        """(completed stages / 16) × 100, integer."""
-        completed = self.stage_completions.filter(is_complete=True).count()
-        return round((completed / TOTAL_STAGES) * 100)
+    def progress_percentage(self) -> int:
+        """Percentage of all expected stages completed (sample active cycle + order)."""
+        completed_keys = set(
+            self.stage_completions.filter(is_complete=True).values_list('stage_key', flat=True)
+        )
+
+        sample_done = sum(1 for s in SAMPLE_PRE_LOOP if s['key'] in completed_keys)
+        sample_done += sum(
+            1 for s in RESAMPLE_LOOP_BASE
+            if get_loop_key(s['key'], self.resample_cycle) in completed_keys
+        )
+        sample_done += sum(1 for s in SAMPLE_POST_APPROVAL if s['key'] in completed_keys)
+
+        order_done = sum(
+            1 for sec in ORDER_PHASE_SECTIONS
+            for s in sec['stages']
+            if s['key'] in completed_keys
+        )
+
+        total = SAMPLE_TOTAL_STAGES + ORDER_TOTAL_STAGES
+        return round(((sample_done + order_done) / total) * 100)
 
     @property
     def delayed_stages(self):
@@ -139,18 +144,41 @@ class CRMProject(models.Model):
         return self.milestones.filter(status='at_risk')
 
 
+TASK_STATUS_CHOICES = [
+    ('not_started', 'Not Started'),
+    ('wip', 'WIP'),
+    ('pending', 'Pending'),
+    ('closed', 'Closed'),
+]
+
+
 class StageCompletion(models.Model):
-    """Tracks whether a top-level stage is complete for a project."""
+    """Flat stage completion record. One row per (project, stage_key)."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
         CRMProject, on_delete=models.CASCADE, related_name='stage_completions'
     )
-    stage_key = models.CharField(max_length=30, choices=STAGE_CHOICES)
+    stage_key = models.CharField(max_length=50)   # max 50 — longest: sample_feedback_captured_c3 (28)
     is_complete = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
     completed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, blank=True,
+    )
+    # Task assignment
+    assigned_to = models.ForeignKey(
+        'crm_master_data.InternalTeamMember',
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='assigned_stages',
+    )
+    assigned_at = models.DateTimeField(null=True, blank=True)
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='task_assignments_made',
+    )
+    task_status = models.CharField(
+        max_length=15, choices=TASK_STATUS_CHOICES,
+        default='not_started', db_index=True,
     )
 
     class Meta:
@@ -162,7 +190,7 @@ class StageCompletion(models.Model):
 
 
 class SubStageCompletion(models.Model):
-    """Checkbox state for each sub-stage step per project."""
+    """Deprecated — kept in DB for historical data only. No longer written to."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
         CRMProject, on_delete=models.CASCADE, related_name='sub_stage_completions'
@@ -173,28 +201,18 @@ class SubStageCompletion(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     completed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='sub_stages_completed',
+        null=True, blank=True, related_name='sub_stages_completed',
     )
 
     class Meta:
         unique_together = [('project', 'stage_key', 'sub_stage_key')]
-        indexes = [
-            models.Index(fields=['project', 'stage_key']),
-        ]
-
-    def __str__(self):
-        return f'{self.project_id} | {self.stage_key}/{self.sub_stage_key}'
 
 
 class ProjectNote(models.Model):
-    """Append-only notes per project stage/sub-stage with user + timestamp."""
+    """Append-only notes per project stage with user + timestamp."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    project = models.ForeignKey(
-        CRMProject, on_delete=models.CASCADE, related_name='notes'
-    )
-    # stage_key=None means project-level note
-    stage_key = models.CharField(max_length=30, blank=True, default='')
+    project = models.ForeignKey(CRMProject, on_delete=models.CASCADE, related_name='notes')
+    stage_key = models.CharField(max_length=60, blank=True, default='')
     sub_stage_key = models.CharField(max_length=60, blank=True, default='')
     text = models.TextField()
     added_by = models.ForeignKey(
@@ -215,17 +233,11 @@ class ProjectNote(models.Model):
 
 
 class ProjectFile(models.Model):
-    """Files/images attached to a project stage or sub-stage (Google Drive)."""
-    FILE_TYPES = [
-        ('image', 'Image'),
-        ('video', 'Video'),
-        ('document', 'Document'),
-    ]
+    """Files/images attached to a project stage (Google Drive)."""
+    FILE_TYPES = [('image', 'Image'), ('video', 'Video'), ('document', 'Document')]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    project = models.ForeignKey(
-        CRMProject, on_delete=models.CASCADE, related_name='files'
-    )
-    stage_key = models.CharField(max_length=30, blank=True, default='')
+    project = models.ForeignKey(CRMProject, on_delete=models.CASCADE, related_name='files')
+    stage_key = models.CharField(max_length=60, blank=True, default='')
     sub_stage_key = models.CharField(max_length=60, blank=True, default='')
     drive_file_id = models.CharField(max_length=255)
     drive_url = models.URLField()
@@ -239,9 +251,7 @@ class ProjectFile(models.Model):
 
     class Meta:
         ordering = ['-uploaded_at']
-        indexes = [
-            models.Index(fields=['project', 'stage_key']),
-        ]
+        indexes = [models.Index(fields=['project', 'stage_key'])]
 
     def __str__(self):
         return f'{self.filename} ({self.project_id}/{self.stage_key})'
@@ -250,21 +260,15 @@ class ProjectFile(models.Model):
 class ProjectMilestone(models.Model):
     """Planned vs actual dates per milestone with RAG status flags."""
     STATUS_CHOICES = [
-        ('on_track', 'On Track'),
-        ('at_risk', 'At Risk'),
-        ('delayed', 'Delayed'),
+        ('on_track', 'On Track'), ('at_risk', 'At Risk'), ('delayed', 'Delayed'),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    project = models.ForeignKey(
-        CRMProject, on_delete=models.CASCADE, related_name='milestones'
-    )
+    project = models.ForeignKey(CRMProject, on_delete=models.CASCADE, related_name='milestones')
     milestone_key = models.CharField(max_length=60, db_index=True)
     milestone_display = models.CharField(max_length=120)
     planned_date = models.DateField()
     actual_date = models.DateField(null=True, blank=True)
-    status = models.CharField(
-        max_length=10, choices=STATUS_CHOICES, default='on_track', db_index=True
-    )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='on_track', db_index=True)
 
     class Meta:
         unique_together = [('project', 'milestone_key')]
@@ -274,7 +278,6 @@ class ProjectMilestone(models.Model):
         return f'{self.project_id} | {self.milestone_key} | {self.status}'
 
     def refresh_status(self):
-        """Recalculate RAG status based on today vs planned_date."""
         if self.actual_date:
             self.status = 'delayed' if self.actual_date > self.planned_date else 'on_track'
         else:
@@ -289,27 +292,34 @@ class ProjectMilestone(models.Model):
 
 
 class ProjectPayment(models.Model):
-    """Cash-flow entry per project: tracks money paid out and received."""
-    PAYMENT_TYPES = [
-        ('sample', 'Sample'),
-        ('advance', 'Advance'),
-        ('packaging', 'Packaging'),
-        ('printing', 'Printing'),
-        ('derma_testing', 'Derma Testing'),
-        ('other_service', 'Other Service'),
-        ('shipment_printing', 'Shipment - Printing'),
-        ('shipment_packaging', 'Shipment - Packaging'),
-        ('shipment_testing', 'Shipment - Testing'),
+    """Cash-flow entry per project: Paid-out or Received, with vendor link for paid entries."""
+    DIRECTION_CHOICES = [('paid', 'Paid'), ('received', 'Received')]
+    PAID_SUB_TYPES = [
+        ('manufacturing', 'Manufacturing'), ('logistics', 'Logistics'),
+        ('derma_testing', 'Derma Testing'), ('batch_testing', 'Batch Testing'),
+        ('packaging', 'Packaging'), ('printing', 'Printing'),
+        ('samples', 'Samples'), ('others', 'Others'),
+    ]
+    RECEIVED_SUB_TYPES = [
+        ('sample', 'Sample'), ('production', 'Production'), ('design', 'Design'),
+        ('packaging', 'Packaging'), ('printing', 'Printing'), ('logistics', 'Logistics'),
+        ('testing', 'Testing'), ('others', 'Others'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    project = models.ForeignKey(
-        CRMProject, on_delete=models.CASCADE, related_name='payments'
-    )
+    project = models.ForeignKey(CRMProject, on_delete=models.CASCADE, related_name='payments')
     payment_date = models.DateField()
-    payment_type = models.CharField(max_length=30, choices=PAYMENT_TYPES, db_index=True)
-    amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    amount_received = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, db_index=True)
+    sub_type = models.CharField(max_length=30, db_index=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    vendor = models.ForeignKey(
+        'crm_master_data.Vendor', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='cash_flow_payments',
+    )
+    manufacturer = models.ForeignKey(
+        'crm_master_data.Manufacturer', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='cash_flow_payments',
+    )
     comments = models.TextField(blank=True, default='')
     invoice_drive_id = models.CharField(max_length=255, blank=True, default='')
     invoice_drive_url = models.URLField(blank=True, default='')
@@ -325,18 +335,18 @@ class ProjectPayment(models.Model):
         ordering = ['-payment_date', '-created_at']
         indexes = [
             models.Index(fields=['project', '-payment_date']),
+            models.Index(fields=['vendor', '-payment_date']),
+            models.Index(fields=['manufacturer', '-payment_date']),
         ]
 
     def __str__(self):
-        return f'{self.project_id} | {self.payment_type} | {self.payment_date}'
+        return f'{self.project_id} | {self.direction}/{self.sub_type} | {self.payment_date}'
 
 
 class KeyLearning(models.Model):
     """Key learnings per project — searchable for cross-project similarity."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    project = models.ForeignKey(
-        CRMProject, on_delete=models.CASCADE, related_name='key_learnings'
-    )
+    project = models.ForeignKey(CRMProject, on_delete=models.CASCADE, related_name='key_learnings')
     text = models.TextField()
     tags = models.JSONField(default=list, blank=True)
     created_by = models.ForeignKey(
@@ -348,9 +358,7 @@ class KeyLearning(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['project']),
-        ]
+        indexes = [models.Index(fields=['project'])]
 
     def __str__(self):
         return f'Learning on {self.project_id}: {self.text[:60]}'

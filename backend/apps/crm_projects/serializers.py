@@ -1,31 +1,51 @@
-from django.utils import timezone
 from rest_framework import serializers
 from .models import (
     CRMProject, StageCompletion, SubStageCompletion,
     ProjectNote, ProjectFile, ProjectMilestone, KeyLearning, ProjectPayment,
+    TASK_STATUS_CHOICES,
 )
-from .stage_definitions import STAGE_DEFINITIONS, STAGE_KEY_TO_INDEX
-
-
-class SubStageCompletionSerializer(serializers.ModelSerializer):
-    completed_by_name = serializers.CharField(source='completed_by.name', read_only=True)
-
-    class Meta:
-        model = SubStageCompletion
-        fields = [
-            'id', 'stage_key', 'sub_stage_key',
-            'completed', 'completed_at', 'completed_by', 'completed_by_name',
-        ]
-        read_only_fields = ['id', 'completed_by', 'completed_by_name', 'completed_at']
+from .stage_definitions import ALL_INITIAL_STAGE_KEYS, STAGE_DISPLAY_MAP
 
 
 class StageCompletionSerializer(serializers.ModelSerializer):
     completed_by_name = serializers.CharField(source='completed_by.name', read_only=True)
+    assigned_to_name = serializers.CharField(source='assigned_to.name', read_only=True)
 
     class Meta:
         model = StageCompletion
-        fields = ['id', 'stage_key', 'is_complete', 'completed_at', 'completed_by', 'completed_by_name']
-        read_only_fields = ['id', 'completed_by', 'completed_by_name', 'completed_at']
+        fields = [
+            'id', 'stage_key', 'is_complete', 'completed_at', 'completed_by', 'completed_by_name',
+            'assigned_to', 'assigned_to_name', 'assigned_at', 'task_status',
+        ]
+        read_only_fields = ['id', 'completed_by', 'completed_by_name', 'completed_at',
+                            'assigned_to_name', 'assigned_at']
+
+
+class TaskItemSerializer(serializers.ModelSerializer):
+    """Flat task row for the Task Tracker page."""
+    stage_display = serializers.SerializerMethodField()
+    project_id = serializers.UUIDField(source='project.id', read_only=True)
+    project_no = serializers.CharField(source='project.project_no', read_only=True)
+    client_name = serializers.CharField(source='project.client.name', read_only=True)
+    client_phone = serializers.CharField(source='project.client.phone_no', read_only=True)
+    assigned_to_id = serializers.UUIDField(source='assigned_to.id', read_only=True)
+    assigned_to_name = serializers.CharField(source='assigned_to.name', read_only=True)
+    task_status_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StageCompletion
+        fields = [
+            'id', 'stage_key', 'stage_display',
+            'project_id', 'project_no', 'client_name', 'client_phone',
+            'assigned_to_id', 'assigned_to_name', 'assigned_at',
+            'task_status', 'task_status_display',
+        ]
+
+    def get_stage_display(self, obj):
+        return STAGE_DISPLAY_MAP.get(obj.stage_key, obj.stage_key)
+
+    def get_task_status_display(self, obj):
+        return dict(TASK_STATUS_CHOICES).get(obj.task_status, obj.task_status)
 
 
 class ProjectNoteSerializer(serializers.ModelSerializer):
@@ -62,10 +82,7 @@ class ProjectFileSerializer(serializers.ModelSerializer):
 class ProjectMilestoneSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectMilestone
-        fields = [
-            'id', 'milestone_key', 'milestone_display',
-            'planned_date', 'actual_date', 'status',
-        ]
+        fields = ['id', 'milestone_key', 'milestone_display', 'planned_date', 'actual_date', 'status']
         read_only_fields = ['id', 'milestone_key', 'milestone_display', 'planned_date', 'status']
 
 
@@ -78,23 +95,59 @@ class KeyLearningSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_by', 'created_by_name', 'created_at', 'updated_at']
 
 
+SUB_TYPE_LABELS = {
+    'manufacturing': 'Manufacturing', 'logistics': 'Logistics',
+    'derma_testing': 'Derma Testing', 'batch_testing': 'Batch Testing',
+    'packaging': 'Packaging', 'printing': 'Printing',
+    'samples': 'Samples', 'others': 'Others',
+    'sample': 'Sample', 'production': 'Production',
+    'design': 'Design', 'testing': 'Testing',
+}
+
+
 class ProjectPaymentSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.name', read_only=True)
-    payment_type_display = serializers.CharField(source='get_payment_type_display', read_only=True)
+    sub_type_display = serializers.SerializerMethodField()
+    vendor_name = serializers.CharField(source='vendor.company_name', read_only=True, default=None)
+    vendor_vid = serializers.CharField(source='vendor.vendor_id', read_only=True, default=None)
+    manufacturer_name = serializers.CharField(source='manufacturer.company_name', read_only=True, default=None)
+    manufacturer_vid = serializers.CharField(source='manufacturer.vendor_id', read_only=True, default=None)
+    project_no = serializers.CharField(source='project.project_no', read_only=True)
+    project_client_name = serializers.CharField(source='project.client.name', read_only=True)
 
     class Meta:
         model = ProjectPayment
         fields = [
-            'id', 'project', 'payment_date', 'payment_type', 'payment_type_display',
-            'amount_paid', 'amount_received', 'comments',
-            'invoice_drive_id', 'invoice_drive_url', 'invoice_filename',
+            'id', 'project', 'project_no', 'project_client_name',
+            'payment_date', 'direction', 'sub_type', 'sub_type_display', 'amount',
+            'vendor', 'vendor_name', 'vendor_vid',
+            'manufacturer', 'manufacturer_name', 'manufacturer_vid',
+            'comments', 'invoice_drive_id', 'invoice_drive_url', 'invoice_filename',
             'created_by', 'created_by_name', 'created_at', 'updated_at',
         ]
         read_only_fields = [
             'id', 'created_by', 'created_by_name', 'created_at', 'updated_at',
             'invoice_drive_id', 'invoice_drive_url', 'invoice_filename',
-            'payment_type_display',
+            'sub_type_display', 'vendor_name', 'vendor_vid',
+            'manufacturer_name', 'manufacturer_vid', 'project_no', 'project_client_name',
         ]
+
+    def get_sub_type_display(self, obj):
+        return SUB_TYPE_LABELS.get(obj.sub_type, obj.sub_type)
+
+
+class VendorMiniSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    vendor_id = serializers.CharField()
+    company_name = serializers.CharField()
+    city = serializers.CharField()
+
+
+class ManufacturerMiniSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    vendor_id = serializers.CharField()
+    company_name = serializers.CharField()
+    city = serializers.CharField()
 
 
 class CRMProjectListSerializer(serializers.ModelSerializer):
@@ -103,12 +156,12 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
     client_company = serializers.CharField(source='client.company_name', read_only=True)
     sales_poc_name = serializers.CharField(source='sales_poc.name', read_only=True)
     formulation_poc_name = serializers.CharField(source='formulation_poc.name', read_only=True)
-    manufacturer_name = serializers.CharField(source='manufacturer.company_name', read_only=True)
-    designer_name = serializers.CharField(source='designer.company_name', read_only=True, default=None)
-    packaging_vendor_name = serializers.CharField(source='packaging_vendor.company_name', read_only=True, default=None)
-    printer_name = serializers.CharField(source='printer.company_name', read_only=True, default=None)
-    batch_testing_vendor_name = serializers.CharField(source='batch_testing_vendor.company_name', read_only=True, default=None)
-    derma_testing_vendor_name = serializers.CharField(source='derma_testing_vendor.company_name', read_only=True, default=None)
+    manufacturers = ManufacturerMiniSerializer(many=True, read_only=True)
+    designers = VendorMiniSerializer(many=True, read_only=True)
+    packaging_vendors = VendorMiniSerializer(many=True, read_only=True)
+    printers = VendorMiniSerializer(many=True, read_only=True)
+    batch_testing_vendors = VendorMiniSerializer(many=True, read_only=True)
+    derma_testing_vendors = VendorMiniSerializer(many=True, read_only=True)
     progress_percentage = serializers.IntegerField(read_only=True)
     has_delays = serializers.SerializerMethodField()
     next_milestone = serializers.SerializerMethodField()
@@ -117,18 +170,14 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
         model = CRMProject
         fields = [
             'id', 'project_no', 'client', 'client_name', 'client_company',
-            'no_of_products', 'moq', 'manufacturer', 'manufacturer_name',
-            'designer', 'designer_name',
-            'packaging_vendor', 'packaging_vendor_name',
-            'printer', 'printer_name',
-            'batch_testing_vendor', 'batch_testing_vendor_name',
-            'derma_testing_vendor', 'derma_testing_vendor_name',
-            'project_stage', 'sales_poc', 'sales_poc_name',
-            'formulation_poc', 'formulation_poc_name',
+            'no_of_products', 'moq', 'phase', 'project_stage',
+            'manufacturers', 'designers', 'packaging_vendors',
+            'printers', 'batch_testing_vendors', 'derma_testing_vendors',
+            'sales_poc', 'sales_poc_name', 'formulation_poc', 'formulation_poc_name',
             'sample_booked_date', 'start_date', 'created_at',
             'progress_percentage', 'has_delays', 'next_milestone',
         ]
-        read_only_fields = ['id', 'project_no', 'start_date', 'created_at']
+        read_only_fields = ['id', 'project_no', 'start_date', 'created_at', 'phase', 'project_stage']
 
     def get_has_delays(self, obj):
         return obj.milestones.filter(status='delayed').exists()
@@ -139,30 +188,26 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
         ).order_by('planned_date').first()
         if not milestone:
             return None
-        return {'key': milestone.milestone_key, 'display': milestone.milestone_display, 'planned_date': milestone.planned_date}
+        return {'key': milestone.milestone_key, 'display': milestone.milestone_display,
+                'planned_date': milestone.planned_date}
 
 
 class CRMProjectDetailSerializer(CRMProjectListSerializer):
-    """Full serializer with all nested data for project detail view."""
+    """Full serializer for project detail view."""
     stage_completions = StageCompletionSerializer(many=True, read_only=True)
-    sub_stage_completions = SubStageCompletionSerializer(many=True, read_only=True)
     notes = ProjectNoteSerializer(many=True, read_only=True)
     files = ProjectFileSerializer(many=True, read_only=True)
     milestones = ProjectMilestoneSerializer(many=True, read_only=True)
     key_learnings = KeyLearningSerializer(many=True, read_only=True)
-    stage_definitions = serializers.SerializerMethodField()
     delayed_count = serializers.SerializerMethodField()
     at_risk_count = serializers.SerializerMethodField()
 
     class Meta(CRMProjectListSerializer.Meta):
         fields = CRMProjectListSerializer.Meta.fields + [
-            'stage_completions', 'sub_stage_completions',
-            'notes', 'files', 'milestones', 'key_learnings',
-            'stage_definitions', 'delayed_count', 'at_risk_count',
+            'resample_cycle', 'order_advance_received', 'order_booked',
+            'stage_completions', 'notes', 'files', 'milestones', 'key_learnings',
+            'delayed_count', 'at_risk_count',
         ]
-
-    def get_stage_definitions(self, obj):
-        return STAGE_DEFINITIONS
 
     def get_delayed_count(self, obj):
         return obj.milestones.filter(status='delayed').count()
@@ -175,34 +220,18 @@ class CRMProjectWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = CRMProject
         fields = [
-            'id', 'project_no',
-            'client', 'no_of_products', 'moq', 'manufacturer',
-            'designer', 'packaging_vendor', 'printer',
-            'batch_testing_vendor', 'derma_testing_vendor',
-            'project_stage', 'sales_poc', 'formulation_poc', 'sample_booked_date',
+            'id', 'project_no', 'client', 'no_of_products', 'moq',
+            'manufacturers', 'designers', 'packaging_vendors',
+            'printers', 'batch_testing_vendors', 'derma_testing_vendors',
+            'sales_poc', 'formulation_poc', 'sample_booked_date',
         ]
         read_only_fields = ['id', 'project_no']
-
-    def validate_client(self, value):
-        return value
 
     def create(self, validated_data):
         user = self.context['request'].user
         project = CRMProject.objects.create(created_by=user, **validated_data)
-
-        # Initialise StageCompletion rows for all 16 stages
         StageCompletion.objects.bulk_create([
-            StageCompletion(project=project, stage_key=s['key'])
-            for s in STAGE_DEFINITIONS
+            StageCompletion(project=project, stage_key=k)
+            for k in ALL_INITIAL_STAGE_KEYS
         ])
-
-        # Auto-complete all stages that come BEFORE the selected initial stage.
-        # e.g. if project starts at "sample" (index 6), stages 0-5 are pre-completed.
-        initial_index = STAGE_KEY_TO_INDEX.get(project.project_stage, 0)
-        if initial_index > 0:
-            prior_keys = [s['key'] for s in STAGE_DEFINITIONS if s['index'] < initial_index]
-            StageCompletion.objects.filter(
-                project=project, stage_key__in=prior_keys
-            ).update(is_complete=True, completed_at=timezone.now(), completed_by=user)
-
         return project

@@ -1,303 +1,185 @@
 import { useEffect, useRef, useState } from 'react'
 import { crmApi } from '@/services/crm'
-import type { ProjectPayment, PaymentType } from '@/types/crm'
+import type { ProjectPayment, PaymentDirection, PaymentSubType, PaymentVendorOption } from '@/types/crm'
 import { useAuthStore } from '@/store/authStore'
 
-const PAYMENT_TYPE_OPTIONS: { value: PaymentType; label: string }[] = [
-  { value: 'sample', label: 'Sample' },
-  { value: 'advance', label: 'Advance' },
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const PAID_SUB_TYPES: { value: string; label: string }[] = [
+  { value: 'manufacturing', label: 'Manufacturing' },
+  { value: 'logistics', label: 'Logistics' },
+  { value: 'derma_testing', label: 'Derma Testing' },
+  { value: 'batch_testing', label: 'Batch Testing' },
   { value: 'packaging', label: 'Packaging' },
   { value: 'printing', label: 'Printing' },
-  { value: 'derma_testing', label: 'Derma Testing' },
-  { value: 'other_service', label: 'Other Service' },
-  { value: 'shipment_printing', label: 'Shipment - Printing' },
-  { value: 'shipment_packaging', label: 'Shipment - Packaging' },
-  { value: 'shipment_testing', label: 'Shipment - Testing' },
+  { value: 'samples', label: 'Samples' },
+  { value: 'others', label: 'Others' },
+]
+
+const RECEIVED_SUB_TYPES: { value: string; label: string }[] = [
+  { value: 'sample', label: 'Sample' },
+  { value: 'production', label: 'Production' },
+  { value: 'design', label: 'Design' },
+  { value: 'packaging', label: 'Packaging' },
+  { value: 'printing', label: 'Printing' },
+  { value: 'logistics', label: 'Logistics' },
+  { value: 'testing', label: 'Testing' },
+  { value: 'others', label: 'Others' },
 ]
 
 const fmt = (val: string | number) =>
   Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+// ── Form state ───────────────────────────────────────────────────────────────
+
 interface PaymentFormState {
   payment_date: string
-  payment_type: PaymentType
-  amount_paid: string
-  amount_received: string
+  direction: PaymentDirection
+  sub_type: string
+  amount: string
+  vendor_id_selected: string
+  vendor_kind: 'vendor' | 'manufacturer' | ''
   comments: string
   invoice_file: File | null
 }
 
 const emptyForm = (): PaymentFormState => ({
   payment_date: new Date().toISOString().slice(0, 10),
-  payment_type: 'advance',
-  amount_paid: '',
-  amount_received: '',
+  direction: 'paid',
+  sub_type: 'manufacturing',
+  amount: '',
+  vendor_id_selected: '',
+  vendor_kind: '',
   comments: '',
   invoice_file: null,
 })
 
 function formFromPayment(p: ProjectPayment): PaymentFormState {
+  const hasVendor = !!p.vendor
+  const hasMfr = !!p.manufacturer
   return {
     payment_date: p.payment_date,
-    payment_type: p.payment_type,
-    amount_paid: p.amount_paid,
-    amount_received: p.amount_received,
+    direction: p.direction,
+    sub_type: p.sub_type,
+    amount: p.amount,
+    vendor_id_selected: hasVendor ? p.vendor! : hasMfr ? p.manufacturer! : '',
+    vendor_kind: hasVendor ? 'vendor' : hasMfr ? 'manufacturer' : '',
     comments: p.comments,
     invoice_file: null,
   }
 }
 
-interface Props {
-  projectId: string
-  projectClientName: string
-  onClose: () => void
-  onChanged: () => void
+// ── Vendor search ─────────────────────────────────────────────────────────────
+
+const KIND_LABEL: Record<string, string> = {
+  manufacturer: 'Manufacturer',
+  packaging: 'Packaging', printing: 'Printing', testing: 'Testing',
+  designer: 'Designer', ecommerce: 'Ecommerce', logistics: 'Logistics',
 }
 
-export function PaymentSidePanel({ projectId, projectClientName: _clientName, onClose, onChanged }: Props) {
-  const user = useAuthStore((s) => s.user)
-  const isAdmin = user?.role === 'admin'
+interface VendorSearchProps {
+  options: PaymentVendorOption[]
+  selectedId: string
+  selectedKind: 'vendor' | 'manufacturer' | ''
+  onSelect: (id: string, kind: 'vendor' | 'manufacturer') => void
+  onClear: () => void
+  disabled?: boolean
+}
 
-  const [payments, setPayments] = useState<ProjectPayment[]>([])
-  const [loading, setLoading] = useState(true)
+function VendorSearch({ options, selectedId, selectedKind, onSelect, onClear, disabled }: VendorSearchProps) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  // Which payment is being edited (null = showing add form for new entry)
-  const [editingId, setEditingId] = useState<string | 'new' | null>(null)
-  const [form, setForm] = useState<PaymentFormState>(emptyForm())
-  const [saving, setSaving] = useState(false)
-  const [formError, setFormError] = useState('')
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const selected = options.find((o) => o.id === selectedId && (selectedKind === '' || o.kind === selectedKind))
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const fetchPayments = () =>
-    crmApi.listProjectPayments(projectId)
-      .then((r) => {
-        const data = Array.isArray(r.data) ? r.data : (r.data as any).results ?? []
-        setPayments(data)
-      })
-      .finally(() => setLoading(false))
-
-  useEffect(() => { fetchPayments() }, [projectId])
-
-  const startAdd = () => {
-    setForm(emptyForm())
-    setFormError('')
-    setEditingId('new')
-  }
-
-  const startEdit = (p: ProjectPayment) => {
-    setForm(formFromPayment(p))
-    setFormError('')
-    setEditingId(p.id)
-  }
-
-  const cancelForm = () => {
-    setEditingId(null)
-    setFormError('')
-  }
-
-  const patchForm = (fields: Partial<PaymentFormState>) =>
-    setForm((f) => ({ ...f, ...fields }))
-
-  const buildFormData = () => {
-    const fd = new FormData()
-    fd.append('project', projectId)
-    fd.append('payment_date', form.payment_date)
-    fd.append('payment_type', form.payment_type)
-    fd.append('amount_paid', form.amount_paid || '0')
-    fd.append('amount_received', form.amount_received || '0')
-    fd.append('comments', form.comments)
-    if (form.invoice_file) {
-      fd.append('invoice', form.invoice_file)
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false)
     }
-    return fd
-  }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
-  const handleSave = async () => {
-    if (!form.payment_date) { setFormError('Date is required.'); return }
-    setSaving(true)
-    setFormError('')
-    try {
-      if (editingId === 'new') {
-        await crmApi.createProjectPayment(buildFormData())
-      } else {
-        await crmApi.updateProjectPayment(editingId!, buildFormData())
-      }
-      setEditingId(null)
-      await fetchPayments()
-      onChanged()
-    } catch {
-      setFormError('Failed to save. Please try again.')
-    } finally {
-      setSaving(false)
-    }
-  }
+  const filtered = query.trim()
+    ? options.filter(
+        (o) =>
+          o.company_name.toLowerCase().includes(query.toLowerCase()) ||
+          o.vendor_id.toLowerCase().includes(query.toLowerCase())
+      )
+    : options
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this payment entry?')) return
-    setDeletingId(id)
-    try {
-      await crmApi.deleteProjectPayment(id)
-      await fetchPayments()
-      onChanged()
-    } finally {
-      setDeletingId(null)
-    }
+  const handleSelect = (o: PaymentVendorOption) => {
+    onSelect(o.id, o.kind)
+    setQuery('')
+    setOpen(false)
   }
 
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-40 bg-black/30 dark:bg-black/50" aria-hidden="true" onClick={onClose} />
-
-      {/* Panel */}
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="payment-panel-title"
-        className="fixed right-0 top-0 h-full z-50 w-[26rem] bg-white dark:bg-slate-900 shadow-2xl flex flex-col"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-black/10 dark:border-white/10">
-          <h2 id="payment-panel-title" className="font-semibold text-black dark:text-white">
-            Payments
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white text-xl leading-none rounded focus-visible:ring-2 focus-visible:ring-mustard"
-            aria-label="Close payments panel"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {/* Add button */}
-          {editingId === null && (
+    <div ref={containerRef} className="relative">
+      {selected ? (
+        <div className="flex items-center justify-between gap-2 border border-black/20 dark:border-white/20 rounded px-2 py-1.5 bg-white dark:bg-slate-700">
+          <span className="text-sm text-black dark:text-white truncate">
+            <span className="text-black/40 dark:text-slate-400 text-xs mr-1 font-mono">[{selected.vendor_id}]</span>
+            {selected.company_name}
+            {selected.city && <span className="text-xs text-black/40 dark:text-slate-500 ml-1">({selected.city})</span>}
+          </span>
+          {!disabled && (
             <button
               type="button"
-              onClick={startAdd}
-              className="btn-primary w-full text-sm"
+              onClick={() => { onClear(); setQuery('') }}
+              className="shrink-0 text-black/40 dark:text-slate-400 hover:text-black dark:hover:text-white text-lg leading-none"
+              aria-label="Clear selection"
             >
-              + Add Payment
+              ×
             </button>
           )}
+        </div>
+      ) : (
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
+          placeholder="Search by name or ID (e.g. MFR-001)…"
+          className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+          disabled={disabled}
+        />
+      )}
 
-          {/* Add / Edit form */}
-          {editingId !== null && (
-            <PaymentForm
-              form={form}
-              onChange={patchForm}
-              onSave={handleSave}
-              onCancel={cancelForm}
-              saving={saving}
-              error={formError}
-              isNew={editingId === 'new'}
-              fileInputRef={fileInputRef}
-            />
-          )}
-
-          {/* Existing entries */}
-          {loading ? (
-            <p className="text-sm text-black/40 dark:text-slate-500">Loading…</p>
-          ) : payments.length === 0 ? (
-            <p className="text-sm text-black/40 dark:text-slate-500">No payments recorded yet.</p>
+      {open && !selected && (
+        <div className="absolute z-50 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white dark:bg-slate-800 border border-black/15 dark:border-white/15 rounded shadow-lg">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">No results</p>
           ) : (
-            <ul className="space-y-3">
-              {payments.map((p) => (
-                <li
-                  key={p.id}
-                  className="border border-black/10 dark:border-white/10 rounded-lg p-3 text-sm space-y-1"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="font-medium text-black dark:text-white">{p.payment_type_display}</span>
-                      <span className="ml-2 text-xs text-black/40 dark:text-slate-500">
-                        {new Date(p.payment_date).toLocaleDateString('en-IN')}
-                      </span>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      {editingId !== p.id && (
-                        <button
-                          type="button"
-                          onClick={() => startEdit(p)}
-                          className="text-xs text-mustard hover:underline"
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(p.id)}
-                          disabled={deletingId === p.id}
-                          className="text-xs text-red-500 hover:underline disabled:opacity-50"
-                        >
-                          {deletingId === p.id ? '…' : 'Delete'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4 text-xs">
-                    <span className="text-red-600 dark:text-red-400">
-                      Paid: ₹{fmt(p.amount_paid)}
-                    </span>
-                    <span className="text-green-600 dark:text-green-400">
-                      Received: ₹{fmt(p.amount_received)}
-                    </span>
-                  </div>
-
-                  {p.comments && (
-                    <p className="text-xs text-black/60 dark:text-slate-400 line-clamp-2">{p.comments}</p>
-                  )}
-
-                  {p.invoice_filename && (
-                    <a
-                      href={p.invoice_drive_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-mustard hover:underline inline-flex items-center gap-1"
-                    >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                      </svg>
-                      {p.invoice_filename}
-                    </a>
-                  )}
-
-                  {editingId === p.id && (
-                    <div className="mt-2 pt-2 border-t border-black/10 dark:border-white/10">
-                      <PaymentForm
-                        form={form}
-                        onChange={patchForm}
-                        onSave={handleSave}
-                        onCancel={cancelForm}
-                        saving={saving}
-                        error={formError}
-                        isNew={false}
-                        fileInputRef={fileInputRef}
-                        existingInvoice={p.invoice_filename}
-                      />
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+            filtered.slice(0, 50).map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onMouseDown={() => handleSelect(o)}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-mustard/10 dark:hover:bg-mustard/10 flex items-center gap-2"
+              >
+                <span className="text-xs text-black/40 dark:text-slate-400 shrink-0 font-mono w-16">{o.vendor_id}</span>
+                <span className="text-black dark:text-white flex-1 truncate">{o.company_name}</span>
+                <span className="text-xs text-black/30 dark:text-slate-500 shrink-0">
+                  {KIND_LABEL[o.vendor_type ?? o.kind]}
+                  {o.city && ` · ${o.city}`}
+                </span>
+              </button>
+            ))
           )}
         </div>
-      </aside>
-    </>
+      )}
+    </div>
   )
 }
 
-// ── Inline form ───────────────────────────────────────────────────────────────
+// ── Payment form ──────────────────────────────────────────────────────────────
 
 interface PaymentFormProps {
   form: PaymentFormState
+  vendorOptions: PaymentVendorOption[]
   onChange: (fields: Partial<PaymentFormState>) => void
   onSave: () => void
   onCancel: () => void
@@ -308,14 +190,21 @@ interface PaymentFormProps {
   existingInvoice?: string
 }
 
-function PaymentForm({ form, onChange, onSave, onCancel, saving, error, isNew, fileInputRef, existingInvoice }: PaymentFormProps) {
+function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, error, isNew, fileInputRef, existingInvoice }: PaymentFormProps) {
+  const subTypes = form.direction === 'paid' ? PAID_SUB_TYPES : RECEIVED_SUB_TYPES
+
+  const handleDirectionChange = (dir: PaymentDirection) => {
+    const defaultSub = dir === 'paid' ? 'manufacturing' : 'sample'
+    onChange({ direction: dir, sub_type: defaultSub, vendor_id_selected: '', vendor_kind: '' })
+  }
+
   return (
     <div className="bg-black/3 dark:bg-white/3 rounded-lg p-4 space-y-3 text-sm">
       <p className="font-medium text-black dark:text-white text-xs uppercase tracking-wide">
         {isNew ? 'New Payment Entry' : 'Edit Entry'}
       </p>
 
-      {/* Date */}
+      {/* Row 1: Date */}
       <div>
         <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Date *</label>
         <input
@@ -327,50 +216,74 @@ function PaymentForm({ form, onChange, onSave, onCancel, saving, error, isNew, f
         />
       </div>
 
-      {/* Payment type */}
-      <div>
-        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Payment Type</label>
-        <select
-          value={form.payment_type}
-          onChange={(e) => onChange({ payment_type: e.target.value as PaymentType })}
-          className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
-          disabled={saving}
-        >
-          {PAYMENT_TYPE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Amounts */}
+      {/* Row 2: Payment Type toggle | Sub Type dropdown */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Amount Paid (₹)</label>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            value={form.amount_paid}
-            onChange={(e) => onChange({ amount_paid: e.target.value })}
-            placeholder="0.00"
-            className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
-            disabled={saving}
-          />
+          <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Payment Type</label>
+          <div className="flex rounded border border-black/20 dark:border-white/20 overflow-hidden">
+            {(['paid', 'received'] as PaymentDirection[]).map((dir) => (
+              <button
+                key={dir}
+                type="button"
+                onClick={() => handleDirectionChange(dir)}
+                disabled={saving}
+                className={`flex-1 py-1.5 text-sm font-medium transition-colors ${
+                  form.direction === dir
+                    ? 'bg-mustard text-black'
+                    : 'bg-white dark:bg-slate-700 text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'
+                }`}
+              >
+                {dir === 'paid' ? 'Paid' : 'Received'}
+              </button>
+            ))}
+          </div>
         </div>
         <div>
-          <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Amount Received (₹)</label>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            value={form.amount_received}
-            onChange={(e) => onChange({ amount_received: e.target.value })}
-            placeholder="0.00"
+          <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Sub Type</label>
+          <select
+            value={form.sub_type}
+            onChange={(e) => onChange({ sub_type: e.target.value as PaymentSubType })}
             className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+            disabled={saving}
+          >
+            {subTypes.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Row 3: Amount */}
+      <div>
+        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Amount (₹)</label>
+        <input
+          type="number"
+          min={0}
+          step="0.01"
+          value={form.amount}
+          onChange={(e) => onChange({ amount: e.target.value })}
+          placeholder="0.00"
+          className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+          disabled={saving}
+        />
+      </div>
+
+      {/* Vendor search (Paid only) */}
+      {form.direction === 'paid' && (
+        <div>
+          <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">
+            Vendor / Manufacturer <span className="text-black/30 dark:text-slate-500">(optional)</span>
+          </label>
+          <VendorSearch
+            options={vendorOptions}
+            selectedId={form.vendor_id_selected}
+            selectedKind={form.vendor_kind}
+            onSelect={(id, kind) => onChange({ vendor_id_selected: id, vendor_kind: kind })}
+            onClear={() => onChange({ vendor_id_selected: '', vendor_kind: '' })}
             disabled={saving}
           />
         </div>
-      </div>
+      )}
 
       {/* Comments */}
       <div>
@@ -417,5 +330,267 @@ function PaymentForm({ form, onChange, onSave, onCancel, saving, error, isNew, f
         </button>
       </div>
     </div>
+  )
+}
+
+// ── Main panel ────────────────────────────────────────────────────────────────
+
+interface Props {
+  projectId: string
+  projectClientName: string
+  onClose: () => void
+  onChanged: () => void
+}
+
+export function PaymentSidePanel({ projectId, projectClientName: _clientName, onClose, onChanged }: Props) {
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.role === 'admin'
+
+  const [payments, setPayments] = useState<ProjectPayment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [vendorOptions, setVendorOptions] = useState<PaymentVendorOption[]>([])
+
+  const [editingId, setEditingId] = useState<string | 'new' | null>(null)
+  const [form, setForm] = useState<PaymentFormState>(emptyForm())
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const fetchPayments = () =>
+    crmApi.listProjectPayments(projectId)
+      .then((r) => {
+        const data = Array.isArray(r.data) ? r.data : (r.data as any).results ?? []
+        setPayments(data)
+      })
+      .finally(() => setLoading(false))
+
+  useEffect(() => {
+    fetchPayments()
+    crmApi.allVendorsForPayment().then((r) => setVendorOptions(r.data))
+  }, [projectId])
+
+  const startAdd = () => {
+    setForm(emptyForm())
+    setFormError('')
+    setEditingId('new')
+  }
+
+  const startEdit = (p: ProjectPayment) => {
+    setForm(formFromPayment(p))
+    setFormError('')
+    setEditingId(p.id)
+  }
+
+  const cancelForm = () => {
+    setEditingId(null)
+    setFormError('')
+  }
+
+  const patchForm = (fields: Partial<PaymentFormState>) =>
+    setForm((f) => ({ ...f, ...fields }))
+
+  const buildFormData = () => {
+    const fd = new FormData()
+    fd.append('project', projectId)
+    fd.append('payment_date', form.payment_date)
+    fd.append('direction', form.direction)
+    fd.append('sub_type', form.sub_type)
+    fd.append('amount', form.amount || '0')
+    fd.append('comments', form.comments)
+    if (form.direction === 'paid' && form.vendor_id_selected) {
+      if (form.vendor_kind === 'manufacturer') {
+        fd.append('manufacturer', form.vendor_id_selected)
+      } else {
+        fd.append('vendor', form.vendor_id_selected)
+      }
+    }
+    if (form.invoice_file) {
+      fd.append('invoice', form.invoice_file)
+    }
+    return fd
+  }
+
+  const handleSave = async () => {
+    if (!form.payment_date) { setFormError('Date is required.'); return }
+    setSaving(true)
+    setFormError('')
+    try {
+      if (editingId === 'new') {
+        await crmApi.createProjectPayment(buildFormData())
+      } else {
+        await crmApi.updateProjectPayment(editingId!, buildFormData())
+      }
+      setEditingId(null)
+      await fetchPayments()
+      onChanged()
+    } catch {
+      setFormError('Failed to save. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this payment entry?')) return
+    setDeletingId(id)
+    try {
+      await crmApi.deleteProjectPayment(id)
+      await fetchPayments()
+      onChanged()
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/30 dark:bg-black/50" aria-hidden="true" onClick={onClose} />
+
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="payment-panel-title"
+        className="fixed right-0 top-0 h-full z-50 w-[28rem] bg-white dark:bg-slate-900 shadow-2xl flex flex-col"
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-black/10 dark:border-white/10">
+          <h2 id="payment-panel-title" className="font-semibold text-black dark:text-white">
+            Payments
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white text-xl leading-none rounded focus-visible:ring-2 focus-visible:ring-mustard"
+            aria-label="Close payments panel"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {editingId === null && (
+            <button type="button" onClick={startAdd} className="btn-primary w-full text-sm">
+              + Add Payment
+            </button>
+          )}
+
+          {editingId !== null && (
+            <PaymentForm
+              form={form}
+              vendorOptions={vendorOptions}
+              onChange={patchForm}
+              onSave={handleSave}
+              onCancel={cancelForm}
+              saving={saving}
+              error={formError}
+              isNew={editingId === 'new'}
+              fileInputRef={fileInputRef}
+            />
+          )}
+
+          {loading ? (
+            <p className="text-sm text-black/40 dark:text-slate-500">Loading…</p>
+          ) : payments.length === 0 ? (
+            <p className="text-sm text-black/40 dark:text-slate-500">No payments recorded yet.</p>
+          ) : (
+            <ul className="space-y-3">
+              {payments.map((p) => (
+                <li
+                  key={p.id}
+                  className="border border-black/10 dark:border-white/10 rounded-lg p-3 text-sm space-y-1.5"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                          p.direction === 'paid'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        }`}>
+                          {p.direction === 'paid' ? 'Paid' : 'Received'}
+                        </span>
+                        <span className="font-medium text-black dark:text-white">{p.sub_type_display}</span>
+                        <span className="text-xs text-black/40 dark:text-slate-500">
+                          {new Date(p.payment_date).toLocaleDateString('en-IN')}
+                        </span>
+                      </div>
+                      {(p.vendor_name || p.manufacturer_name) && (
+                        <p className="text-xs text-black/50 dark:text-slate-400">
+                          <span className="font-mono">[{p.vendor_vid ?? p.manufacturer_vid}]</span>{' '}
+                          {p.vendor_name ?? p.manufacturer_name}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      {editingId !== p.id && (
+                        <button
+                          type="button"
+                          onClick={() => startEdit(p)}
+                          className="text-xs text-mustard hover:underline"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(p.id)}
+                          disabled={deletingId === p.id}
+                          className="text-xs text-red-500 hover:underline disabled:opacity-50"
+                        >
+                          {deletingId === p.id ? '…' : 'Delete'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className={`text-base font-semibold ${
+                    p.direction === 'paid' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                  }`}>
+                    ₹{fmt(p.amount)}
+                  </p>
+
+                  {p.comments && (
+                    <p className="text-xs text-black/60 dark:text-slate-400 line-clamp-2">{p.comments}</p>
+                  )}
+
+                  {p.invoice_filename && (
+                    <a
+                      href={p.invoice_drive_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-mustard hover:underline inline-flex items-center gap-1"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                      {p.invoice_filename}
+                    </a>
+                  )}
+
+                  {editingId === p.id && (
+                    <div className="mt-2 pt-2 border-t border-black/10 dark:border-white/10">
+                      <PaymentForm
+                        form={form}
+                        vendorOptions={vendorOptions}
+                        onChange={patchForm}
+                        onSave={handleSave}
+                        onCancel={cancelForm}
+                        saving={saving}
+                        error={formError}
+                        isNew={false}
+                        fileInputRef={fileInputRef}
+                        existingInvoice={p.invoice_filename}
+                      />
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </aside>
+    </>
   )
 }
