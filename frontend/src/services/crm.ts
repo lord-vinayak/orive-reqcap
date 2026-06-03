@@ -3,7 +3,7 @@ import type {
   CRMProject, CRMProjectList, DashboardStats, PaginatedResponse,
   ProjectNote, ProjectFile, KeyLearning, ProjectMilestone,
   Manufacturer, Vendor, InternalTeamMember, VendorRating,
-  VendorProjectPayment, DropdownOption,
+  VendorProjectPayment, DropdownOption, ProjectPayment,
 } from '@/types/crm'
 
 // ─── Projects ────────────────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ export const crmApi = {
   addVendorRating: (data: { vendor: string; project: string; rating: number; comment?: string }) =>
     api.post<VendorRating>('/crm/vendor-ratings/', data),
 
-  // Payments
+  // Vendor payments (legacy)
   listPayments: (projectId?: string) =>
     api.get<PaginatedResponse<VendorProjectPayment>>('/crm/vendor-payments/', {
       params: projectId ? { project: projectId } : {},
@@ -164,4 +164,23 @@ export const crmApi = {
 
   deletePayment: (id: string) =>
     api.delete(`/crm/vendor-payments/${id}/`),
+
+  // Project cash-flow payments
+  listProjectPayments: (projectId: string) =>
+    api.get<PaginatedResponse<ProjectPayment>>('/crm/project-payments/', {
+      params: { project: projectId },
+    }),
+
+  createProjectPayment: (formData: FormData) =>
+    api.post<ProjectPayment>('/crm/project-payments/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  updateProjectPayment: (id: string, formData: FormData) =>
+    api.patch<ProjectPayment>(`/crm/project-payments/${id}/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  deleteProjectPayment: (id: string) =>
+    api.delete(`/crm/project-payments/${id}/`),
 }

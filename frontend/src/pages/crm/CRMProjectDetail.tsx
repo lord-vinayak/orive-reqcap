@@ -8,6 +8,8 @@ import { StatusBadge } from '@/components/crm/StatusBadge'
 import { StagePanel } from '@/components/crm/StagePanel'
 import { MilestoneTable } from '@/components/crm/MilestoneTable'
 import { VendorSidePanel } from '@/components/crm/VendorSidePanel'
+import { PaymentSidePanel } from '@/components/crm/PaymentSidePanel'
+import type { ProjectPayment } from '@/types/crm'
 
 export default function CRMProjectDetail() {
   const { id } = useParams<{ id: string }>()
@@ -17,6 +19,8 @@ export default function CRMProjectDetail() {
   const [activeStage, setActiveStage] = useState<string | null>(null)
   const [notesView, setNotesView] = useState<'stage' | 'all'>('stage')
   const [vendorPanelOpen, setVendorPanelOpen] = useState(false)
+  const [paymentPanelOpen, setPaymentPanelOpen] = useState(false)
+  const [payments, setPayments] = useState<ProjectPayment[]>([])
 
   const fetchProject = () => {
     if (!id) return
@@ -31,7 +35,15 @@ export default function CRMProjectDetail() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchProject() }, [id])
+  const fetchPayments = () => {
+    if (!id) return
+    crmApi.listProjectPayments(id).then((r) => {
+      const data = Array.isArray(r.data) ? r.data : (r.data as any).results ?? []
+      setPayments(data)
+    })
+  }
+
+  useEffect(() => { fetchProject(); fetchPayments() }, [id])
 
   if (loading) {
     return (
@@ -136,6 +148,17 @@ export default function CRMProjectDetail() {
             </p>
           </div>
           <div className="flex items-start gap-3">
+            <button
+              type="button"
+              onClick={() => setPaymentPanelOpen(true)}
+              className="btn-secondary text-sm flex items-center gap-1.5"
+              aria-haspopup="dialog"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+              </svg>
+              Payments
+            </button>
             <button
               type="button"
               onClick={() => setVendorPanelOpen(true)}
@@ -347,6 +370,9 @@ export default function CRMProjectDetail() {
           )}
         </section>
 
+        {/* ── P&L ── */}
+        <PLSection payments={payments} />
+
         {/* ── Key Learnings ── */}
         <KeyLearningsSection projectId={project.id} />
       </div>
@@ -359,6 +385,15 @@ export default function CRMProjectDetail() {
             setProject((prev) => prev ? { ...prev, ...updated } : prev)
             setVendorPanelOpen(false)
           }}
+        />
+      )}
+
+      {paymentPanelOpen && (
+        <PaymentSidePanel
+          projectId={project.id}
+          projectClientName={project.client_name}
+          onClose={() => setPaymentPanelOpen(false)}
+          onChanged={fetchPayments}
         />
       )}
     </Layout>
@@ -496,6 +531,128 @@ function NoteItem({ note }: { note: ProjectNote }) {
         </time>
       </footer>
     </article>
+  )
+}
+
+// ── P&L Section ───────────────────────────────────────────────────────────────
+
+const PAYMENT_TYPE_LABELS: Record<string, string> = {
+  sample: 'Sample',
+  advance: 'Advance',
+  packaging: 'Packaging',
+  printing: 'Printing',
+  derma_testing: 'Derma Testing',
+  other_service: 'Other Service',
+  shipment_printing: 'Shipment - Printing',
+  shipment_packaging: 'Shipment - Packaging',
+  shipment_testing: 'Shipment - Testing',
+}
+
+function PLSection({ payments }: { payments: import('@/types/crm').ProjectPayment[] }) {
+  const [open, setOpen] = useState(false)
+
+  if (payments.length === 0 && !open) {
+    return (
+      <section aria-labelledby="pl-heading">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-2 text-sm font-semibold text-black dark:text-white hover:text-mustard transition-colors"
+          aria-expanded={false}
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+          P&L Summary
+          <span className="text-xs font-normal text-black/40 dark:text-slate-500">(no payments yet)</span>
+        </button>
+      </section>
+    )
+  }
+
+  // Aggregate by payment type
+  const byType: Record<string, { paid: number; received: number }> = {}
+  for (const p of payments) {
+    if (!byType[p.payment_type]) byType[p.payment_type] = { paid: 0, received: 0 }
+    byType[p.payment_type].paid += Number(p.amount_paid)
+    byType[p.payment_type].received += Number(p.amount_received)
+  }
+
+  const rows = Object.entries(byType).map(([type, vals]) => ({
+    type,
+    label: PAYMENT_TYPE_LABELS[type] ?? type,
+    paid: vals.paid,
+    received: vals.received,
+    net: vals.received - vals.paid,
+  }))
+
+  const totalPaid = rows.reduce((s, r) => s + r.paid, 0)
+  const totalReceived = rows.reduce((s, r) => s + r.received, 0)
+  const totalNet = totalReceived - totalPaid
+
+  const fmt = (n: number) =>
+    n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  return (
+    <section aria-labelledby="pl-heading">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 text-lg font-semibold text-black dark:text-white hover:text-mustard transition-colors mb-3"
+        aria-expanded={open}
+        id="pl-heading"
+      >
+        <svg
+          className={`w-4 h-4 shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+        P&L Summary
+        {!open && (
+          <span className={`text-sm font-medium ml-1 ${totalNet >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            {totalNet >= 0 ? '+' : ''}₹{fmt(totalNet)}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="overflow-x-auto rounded-lg border border-black/10 dark:border-white/10">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-black/5 dark:bg-white/5 text-left">
+                <th className="px-4 py-2 font-semibold text-black/70 dark:text-slate-300">Payment Type</th>
+                <th className="px-4 py-2 font-semibold text-red-600 dark:text-red-400 text-right">Total Paid (₹)</th>
+                <th className="px-4 py-2 font-semibold text-green-600 dark:text-green-400 text-right">Total Received (₹)</th>
+                <th className="px-4 py-2 font-semibold text-black/70 dark:text-slate-300 text-right">Net (₹)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black/5 dark:divide-white/5">
+              {rows.map((r) => (
+                <tr key={r.type} className="hover:bg-black/2 dark:hover:bg-white/2">
+                  <td className="px-4 py-2 text-black dark:text-white">{r.label}</td>
+                  <td className="px-4 py-2 text-right text-red-600 dark:text-red-400 tabular-nums">{fmt(r.paid)}</td>
+                  <td className="px-4 py-2 text-right text-green-600 dark:text-green-400 tabular-nums">{fmt(r.received)}</td>
+                  <td className={`px-4 py-2 text-right tabular-nums font-medium ${r.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {r.net >= 0 ? '+' : ''}{fmt(r.net)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-black/5 dark:bg-white/5 border-t-2 border-black/20 dark:border-white/20 font-semibold">
+                <td className="px-4 py-2 text-black dark:text-white">Total</td>
+                <td className="px-4 py-2 text-right text-red-600 dark:text-red-400 tabular-nums">{fmt(totalPaid)}</td>
+                <td className="px-4 py-2 text-right text-green-600 dark:text-green-400 tabular-nums">{fmt(totalReceived)}</td>
+                <td className={`px-4 py-2 text-right tabular-nums text-base ${totalNet >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {totalNet >= 0 ? '+' : ''}₹{fmt(totalNet)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </section>
   )
 }
 

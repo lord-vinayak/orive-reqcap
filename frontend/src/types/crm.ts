@@ -226,6 +226,30 @@ export interface VendorProjectPayment {
   updated_at: string
 }
 
+// ─── Project Payments ────────────────────────────────────────────────────────
+
+export type PaymentType =
+  | 'sample' | 'advance' | 'packaging' | 'printing' | 'derma_testing'
+  | 'other_service' | 'shipment_printing' | 'shipment_packaging' | 'shipment_testing'
+
+export interface ProjectPayment {
+  id: string
+  project: string
+  payment_date: string
+  payment_type: PaymentType
+  payment_type_display: string
+  amount_paid: string
+  amount_received: string
+  comments: string
+  invoice_drive_id: string
+  invoice_drive_url: string
+  invoice_filename: string
+  created_by: string | null
+  created_by_name: string | null
+  created_at: string
+  updated_at: string
+}
+
 // ─── Dashboard types ──────────────────────────────────────────────────────────
 
 export interface DashboardStats {

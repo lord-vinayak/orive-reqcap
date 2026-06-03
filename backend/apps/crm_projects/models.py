@@ -288,6 +288,49 @@ class ProjectMilestone(models.Model):
                 self.status = 'on_track'
 
 
+class ProjectPayment(models.Model):
+    """Cash-flow entry per project: tracks money paid out and received."""
+    PAYMENT_TYPES = [
+        ('sample', 'Sample'),
+        ('advance', 'Advance'),
+        ('packaging', 'Packaging'),
+        ('printing', 'Printing'),
+        ('derma_testing', 'Derma Testing'),
+        ('other_service', 'Other Service'),
+        ('shipment_printing', 'Shipment - Printing'),
+        ('shipment_packaging', 'Shipment - Packaging'),
+        ('shipment_testing', 'Shipment - Testing'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        CRMProject, on_delete=models.CASCADE, related_name='payments'
+    )
+    payment_date = models.DateField()
+    payment_type = models.CharField(max_length=30, choices=PAYMENT_TYPES, db_index=True)
+    amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    amount_received = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    comments = models.TextField(blank=True, default='')
+    invoice_drive_id = models.CharField(max_length=255, blank=True, default='')
+    invoice_drive_url = models.URLField(blank=True, default='')
+    invoice_filename = models.CharField(max_length=255, blank=True, default='')
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name='project_payments_created',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-payment_date', '-created_at']
+        indexes = [
+            models.Index(fields=['project', '-payment_date']),
+        ]
+
+    def __str__(self):
+        return f'{self.project_id} | {self.payment_type} | {self.payment_date}'
+
+
 class KeyLearning(models.Model):
     """Key learnings per project — searchable for cross-project similarity."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

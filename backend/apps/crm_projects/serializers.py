@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 from .models import (
     CRMProject, StageCompletion, SubStageCompletion,
-    ProjectNote, ProjectFile, ProjectMilestone, KeyLearning,
+    ProjectNote, ProjectFile, ProjectMilestone, KeyLearning, ProjectPayment,
 )
 from .stage_definitions import STAGE_DEFINITIONS, STAGE_KEY_TO_INDEX
 
@@ -76,6 +76,25 @@ class KeyLearningSerializer(serializers.ModelSerializer):
         model = KeyLearning
         fields = ['id', 'project', 'text', 'tags', 'created_by', 'created_by_name', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_by', 'created_by_name', 'created_at', 'updated_at']
+
+
+class ProjectPaymentSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.name', read_only=True)
+    payment_type_display = serializers.CharField(source='get_payment_type_display', read_only=True)
+
+    class Meta:
+        model = ProjectPayment
+        fields = [
+            'id', 'project', 'payment_date', 'payment_type', 'payment_type_display',
+            'amount_paid', 'amount_received', 'comments',
+            'invoice_drive_id', 'invoice_drive_url', 'invoice_filename',
+            'created_by', 'created_by_name', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'created_by', 'created_by_name', 'created_at', 'updated_at',
+            'invoice_drive_id', 'invoice_drive_url', 'invoice_filename',
+            'payment_type_display',
+        ]
 
 
 class CRMProjectListSerializer(serializers.ModelSerializer):

@@ -5,14 +5,15 @@ from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from rest_framework.parsers import MultiPartParser, FormParser
 from .models import (
     CRMProject, StageCompletion, SubStageCompletion,
-    ProjectNote, ProjectFile, ProjectMilestone, KeyLearning, _add_weekdays,
+    ProjectNote, ProjectFile, ProjectMilestone, KeyLearning, ProjectPayment, _add_weekdays,
 )
 from .serializers import (
     CRMProjectListSerializer, CRMProjectDetailSerializer, CRMProjectWriteSerializer,
     SubStageCompletionSerializer, ProjectNoteSerializer, ProjectFileSerializer,
-    ProjectMilestoneSerializer, KeyLearningSerializer,
+    ProjectMilestoneSerializer, KeyLearningSerializer, ProjectPaymentSerializer,
 )
 from .stage_definitions import STAGE_DEFINITIONS, STAGE_KEY_TO_INDEX
 
@@ -316,3 +317,50 @@ class ProjectMilestoneViewSet(viewsets.ModelViewSet):
             instance.save(update_fields=['actual_date', 'status'])
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+
+class ProjectPaymentViewSet(viewsets.ModelViewSet):
+    serializer_class = ProjectPaymentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        qs = ProjectPayment.objects.select_related('created_by')
+        project_id = self.request.query_params.get('project')
+        if project_id:
+            qs = qs.filter(project_id=project_id)
+        return qs
+
+    def _handle_invoice(self, instance, request):
+        """Upload invoice file to Drive and update the instance in-place."""
+        invoice_file = request.FILES.get('invoice')
+        if not invoice_file:
+            return
+        from apps.files.drive_service import upload_file
+        try:
+            result = upload_file(
+                file_bytes=invoice_file.read(),
+                filename=invoice_file.name,
+                mimetype=invoice_file.content_type or 'application/octet-stream',
+                client_name=instance.project.client.name,
+                subfolder='Invoices',
+            )
+            instance.invoice_drive_id = result['drive_file_id']
+            instance.invoice_drive_url = result['drive_url']
+            instance.invoice_filename = invoice_file.name
+            instance.save(update_fields=['invoice_drive_id', 'invoice_drive_url', 'invoice_filename'])
+        except Exception as e:
+            pass  # Invoice upload failure is non-fatal; payment is still saved
+
+    def perform_create(self, serializer):
+        instance = serializer.save(created_by=self.request.user)
+        self._handle_invoice(instance, self.request)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        self._handle_invoice(instance, self.request)
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admin can delete payments.'}, status=403)
+        return super().destroy(request, *args, **kwargs)
