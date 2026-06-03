@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
-import { SquarePen, StickyNotePlus } from "lucide-react";
+import { SquarePen, StickyNotePlus, ClipboardList } from "lucide-react";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -43,6 +43,21 @@ export default function Home() {
             </div>
             <h2 className="text-lg font-semibold text-black dark:text-slate-100 mb-1">Track Project</h2>
             <p className="text-sm text-black/60 dark:text-slate-400">Project tracking.</p>
+          </button>
+
+          <button
+            onClick={() => navigate("/tasks")}
+            className="card text-left hover:border-mustard transition-colors group"
+            aria-label="Go to Task Tracker">
+            <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center mb-4 group-hover:bg-mustard transition-colors">
+              <span className="text-2xl text-mustard-700">
+                <ClipboardList />
+              </span>
+            </div>
+            <h2 className="text-lg font-semibold text-black dark:text-slate-100 mb-1">Task Tracker</h2>
+            <p className="text-sm text-black/60 dark:text-slate-400">
+              View and update all assigned stage tasks in real-time.
+            </p>
           </button>
         </div>
       </div>
