@@ -104,6 +104,16 @@ export interface CRMProjectList {
   moq: number | null
   manufacturer: string | null
   manufacturer_name: string | null
+  designer: string | null
+  designer_name: string | null
+  packaging_vendor: string | null
+  packaging_vendor_name: string | null
+  printer: string | null
+  printer_name: string | null
+  batch_testing_vendor: string | null
+  batch_testing_vendor_name: string | null
+  derma_testing_vendor: string | null
+  derma_testing_vendor_name: string | null
   project_stage: ProjectStage
   sales_poc: string | null
   sales_poc_name: string | null

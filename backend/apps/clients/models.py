@@ -11,6 +11,9 @@ class Client(models.Model):
     city = models.CharField(max_length=100, blank=True, default='')
     gst_details = models.CharField(max_length=50, blank=True, default='')
     physical_address = models.TextField(blank=True, default='')
+    no_of_products = models.IntegerField(null=True, blank=True)
+    planned_selling_price_range = models.CharField(max_length=100, blank=True, default='')
+    how_many_units_per_product = models.IntegerField(null=True, blank=True)
     poc = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

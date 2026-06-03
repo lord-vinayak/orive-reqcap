@@ -7,6 +7,7 @@ import { ProgressBar } from '@/components/crm/ProgressBar'
 import { StatusBadge } from '@/components/crm/StatusBadge'
 import { StagePanel } from '@/components/crm/StagePanel'
 import { MilestoneTable } from '@/components/crm/MilestoneTable'
+import { VendorSidePanel } from '@/components/crm/VendorSidePanel'
 
 export default function CRMProjectDetail() {
   const { id } = useParams<{ id: string }>()
@@ -15,6 +16,7 @@ export default function CRMProjectDetail() {
   const [error, setError] = useState('')
   const [activeStage, setActiveStage] = useState<string | null>(null)
   const [notesView, setNotesView] = useState<'stage' | 'all'>('stage')
+  const [vendorPanelOpen, setVendorPanelOpen] = useState(false)
 
   const fetchProject = () => {
     if (!id) return
@@ -133,9 +135,22 @@ export default function CRMProjectDetail() {
               {project.client_company && ` · ${project.client_company}`}
             </p>
           </div>
-          <div className="text-sm text-black/60 dark:text-slate-400 text-right">
-            <div>Stage: <span className="font-medium capitalize text-black dark:text-white">{project.project_stage.replace(/_/g, ' ')}</span></div>
-            <div className="mt-0.5">Started: {new Date(project.start_date).toLocaleDateString('en-IN')}</div>
+          <div className="flex items-start gap-3">
+            <button
+              type="button"
+              onClick={() => setVendorPanelOpen(true)}
+              className="btn-secondary text-sm flex items-center gap-1.5"
+              aria-haspopup="dialog"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+              </svg>
+              Vendors
+            </button>
+            <div className="text-sm text-black/60 dark:text-slate-400 text-right">
+              <div>Stage: <span className="font-medium capitalize text-black dark:text-white">{project.project_stage.replace(/_/g, ' ')}</span></div>
+              <div className="mt-0.5">Started: {new Date(project.start_date).toLocaleDateString('en-IN')}</div>
+            </div>
           </div>
         </div>
 
@@ -335,6 +350,17 @@ export default function CRMProjectDetail() {
         {/* ── Key Learnings ── */}
         <KeyLearningsSection projectId={project.id} />
       </div>
+
+      {vendorPanelOpen && (
+        <VendorSidePanel
+          project={project}
+          onClose={() => setVendorPanelOpen(false)}
+          onSaved={(updated) => {
+            setProject((prev) => prev ? { ...prev, ...updated } : prev)
+            setVendorPanelOpen(false)
+          }}
+        />
+      )}
     </Layout>
   )
 }
@@ -386,6 +412,11 @@ function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefre
         <MetaField label="Products" value={project.no_of_products?.toString() ?? '—'} />
         <MetaField label="MOQ" value={project.moq?.toString() ?? '—'} />
         <MetaField label="Manufacturer" value={project.manufacturer_name ?? '—'} />
+        <MetaField label="Designer" value={project.designer_name ?? '—'} />
+        <MetaField label="Packaging Vendor" value={project.packaging_vendor_name ?? '—'} />
+        <MetaField label="Printer" value={project.printer_name ?? '—'} />
+        <MetaField label="Batch Testing" value={project.batch_testing_vendor_name ?? '—'} />
+        <MetaField label="Derma Testing" value={project.derma_testing_vendor_name ?? '—'} />
         <MetaField label="Sales POC" value={project.sales_poc_name ?? '—'} />
         <MetaField label="Formulation POC" value={project.formulation_poc_name ?? '—'} />
 

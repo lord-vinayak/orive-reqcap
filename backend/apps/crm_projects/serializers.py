@@ -85,6 +85,11 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
     sales_poc_name = serializers.CharField(source='sales_poc.name', read_only=True)
     formulation_poc_name = serializers.CharField(source='formulation_poc.name', read_only=True)
     manufacturer_name = serializers.CharField(source='manufacturer.company_name', read_only=True)
+    designer_name = serializers.CharField(source='designer.company_name', read_only=True, default=None)
+    packaging_vendor_name = serializers.CharField(source='packaging_vendor.company_name', read_only=True, default=None)
+    printer_name = serializers.CharField(source='printer.company_name', read_only=True, default=None)
+    batch_testing_vendor_name = serializers.CharField(source='batch_testing_vendor.company_name', read_only=True, default=None)
+    derma_testing_vendor_name = serializers.CharField(source='derma_testing_vendor.company_name', read_only=True, default=None)
     progress_percentage = serializers.IntegerField(read_only=True)
     has_delays = serializers.SerializerMethodField()
     next_milestone = serializers.SerializerMethodField()
@@ -94,6 +99,11 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'project_no', 'client', 'client_name', 'client_company',
             'no_of_products', 'moq', 'manufacturer', 'manufacturer_name',
+            'designer', 'designer_name',
+            'packaging_vendor', 'packaging_vendor_name',
+            'printer', 'printer_name',
+            'batch_testing_vendor', 'batch_testing_vendor_name',
+            'derma_testing_vendor', 'derma_testing_vendor_name',
             'project_stage', 'sales_poc', 'sales_poc_name',
             'formulation_poc', 'formulation_poc_name',
             'sample_booked_date', 'start_date', 'created_at',
@@ -148,6 +158,8 @@ class CRMProjectWriteSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'project_no',
             'client', 'no_of_products', 'moq', 'manufacturer',
+            'designer', 'packaging_vendor', 'printer',
+            'batch_testing_vendor', 'derma_testing_vendor',
             'project_stage', 'sales_poc', 'formulation_poc', 'sample_booked_date',
         ]
         read_only_fields = ['id', 'project_no']

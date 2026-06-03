@@ -43,14 +43,13 @@ function hasDraftProductContent(product: RequirementProduct) {
 function hasMeaningfulDraft(
   client: Partial<Client>,
   targetAge: string,
-  noOfProducts: number | null,
   products: RequirementProduct[],
 ) {
   return (
     hasText(client.name) ||
     hasText(client.phone_no) ||
     hasText(targetAge) ||
-    noOfProducts !== null ||
+    client.no_of_products !== null && client.no_of_products !== undefined ||
     products.some(hasDraftProductContent)
   );
 }
@@ -133,7 +132,6 @@ export default function RequirementForm() {
     ];
   });
   const [targetAge, setTargetAge] = useState("");
-  const [noOfProducts, setNoOfProducts] = useState<number | null>(null);
   const [activeRowIndex, setActiveRowIndex] = useState(0);
 
   const [manualSaving, setManualSaving] = useState(false);
@@ -193,7 +191,6 @@ export default function RequirementForm() {
         const hasSavedDraft = hasMeaningfulDraft(
           draft.client || {},
           draft.targetAge || "",
-          draft.noOfProducts ?? null,
           draft.products || [],
         );
         if (hasSavedDraft) setShowDraftBanner(true);
@@ -207,9 +204,15 @@ export default function RequirementForm() {
     requirementService.get(id)
       .then((r) => {
         setRequirement(r);
-        if (r.client_data) setClient(r.client_data);
+        if (r.client_data) {
+          // Graceful fallback: if client doesn't have no_of_products yet (legacy records),
+          // read it from the requirement field.
+          setClient({
+            ...r.client_data,
+            no_of_products: r.client_data.no_of_products ?? r.no_of_products ?? null,
+          });
+        }
         setTargetAge(r.target_audience_age || "");
-        setNoOfProducts(r.no_of_products);
         setProducts(r.products || []);
         setSavedAt(new Date(r.updated_at));
         dirtyProductsRef.current.clear();
@@ -225,7 +228,6 @@ export default function RequirementForm() {
     const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}");
     if (draft.client) setClient(draft.client);
     if (draft.targetAge) setTargetAge(draft.targetAge);
-    if (draft.noOfProducts !== undefined) setNoOfProducts(draft.noOfProducts);
     if (draft.products) setProducts(draft.products);
     setShowDraftBanner(false);
   };
@@ -236,12 +238,12 @@ export default function RequirementForm() {
 
   useEffect(() => {
     if (isEdit) return;
-    if (!hasMeaningfulDraft(client, targetAge, noOfProducts, products)) {
+    if (!hasMeaningfulDraft(client, targetAge, products)) {
       localStorage.removeItem(DRAFT_KEY);
       return;
     }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ client, targetAge, noOfProducts, products }));
-  }, [client, targetAge, noOfProducts, products, isEdit]);
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ client, targetAge, products }));
+  }, [client, targetAge, products, isEdit]);
 
   const scheduleAutoSave = useCallback(() => {
     if (!requirement) return;
@@ -256,7 +258,6 @@ export default function RequirementForm() {
         if (metaDirty) {
           tasks.push(requirementService.patch(requirement.id, {
             target_audience_age: targetAge,
-            no_of_products: noOfProducts,
           }));
           dirtyMetaRef.current = false;
         }
@@ -273,7 +274,7 @@ export default function RequirementForm() {
       } catch { /* silent — manual Save surfaces errors */ }
       finally { setAutoSaving(false); }
     }, AUTOSAVE_DEBOUNCE_MS);
-  }, [requirement, targetAge, noOfProducts, products]);
+  }, [requirement, targetAge, products]);
 
   useEffect(() => () => {
     if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
@@ -283,7 +284,6 @@ export default function RequirementForm() {
   const markProductDirty = (id: string) => { dirtyProductsRef.current.add(id); scheduleAutoSave(); };
 
   const handleTargetAgeChange = (v: string) => { setTargetAge(v); markMetaDirty(); };
-  const handleNoOfProductsChange = (v: number | null) => { setNoOfProducts(v); markMetaDirty(); };
 
   const handleRowChange = (idx: number, patch: Partial<RequirementProduct>) => {
     setProducts((cur) => cur.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
@@ -404,6 +404,14 @@ export default function RequirementForm() {
       const clientPayload = {
         phone_no: client.phone_no,
         name: client.name,
+        company_name: client.company_name || '',
+        email: client.email || '',
+        city: client.city || '',
+        gst_details: client.gst_details || '',
+        physical_address: client.physical_address || '',
+        no_of_products: client.no_of_products ?? null,
+        planned_selling_price_range: client.planned_selling_price_range || '',
+        how_many_units_per_product: client.how_many_units_per_product ?? null,
         poc: currentUser?.id || null,
         status: client.status,
       };
@@ -419,7 +427,6 @@ export default function RequirementForm() {
         req = await requirementService.create({
           client: client.phone_no,
           target_audience_age: targetAge,
-          no_of_products: noOfProducts,
         } as any);
         setRequirement(req);
         const created: RequirementProduct[] = [];
@@ -433,7 +440,6 @@ export default function RequirementForm() {
       } else {
         await requirementService.patch(req.id, {
           target_audience_age: targetAge,
-          no_of_products: noOfProducts,
         });
         const tmpProducts = products.filter((p) => p.id.startsWith("tmp-"));
         const createdPromises = tmpProducts.map(async (p) => {
@@ -489,7 +495,7 @@ export default function RequirementForm() {
     } finally {
       setManualSaving(false);
     }
-  }, [client, requirement, products, targetAge, noOfProducts, currentUser?.id]);
+  }, [client, requirement, products, targetAge, currentUser?.id]);
 
   const handleSave = async () => {
     const req = await saveAll();
@@ -639,8 +645,6 @@ export default function RequirementForm() {
                 onClientChange={(next) => { setClient(next); if (requirement) markMetaDirty(); }}
                 targetAge={targetAge}
                 onTargetAgeChange={handleTargetAgeChange}
-                noOfProducts={noOfProducts}
-                onNoOfProductsChange={handleNoOfProductsChange}
                 readOnlyPhone={isEdit}
                 onExtract={handleExtract}
               />

@@ -43,6 +43,41 @@ class CRMProject(models.Model):
         null=True, blank=True,
         related_name='projects',
     )
+    designer = models.ForeignKey(
+        'crm_master_data.Vendor',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='projects_as_designer',
+        limit_choices_to={'vendor_type': 'designer'},
+    )
+    packaging_vendor = models.ForeignKey(
+        'crm_master_data.Vendor',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='projects_as_packaging_vendor',
+        limit_choices_to={'vendor_type': 'packaging'},
+    )
+    printer = models.ForeignKey(
+        'crm_master_data.Vendor',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='projects_as_printer',
+        limit_choices_to={'vendor_type': 'printing'},
+    )
+    batch_testing_vendor = models.ForeignKey(
+        'crm_master_data.Vendor',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='projects_as_batch_testing',
+        limit_choices_to={'vendor_type': 'testing'},
+    )
+    derma_testing_vendor = models.ForeignKey(
+        'crm_master_data.Vendor',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='projects_as_derma_testing',
+        limit_choices_to={'vendor_type': 'testing'},
+    )
     project_stage = models.CharField(
         max_length=30, choices=STAGE_CHOICES, default='new_lead', db_index=True
     )

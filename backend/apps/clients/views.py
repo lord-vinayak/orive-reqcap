@@ -25,6 +25,11 @@ TEMPLATE_COLUMNS = [
     'email',
     'company_name',
     'city',
+    'no_of_products',
+    'planned_selling_price_range',
+    'how_many_units_per_product',
+    'physical_address',
+    'gst_details',
     'status',
 ]
 
@@ -99,14 +104,24 @@ class ClientViewSet(viewsets.ModelViewSet):
             cell.font = header_font
             cell.fill = header_fill
 
-        # Column widths
-        widths = [25, 20, 30, 25, 15, 45]
+        # Column widths:  name  phone email company city  noprod price  units  addr   gst    status
+        widths = [        25,   20,   30,   25,     15,   14,    28,    22,    35,    20,    45    ]
         for col_idx, width in enumerate(widths, start=1):
             ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
-        # Status hint in row 2 of the status column
-        ws.cell(row=2, column=6, value=STATUS_HINT)
-        ws.cell(row=2, column=6).font = openpyxl.styles.Font(italic=True, color='888888')
+        # Hints in row 2
+        status_col = TEMPLATE_COLUMNS.index('status') + 1
+        ws.cell(row=2, column=status_col, value=STATUS_HINT)
+        ws.cell(row=2, column=status_col).font = openpyxl.styles.Font(italic=True, color='888888')
+        noprod_col = TEMPLATE_COLUMNS.index('no_of_products') + 1
+        ws.cell(row=2, column=noprod_col, value='Integer, e.g. 5')
+        ws.cell(row=2, column=noprod_col).font = openpyxl.styles.Font(italic=True, color='888888')
+        units_col = TEMPLATE_COLUMNS.index('how_many_units_per_product') + 1
+        ws.cell(row=2, column=units_col, value='Integer, e.g. 1000')
+        ws.cell(row=2, column=units_col).font = openpyxl.styles.Font(italic=True, color='888888')
+        price_col = TEMPLATE_COLUMNS.index('planned_selling_price_range') + 1
+        ws.cell(row=2, column=price_col, value='Free text, e.g. ₹100–₹500')
+        ws.cell(row=2, column=price_col).font = openpyxl.styles.Font(italic=True, color='888888')
 
         # One example row
         ws.cell(row=3, column=1, value='John Doe')
@@ -114,7 +129,12 @@ class ClientViewSet(viewsets.ModelViewSet):
         ws.cell(row=3, column=3, value='john@example.com')
         ws.cell(row=3, column=4, value='Acme Corp')
         ws.cell(row=3, column=5, value='Mumbai')
-        ws.cell(row=3, column=6, value='Unanswered')
+        ws.cell(row=3, column=6, value=3)
+        ws.cell(row=3, column=7, value='₹200–₹500')
+        ws.cell(row=3, column=8, value=1000)
+        ws.cell(row=3, column=9, value='123 MG Road, Mumbai 400001')
+        ws.cell(row=3, column=10, value='27AAPFU0939F1ZV')
+        ws.cell(row=3, column=11, value='Unanswered')
 
         buf = io.BytesIO()
         wb.save(buf)
@@ -161,6 +181,11 @@ class ClientViewSet(viewsets.ModelViewSet):
         idx_email   = col('email')
         idx_company = col('company_name')
         idx_city    = col('city')
+        idx_noprod  = col('no_of_products')
+        idx_price   = col('planned_selling_price_range')
+        idx_units   = col('how_many_units_per_product')
+        idx_address = col('physical_address')
+        idx_gst     = col('gst_details')
         idx_status  = col('status')
 
         if idx_name is None or idx_phone is None:
@@ -174,6 +199,15 @@ class ClientViewSet(viewsets.ModelViewSet):
                 return None
             v = row_data[idx]
             return str(v).strip() if v is not None else None
+
+        def _int_or_none(row_data, idx):
+            v = cell(row_data, idx)
+            if v is None:
+                return None
+            try:
+                return int(float(v))
+            except (ValueError, TypeError):
+                return None
 
         created = []
         skipped = []
@@ -218,6 +252,11 @@ class ClientViewSet(viewsets.ModelViewSet):
                 email=email,
                 company_name=cell(row_data, idx_company) or '',
                 city=cell(row_data, idx_city) or '',
+                no_of_products=_int_or_none(row_data, idx_noprod),
+                planned_selling_price_range=cell(row_data, idx_price) or '',
+                how_many_units_per_product=_int_or_none(row_data, idx_units),
+                physical_address=cell(row_data, idx_address) or '',
+                gst_details=cell(row_data, idx_gst) or '',
                 status=_parse_status(cell(row_data, idx_status)),
                 poc=request.user,
             )

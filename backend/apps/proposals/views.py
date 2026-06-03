@@ -173,7 +173,13 @@ class ProposalViewSet(viewsets.ModelViewSet):
             except Exception:
                 pass  # skip individual attachment failures silently
 
-        msg.send()
+        try:
+            msg.send()
+        except Exception as e:
+            return Response(
+                {'detail': f'Failed to send email. The mail server could not be reached or rejected the connection: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         # Record the send in the audit log
         sent = SentEmail.objects.create(

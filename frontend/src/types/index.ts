@@ -15,6 +15,9 @@ export interface Client {
   city: string
   gst_details: string
   physical_address: string
+  no_of_products: number | null
+  planned_selling_price_range: string
+  how_many_units_per_product: number | null
   poc: string | null
   poc_name?: string
   status: 'call_back' | 'catalogue_shared' | 'costing_shared' | 'interested' | 'language_barrier' | 'not_interested' | 'not_responding' | 'unanswered'
