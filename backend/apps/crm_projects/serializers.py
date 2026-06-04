@@ -227,11 +227,29 @@ class CRMProjectWriteSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'project_no']
 
+    M2M_FIELDS = [
+        'manufacturers', 'designers', 'packaging_vendors',
+        'printers', 'batch_testing_vendors', 'derma_testing_vendors',
+    ]
+
     def create(self, validated_data):
         user = self.context['request'].user
+        m2m_data = {f: validated_data.pop(f, []) for f in self.M2M_FIELDS}
         project = CRMProject.objects.create(created_by=user, **validated_data)
+        for field, values in m2m_data.items():
+            getattr(project, field).set(values)
         StageCompletion.objects.bulk_create([
             StageCompletion(project=project, stage_key=k)
             for k in ALL_INITIAL_STAGE_KEYS
         ])
         return project
+
+    def update(self, instance, validated_data):
+        m2m_data = {f: validated_data.pop(f, None) for f in self.M2M_FIELDS}
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        for field, values in m2m_data.items():
+            if values is not None:
+                getattr(instance, field).set(values)
+        return instance
