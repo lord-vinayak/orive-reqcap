@@ -213,7 +213,7 @@ export function VendorSidePanel({ project, onClose, onSaved }: Props) {
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/30 dark:bg-black/50" aria-hidden="true" onClick={onClose} />
+      <div className="fixed inset-0 z-40 backdrop-blur-md bg-slate-900/40 dark:bg-slate-950/60" aria-hidden="true" onClick={onClose} />
 
       <aside
         role="dialog"
