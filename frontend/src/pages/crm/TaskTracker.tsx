@@ -143,6 +143,9 @@ export default function TaskTracker() {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-black dark:text-white">
+                      {task.assigned_by_name ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-black dark:text-white">
                       {task.assigned_to_name ?? '—'}
                     </td>
                     <td className="px-4 py-3">

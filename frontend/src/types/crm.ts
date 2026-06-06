@@ -11,6 +11,9 @@ export interface StageCompletion {
   completed_at: string | null
   completed_by: string | null
   completed_by_name: string | null
+  assigned_by: string | null
+  assigned_by_name: string | null
+
 }
 
 // ─── Stage status (returned by /stage-status/ endpoint) ──────────────────────
@@ -34,6 +37,7 @@ export interface TaskItem {
   client_phone: string
   assigned_to_id: string | null
   assigned_to_name: string | null
+  assigned_by_name: string | null
   assigned_at: string | null
   task_status: TaskStatus
   task_status_display: string
