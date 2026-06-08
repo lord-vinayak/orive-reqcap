@@ -1,13 +1,15 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
+import { clientService } from '@/services'
 import { useTaskSocket } from '@/hooks/useTaskSocket'
 import { useAuthStore } from '@/store/authStore'
 import TaskCommentPanel from '@/components/crm/TaskCommentPanel'
 import NewTaskModal from '@/components/crm/NewTaskModal'
-import type { TaskItem, TaskStatus, TaskPriority } from '@/types/crm'
+import type { TaskItem, TaskStatus, TaskPriority, InternalTeamMember } from '@/types/crm'
 import { TASK_STATUS_LABELS } from '@/types/crm'
+import type { Client } from '@/types'
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: 'not_started', label: 'Not Started' },
@@ -45,6 +47,15 @@ export default function TaskTracker() {
   const [filterClient, setFilterClient] = useState('')
   const [filterDateFrom, setFilterDateFrom] = useState('')
 
+  // All system owners and clients (for filter dropdowns — full lists, not just task-derived)
+  const [allTeamMembers, setAllTeamMembers] = useState<InternalTeamMember[]>([])
+  const [allClients, setAllClients] = useState<Client[]>([])
+
+  // Client combobox state
+  const [clientSearch, setClientSearch] = useState('')
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
+  const clientComboRef = useRef<HTMLDivElement>(null)
+
   const isFiltered = !!(filterOwner || filterStatus || filterPriority || filterClient || filterDateFrom)
 
   const resetFilters = () => {
@@ -52,17 +63,28 @@ export default function TaskTracker() {
     setFilterStatus('')
     setFilterPriority('')
     setFilterClient('')
+    setClientSearch('')
+    setClientDropdownOpen(false)
     setFilterDateFrom('')
   }
 
-  // Unique owner and client options derived from loaded tasks
-  const ownerOptions = Array.from(
-    new Set(tasks.map((t) => t.assigned_to_name).filter(Boolean))
-  ).sort() as string[]
+  // Close client dropdown on outside click
+  useEffect(() => {
+    if (!clientDropdownOpen) return
+    const handler = (e: MouseEvent) => {
+      if (clientComboRef.current && !clientComboRef.current.contains(e.target as Node)) {
+        setClientDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [clientDropdownOpen])
 
-  const clientOptions = Array.from(
-    new Set(tasks.map((t) => t.client_name).filter(Boolean))
-  ).sort() as string[]
+  // Owner options: all team members in the system
+  const ownerOptions = allTeamMembers.map((m) => m.name)
+
+  // Client options: all clients in the system
+  const clientOptions = allClients.map((c) => c.name)
 
   const filteredTasks = tasks.filter((t) => {
     if (filterOwner && t.assigned_to_name !== filterOwner) return false
@@ -92,6 +114,18 @@ export default function TaskTracker() {
   useTaskSocket(upsertTask)
 
   useEffect(() => {
+    // Fetch all team members for the Owner filter (full system list)
+    crmApi.allTeamMembers().then((r) => {
+      const data = Array.isArray(r.data) ? r.data : (r.data as any).results ?? []
+      setAllTeamMembers(data.sort((a: InternalTeamMember, b: InternalTeamMember) => a.name.localeCompare(b.name)))
+    })
+
+    // Fetch all clients for the Client filter (full system list, large page_size)
+    clientService.list({ page_size: 2000 } as any).then((data) => {
+      const clients: Client[] = Array.isArray(data) ? data : (data as any).results ?? []
+      setAllClients(clients.sort((a, b) => a.name.localeCompare(b.name)))
+    })
+
     Promise.all([
       crmApi.listTasks(),
       crmApi.listStandaloneTasks(),
@@ -250,18 +284,85 @@ export default function TaskTracker() {
             </select>
           </div>
 
-          {/* Client */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="filter-client" className="text-xs font-medium text-black/50 dark:text-slate-400">Client</label>
-            <select
-              id="filter-client"
-              value={filterClient}
-              onChange={(e) => setFilterClient(e.target.value)}
-              className="w-full text-sm border border-black/15 dark:border-white/15 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
-            >
-              <option value="">All clients</option>
-              {clientOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+          {/* Client — searchable combobox */}
+          <div className="flex flex-col gap-1" ref={clientComboRef}>
+            <label htmlFor="filter-client-search" className="text-xs font-medium text-black/50 dark:text-slate-400">Client</label>
+            <div className="relative">
+              {filterClient ? (
+                // Selected state — chip with clear
+                <div className="flex items-center gap-1.5 w-full text-sm border border-mustard/50 rounded-lg px-2 py-1.5 bg-mustard/5 dark:bg-mustard/10">
+                  <span className="flex-1 truncate text-black dark:text-white">{filterClient}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setFilterClient(''); setClientSearch('') }}
+                    aria-label="Clear client filter"
+                    className="shrink-0 text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white focus-visible:ring-1 focus-visible:ring-mustard rounded"
+                  >
+                    <span aria-hidden="true">✕</span>
+                  </button>
+                </div>
+              ) : (
+                // Search input
+                <input
+                  id="filter-client-search"
+                  type="text"
+                  role="combobox"
+                  aria-expanded={clientDropdownOpen}
+                  aria-autocomplete="list"
+                  aria-controls="filter-client-listbox"
+                  aria-haspopup="listbox"
+                  value={clientSearch}
+                  onChange={(e) => {
+                    setClientSearch(e.target.value)
+                    setClientDropdownOpen(true)
+                  }}
+                  onFocus={() => setClientDropdownOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') { setClientDropdownOpen(false); setClientSearch('') }
+                  }}
+                  placeholder="Search client…"
+                  className="w-full text-sm border border-black/15 dark:border-white/15 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-black dark:text-white placeholder-black/30 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-mustard"
+                />
+              )}
+
+              {/* Dropdown */}
+              {clientDropdownOpen && !filterClient && (
+                <ul
+                  id="filter-client-listbox"
+                  role="listbox"
+                  aria-label="Client options"
+                  className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg shadow-lg max-h-52 overflow-y-auto"
+                >
+                  {(() => {
+                    const q = clientSearch.trim().toLowerCase()
+                    const matches = clientOptions.filter((c) => !q || c.toLowerCase().includes(q))
+                    if (matches.length === 0) {
+                      return (
+                        <li className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">No clients found</li>
+                      )
+                    }
+                    return matches.map((c) => (
+                      <li
+                        key={c}
+                        role="option"
+                        aria-selected={filterClient === c}
+                        tabIndex={0}
+                        onClick={() => { setFilterClient(c); setClientSearch(''); setClientDropdownOpen(false) }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            setFilterClient(c); setClientSearch(''); setClientDropdownOpen(false)
+                          }
+                        }}
+                        className="px-3 py-2 text-sm text-black dark:text-white hover:bg-mustard/10 focus:bg-mustard/10 focus:outline-none cursor-pointer"
+                      >
+                        {c}
+                      </li>
+                    ))
+                  })()}
+                </ul>
+              )}
+            </div>
           </div>
 
           {/* Date Assigned */}
