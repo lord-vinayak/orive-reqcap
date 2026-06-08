@@ -11,7 +11,6 @@ export interface StageCompletion {
   completed_at: string | null
   completed_by: string | null
   completed_by_name: string | null
-  assigned_by: string | null
   assigned_by_name: string | null
 
 }
