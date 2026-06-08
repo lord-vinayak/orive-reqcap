@@ -416,6 +416,7 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
             'client_phone': project.client.phone_no,
             'assigned_to_id': str(member.id),
             'assigned_to_name': member.name,
+            'assigned_by_name': request.user.name if request.user else None,
             'assigned_at': sc.assigned_at.isoformat(),
             'task_status': sc.task_status,
             'task_status_display': dict(sc._meta.get_field('task_status').choices).get(sc.task_status, sc.task_status),
@@ -457,6 +458,7 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
             'assigned_to_id': str(sc.assigned_to_id) if sc.assigned_to_id else None,
             'assigned_to_name': sc.assigned_to.name if sc.assigned_to else None,
             'assigned_at': sc.assigned_at.isoformat() if sc.assigned_at else None,
+            'assigned_by_name': sc.assigned_by.name if sc.assigned_by else None,
             'task_status': sc.task_status,
             'task_status_display': dict(sc._meta.get_field('task_status').choices).get(sc.task_status, sc.task_status),
         }

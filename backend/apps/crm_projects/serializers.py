@@ -10,15 +10,16 @@ from .stage_definitions import ALL_INITIAL_STAGE_KEYS, STAGE_DISPLAY_MAP
 class StageCompletionSerializer(serializers.ModelSerializer):
     completed_by_name = serializers.CharField(source='completed_by.name', read_only=True)
     assigned_to_name = serializers.CharField(source='assigned_to.name', read_only=True)
+    assigned_by_name=serializers.CharField(source='assigned_by.name', read_only=True)
 
     class Meta:
         model = StageCompletion
         fields = [
             'id', 'stage_key', 'is_complete', 'completed_at', 'completed_by', 'completed_by_name',
-            'assigned_to', 'assigned_to_name', 'assigned_at', 'task_status',
+            'assigned_to', 'assigned_to_name', 'assigned_at', 'task_status','assigned_by_name',
         ]
         read_only_fields = ['id', 'completed_by', 'completed_by_name', 'completed_at',
-                            'assigned_to_name', 'assigned_at']
+                            'assigned_to_name', 'assigned_at','assigned_by_name']
 
 
 class TaskItemSerializer(serializers.ModelSerializer):
@@ -30,6 +31,7 @@ class TaskItemSerializer(serializers.ModelSerializer):
     client_phone = serializers.CharField(source='project.client.phone_no', read_only=True)
     assigned_to_id = serializers.UUIDField(source='assigned_to.id', read_only=True)
     assigned_to_name = serializers.CharField(source='assigned_to.name', read_only=True)
+    assigned_by_name=serializers.CharField(source='assigned_by.name', read_only=True)
     task_status_display = serializers.SerializerMethodField()
 
     class Meta:
@@ -37,7 +39,7 @@ class TaskItemSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'stage_key', 'stage_display',
             'project_id', 'project_no', 'client_name', 'client_phone',
-            'assigned_to_id', 'assigned_to_name', 'assigned_at',
+            'assigned_to_id', 'assigned_to_name', 'assigned_at','assigned_by_name',
             'task_status', 'task_status_display',
         ]
 
