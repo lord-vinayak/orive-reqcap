@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { crmApi } from '@/services/crm'
+import { clientService } from '@/services'
+import type { Client } from '@/types'
 import type { TaskItem, TaskPriority, InternalTeamMember, CRMProjectList } from '@/types/crm'
 
 interface Props {
@@ -13,11 +15,19 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
   const [plannedDate, setPlannedDate] = useState('')
   const [assignedTo, setAssignedTo] = useState('')
   const [projectId, setProjectId] = useState('')
-  const [clientPhone, setClientPhone] = useState('')
   const [members, setMembers] = useState<InternalTeamMember[]>([])
   const [projects, setProjects] = useState<CRMProjectList[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  // Client combobox state
+  const [clientSearch, setClientSearch] = useState('')
+  const [clientResults, setClientResults] = useState<Client[]>([])
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
+  const [clientSearching, setClientSearching] = useState(false)
+  const clientRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     crmApi.allTeamMembers().then((r) => {
@@ -28,12 +38,67 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
     })
   }, [])
 
-  // When a project is selected, auto-fill client phone from that project
+  // Close client dropdown on outside click
+  useEffect(() => {
+    if (!clientDropdownOpen) return
+    const handler = (e: MouseEvent) => {
+      if (clientRef.current && !clientRef.current.contains(e.target as Node)) {
+        setClientDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [clientDropdownOpen])
+
+  // Debounced client search
+  const handleClientSearchChange = (value: string) => {
+    setClientSearch(value)
+    setSelectedClient(null)
+    if (!value.trim()) {
+      setClientResults([])
+      setClientDropdownOpen(false)
+      return
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      setClientSearching(true)
+      try {
+        const data = await clientService.list({ q: value.trim() })
+        const results = Array.isArray(data) ? data : (data as any).results ?? []
+        setClientResults(results)
+        setClientDropdownOpen(true)
+      } finally {
+        setClientSearching(false)
+      }
+    }, 300)
+  }
+
+  const handleSelectClient = (client: Client) => {
+    setSelectedClient(client)
+    setClientSearch('')
+    setClientDropdownOpen(false)
+    setClientResults([])
+  }
+
+  const clearClient = () => {
+    setSelectedClient(null)
+    setClientSearch('')
+    setClientResults([])
+  }
+
+  // When a project is selected, auto-fill client from that project
   const handleProjectChange = (pid: string) => {
     setProjectId(pid)
     if (pid) {
       const proj = projects.find((p) => p.id === pid)
-      if (proj) setClientPhone(proj.client)
+      if (proj) {
+        // Build a minimal Client-like object so the display shows name
+        setSelectedClient({ phone_no: proj.client, name: proj.client_name } as Client)
+        setClientSearch('')
+        setClientDropdownOpen(false)
+      }
+    } else {
+      clearClient()
     }
   }
 
@@ -48,7 +113,7 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
         planned_closure_date: plannedDate || null,
         assigned_to: assignedTo || null,
         project: projectId || null,
-        client: clientPhone || null,
+        client: selectedClient?.phone_no || null,
       })
       onCreated(res.data)
       onClose()
@@ -137,22 +202,69 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
           </select>
         </div>
 
-        {/* Client phone (auto-filled or manual) */}
-        {!projectId && (
-          <div>
-            <label className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
-              Client Phone <span className="text-black/30 dark:text-slate-600 font-normal">(optional)</span>
-            </label>
+        {/* Client searchable combobox */}
+        <div ref={clientRef} className="relative">
+          <label className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
+            Client <span className="text-black/30 dark:text-slate-600 font-normal">(optional)</span>
+          </label>
+
+          {selectedClient ? (
+            // Selected state — show chip with clear button
+            <div className="flex items-center gap-2 px-3 py-2 border border-mustard/50 rounded-lg bg-mustard/5 dark:bg-mustard/10">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-black dark:text-white truncate">{selectedClient.name}</p>
+                <p className="text-xs text-black/40 dark:text-slate-500">{selectedClient.phone_no}</p>
+              </div>
+              <button
+                type="button"
+                onClick={clearClient}
+                aria-label="Clear client"
+                className="text-black/30 dark:text-slate-600 hover:text-black dark:hover:text-white transition-colors shrink-0"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            // Search input
             <input
               type="text"
-              value={clientPhone}
-              onChange={(e) => setClientPhone(e.target.value)}
-              placeholder="10-digit phone number"
-              maxLength={10}
+              value={clientSearch}
+              onChange={(e) => handleClientSearchChange(e.target.value)}
+              onFocus={() => clientResults.length > 0 && setClientDropdownOpen(true)}
+              placeholder="Search by name or phone number…"
               className="w-full text-sm border border-black/20 dark:border-white/20 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-black dark:text-white placeholder-black/30 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-mustard"
             />
-          </div>
-        )}
+          )}
+
+          {/* Dropdown results */}
+          {clientDropdownOpen && !selectedClient && (
+            <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              {clientSearching ? (
+                <p className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">Searching…</p>
+              ) : clientResults.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">No clients found</p>
+              ) : (
+                <ul role="listbox" aria-label="Client results">
+                  {clientResults.map((c) => (
+                    <li key={c.phone_no} role="option">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectClient(c)}
+                        className="w-full text-left px-3 py-2 hover:bg-mustard/10 focus:bg-mustard/10 focus:outline-none"
+                      >
+                        <span className="text-sm font-medium text-black dark:text-white">{c.name}</span>
+                        {c.company_name && (
+                          <span className="text-xs text-black/40 dark:text-slate-500 ml-1">· {c.company_name}</span>
+                        )}
+                        <span className="block text-xs text-black/40 dark:text-slate-500">{c.phone_no}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
 
         {error && <p className="text-xs text-red-500" role="alert">{error}</p>}
 

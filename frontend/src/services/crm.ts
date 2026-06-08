@@ -89,6 +89,17 @@ export const crmApi = {
       task_status: taskStatus,
     }),
 
+  updateStagePlannedDate: (projectId: string, stageKey: string, plannedClosureDate: string | null) =>
+    api.patch<TaskItem>(`/crm/projects/${projectId}/update-planned-date/`, {
+      stage_key: stageKey,
+      planned_closure_date: plannedClosureDate,
+    }),
+
+  updateStandalonePlannedDate: (taskId: string, plannedClosureDate: string | null) =>
+    api.patch<TaskItem>(`/crm/standalone-tasks/${taskId}/update-planned-date/`, {
+      planned_closure_date: plannedClosureDate,
+    }),
+
   listTasks: () =>
     api.get<PaginatedResponse<TaskItem>>('/crm/tasks/'),
 

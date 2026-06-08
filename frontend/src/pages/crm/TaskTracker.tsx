@@ -80,6 +80,26 @@ export default function TaskTracker() {
     return task.assigned_to_user_id === user?.id
   }
 
+  const canEditPlannedDate = (task: TaskItem) => {
+    if (user?.role === 'admin') return true
+    return task.assigned_by_user_id === user?.id
+  }
+
+  const handlePlannedDateChange = async (task: TaskItem, newDate: string) => {
+    const date = newDate || null
+    try {
+      let res
+      if (task.task_type === 'standalone') {
+        res = await crmApi.updateStandalonePlannedDate(task.id, date)
+      } else {
+        res = await crmApi.updateStagePlannedDate(task.project_id!, task.stage_key!, date)
+      }
+      upsertTask(res.data)
+    } catch {
+      // WS will self-correct if broadcast fires; silently ignore otherwise
+    }
+  }
+
   const handleStatusChange = async (task: TaskItem, newStatus: TaskStatus) => {
     setUpdatingId(task.id)
     try {
@@ -176,8 +196,24 @@ export default function TaskTracker() {
                       {fmtDate(task.assigned_at)}
                     </td>
 
-                    <td className="px-4 py-3 whitespace-nowrap text-black/60 dark:text-slate-400 tabular-nums">
-                      {fmtDate(task.planned_closure_date)}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {canEditPlannedDate(task) ? (
+                        <input
+                          type="date"
+                          defaultValue={task.planned_closure_date ?? ''}
+                          onBlur={(e) => {
+                            const val = e.target.value
+                            const prev = task.planned_closure_date ?? ''
+                            if (val !== prev) handlePlannedDateChange(task, val)
+                          }}
+                          title="Planned closure date"
+                          className="text-xs px-1.5 py-0.5 rounded border border-black/15 dark:border-white/15 bg-transparent text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-mustard cursor-pointer"
+                        />
+                      ) : (
+                        <span className="text-sm text-black/60 dark:text-slate-400 tabular-nums">
+                          {fmtDate(task.planned_closure_date)}
+                        </span>
+                      )}
                     </td>
 
                     <td className="px-4 py-3 max-w-[200px]">

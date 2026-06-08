@@ -45,6 +45,7 @@ def _build_stage_task_payload(sc, project):
         'assigned_to_id': str(sc.assigned_to_id) if sc.assigned_to_id else None,
         'assigned_to_name': sc.assigned_to.name if sc.assigned_to else None,
         'assigned_to_user_id': str(sc.assigned_to.user_id) if sc.assigned_to and sc.assigned_to.user_id else None,
+        'assigned_by_user_id': str(sc.assigned_by_id) if sc.assigned_by_id else None,
         'assigned_at': sc.assigned_at.isoformat() if sc.assigned_at else None,
         'priority': sc.priority,
         'planned_closure_date': sc.planned_closure_date.isoformat() if sc.planned_closure_date else None,
@@ -87,6 +88,7 @@ def _build_standalone_task_payload(task):
         'assigned_to_id': str(task.assigned_to_id) if task.assigned_to_id else None,
         'assigned_to_name': task.assigned_to.name if task.assigned_to else None,
         'assigned_to_user_id': str(task.assigned_to.user_id) if task.assigned_to and task.assigned_to.user_id else None,
+        'assigned_by_user_id': str(task.assigned_by_id) if task.assigned_by_id else None,
         'assigned_at': task.assigned_at.isoformat() if task.assigned_at else None,
         'priority': task.priority,
         'planned_closure_date': task.planned_closure_date.isoformat() if task.planned_closure_date else None,
@@ -538,6 +540,35 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         broadcast_task_update(task_payload)
         return Response(task_payload)
 
+    @action(detail=True, methods=['patch'], url_path='update-planned-date')
+    def update_planned_date(self, request, pk=None):
+        """Update planned_closure_date for a stage task (admin or assigner only)."""
+        project = self.get_object()
+        stage_key = request.data.get('stage_key', '').strip()
+        if not stage_key:
+            return Response({'detail': 'stage_key is required.'}, status=400)
+
+        sc = StageCompletion.objects.filter(project=project, stage_key=stage_key).first()
+        if not sc:
+            return Response({'detail': 'Task not found.'}, status=404)
+
+        if request.user.role != 'admin' and sc.assigned_by != request.user:
+            return Response(
+                {'detail': 'Only admin or the person who assigned this task can change the planned date.'},
+                status=403,
+            )
+
+        raw = request.data.get('planned_closure_date')
+        sc.planned_closure_date = raw if raw else None
+        sc.last_updated_at = timezone.now()
+        sc.last_updated_by = request.user
+        sc.save(update_fields=['planned_closure_date', 'last_updated_at', 'last_updated_by'])
+
+        sc.refresh_from_db()
+        task_payload = _build_stage_task_payload(sc, project)
+        broadcast_task_update(task_payload)
+        return Response(task_payload)
+
     @action(detail=True, methods=['patch'], url_path='task-status')
     def task_status_update(self, request, pk=None):
         """Update the task_status for a stage (assigned person + admin only)."""
@@ -839,6 +870,22 @@ class StandaloneTaskViewSet(viewsets.ModelViewSet):
         if request.user.role != 'admin':
             return Response({'detail': 'Only admin can delete tasks.'}, status=403)
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['patch'], url_path='update-planned-date')
+    def update_planned_date(self, request, pk=None):
+        """Update planned_closure_date (admin or assigner only)."""
+        instance = self.get_object()
+        if request.user.role != 'admin' and instance.assigned_by != request.user:
+            return Response(
+                {'detail': 'Only admin or the person who assigned this task can change the planned date.'},
+                status=403,
+            )
+        raw = request.data.get('planned_closure_date')
+        instance.planned_closure_date = raw if raw else None
+        instance.last_updated_by = request.user
+        instance.save(update_fields=['planned_closure_date', 'last_updated_by'])
+        broadcast_task_update(_build_standalone_task_payload(instance))
+        return Response(StandaloneTaskSerializer(instance).data)
 
 
 class TaskCommentViewSet(viewsets.ModelViewSet):
