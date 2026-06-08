@@ -111,6 +111,7 @@ export default function TaskTracker() {
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Task</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white whitespace-nowrap">Project</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Client</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Assigned By</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Owner</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
                 </tr>
