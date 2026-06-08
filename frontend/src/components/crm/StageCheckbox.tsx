@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type CSSProperties } from 'react'
 import type { StageStatusItem, InternalTeamMember, TaskStatus } from '@/types/crm'
 import { TASK_STATUS_LABELS as STATUS_LABELS } from '@/types/crm'
 
@@ -7,28 +7,53 @@ interface Props {
   onToggle: (key: string, complete: boolean) => void
   saving?: boolean
   teamMembers?: InternalTeamMember[]
-  onAssign?: (key: string, memberId: string) => Promise<void>
+  onAssign?: (key: string, memberId: string, comment?: string) => Promise<void>
 }
 
 export function StageCheckbox({ stage, onToggle, saving, teamMembers = [], onAssign }: Props) {
   const isDisabled = stage.is_locked || saving
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [popoverStyle, setPopoverStyle] = useState<CSSProperties>({})
   const [search, setSearch] = useState('')
   const [assigning, setAssigning] = useState(false)
+  // Two-step assign: null = pick member, non-null = confirm + comment
+  const [selectedMember, setSelectedMember] = useState<InternalTeamMember | null>(null)
+  const [comment, setComment] = useState('')
   const popoverRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
   const closePopover = () => {
     setPopoverOpen(false)
     setSearch('')
+    setSelectedMember(null)
+    setComment('')
     triggerRef.current?.focus()
+  }
+
+  const openPopover = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      // Anchor fixed popover to bottom-right of trigger button
+      setPopoverStyle({
+        position: 'fixed',
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+        zIndex: 9999,
+        width: '16rem',
+      })
+    }
+    setPopoverOpen((v) => !v)
+    setSearch('')
   }
 
   // Close popover on outside click or Escape key
   useEffect(() => {
     if (!popoverOpen) return
     const handleClick = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+      if (
+        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+      ) {
         closePopover()
       }
     }
@@ -47,11 +72,17 @@ export function StageCheckbox({ stage, onToggle, saving, teamMembers = [], onAss
     ? teamMembers.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()))
     : teamMembers
 
-  const handleAssign = async (member: InternalTeamMember) => {
-    if (!onAssign) return
+  const handleSelectMember = (member: InternalTeamMember) => {
+    setSelectedMember(member)
+    setSearch('')
+    setComment('')
+  }
+
+  const handleConfirmAssign = async () => {
+    if (!onAssign || !selectedMember) return
     setAssigning(true)
     try {
-      await onAssign(stage.key, member.id)
+      await onAssign(stage.key, selectedMember.id, comment.trim() || undefined)
     } finally {
       setAssigning(false)
       closePopover()
@@ -116,11 +147,11 @@ export function StageCheckbox({ stage, onToggle, saving, teamMembers = [], onAss
 
       {/* Assign button — only shown when not locked and onAssign is provided */}
       {onAssign && !stage.is_locked && (
-        <div className="relative shrink-0" ref={popoverRef}>
+        <div className="relative shrink-0">
           <button
             ref={triggerRef}
             type="button"
-            onClick={() => { setPopoverOpen((v) => !v); setSearch('') }}
+            onClick={openPopover}
             disabled={assigning}
             className="text-xs px-2 py-0.5 rounded border border-black/15 dark:border-white/15 text-black/50 dark:text-slate-400 hover:border-mustard hover:text-mustard transition-colors focus-visible:ring-2 focus-visible:ring-mustard disabled:opacity-50"
             aria-label={`Assign ${stage.display} to a team member`}
@@ -132,43 +163,93 @@ export function StageCheckbox({ stage, onToggle, saving, teamMembers = [], onAss
 
           {popoverOpen && (
             <div
-              className="absolute right-0 top-full mt-1 z-50 w-56 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg shadow-lg"
+              ref={popoverRef}
+              style={popoverStyle}
+              className="bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg shadow-lg"
               role="dialog"
-              aria-label="Select team member to assign"
+              aria-label={selectedMember ? 'Confirm assignment' : 'Select team member to assign'}
             >
-              <div className="p-2 border-b border-black/5 dark:border-white/5">
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search team member…"
-                  autoFocus
-                  className="w-full text-xs px-2 py-1 border border-black/15 dark:border-white/15 rounded bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-mustard"
-                  aria-label="Search team members"
-                />
-              </div>
-              <ul
-                className="max-h-40 overflow-y-auto py-1"
-                role="listbox"
-                aria-label="Team members"
-              >
-                {filtered.length === 0 ? (
-                  <li className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">No members found</li>
-                ) : (
-                  filtered.map((m) => (
-                    <li key={m.id} role="option" aria-selected={stage.assigned_to_id === m.id}>
-                      <button
-                        type="button"
-                        onClick={() => handleAssign(m)}
-                        className="w-full text-left px-3 py-1.5 text-xs hover:bg-mustard/10 focus:bg-mustard/10 focus:outline-none"
-                      >
-                        <span className="font-medium text-black dark:text-white">{m.name}</span>
-                        <span className="ml-1 text-black/40 dark:text-slate-500 capitalize">({m.team})</span>
-                      </button>
-                    </li>
-                  ))
-                )}
-              </ul>
+              {!selectedMember ? (
+                // Step 1: pick a member
+                <>
+                  <div className="p-2 border-b border-black/5 dark:border-white/5">
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search team member…"
+                      autoFocus
+                      className="w-full text-xs px-2 py-1 border border-black/15 dark:border-white/15 rounded bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-mustard"
+                      aria-label="Search team members"
+                    />
+                  </div>
+                  <ul className="max-h-40 overflow-y-auto py-1" role="listbox" aria-label="Team members">
+                    {filtered.length === 0 ? (
+                      <li className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">No members found</li>
+                    ) : (
+                      filtered.map((m) => (
+                        <li key={m.id} role="option" aria-selected={stage.assigned_to_id === m.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectMember(m)}
+                            className="w-full text-left px-3 py-1.5 text-xs hover:bg-mustard/10 focus:bg-mustard/10 focus:outline-none"
+                          >
+                            <span className="font-medium text-black dark:text-white">{m.name}</span>
+                            <span className="ml-1 text-black/40 dark:text-slate-500 capitalize">({m.team})</span>
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </>
+              ) : (
+                // Step 2: confirm + optional comment
+                <div className="p-3 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-black dark:text-white">{selectedMember.name}</p>
+                      <p className="text-xs text-black/40 dark:text-slate-500 capitalize">{selectedMember.team}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMember(null)}
+                      className="text-xs text-mustard hover:underline focus:outline-none"
+                    >
+                      Change
+                    </button>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-black/50 dark:text-slate-400 mb-1">
+                      Comment <span className="text-black/30 dark:text-slate-600">(optional)</span>
+                    </label>
+                    <textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      autoFocus
+                      rows={3}
+                      placeholder="Add task details, instructions…"
+                      className="w-full text-xs border border-black/15 dark:border-white/15 rounded px-2 py-1.5 bg-white dark:bg-slate-700 text-black dark:text-white placeholder-black/30 dark:placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-mustard resize-none"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={closePopover}
+                      className="flex-1 py-1.5 text-xs border border-black/15 dark:border-white/15 rounded text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmAssign}
+                      disabled={assigning}
+                      className="flex-1 py-1.5 text-xs bg-mustard text-white font-medium rounded hover:bg-mustard/90 disabled:opacity-50"
+                    >
+                      {assigning ? '…' : assigneeName ? 'Reassign' : 'Assign'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

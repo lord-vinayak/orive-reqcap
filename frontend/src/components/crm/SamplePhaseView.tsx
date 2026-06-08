@@ -13,7 +13,7 @@ interface Props {
   onSetOrderGate: (data: { order_advance_received: boolean; order_booked: boolean }) => Promise<void>
   saving: boolean
   teamMembers?: InternalTeamMember[]
-  onAssign?: (key: string, memberId: string) => Promise<void>
+  onAssign?: (key: string, memberId: string, comment?: string) => Promise<void>
 }
 
 export function SamplePhaseView({
@@ -147,7 +147,7 @@ function StageSection({
   onToggle: (k: string, v: boolean) => Promise<void>
   saving: boolean
   teamMembers?: InternalTeamMember[]
-  onAssign?: (key: string, memberId: string) => Promise<void>
+  onAssign?: (key: string, memberId: string, comment?: string) => Promise<void>
 }) {
   return (
     <div>

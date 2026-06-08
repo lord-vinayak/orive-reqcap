@@ -119,9 +119,9 @@ export default function CRMProjectDetail() {
     }
   }
 
-  const handleAssignStage = async (stageKey: string, memberId: string) => {
+  const handleAssignStage = async (stageKey: string, memberId: string, comment?: string) => {
     if (!id) return
-    await crmApi.assignStage(id, stageKey, memberId)
+    await crmApi.assignStage(id, stageKey, memberId, comment ? { comment } : undefined)
     await fetchStageStatus()
   }
 
