@@ -208,13 +208,13 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
     sample_phase_complete = post_approval_complete  # sample phase done when post-approval done
 
     # -- Order phase sections --
+    # Sections unlock in parallel once order is booked; only the overall
+    # order_booked gate remains. Stages within each section are still sequential.
     order_locked = not project.order_booked
     order_sections = []
-    section_prev_complete = not order_locked  # first section unlocked only after order booked
 
     for sec in ORDER_PHASE_SECTIONS:
-        is_section_locked = order_locked or not section_prev_complete
-        stage_prev = not is_section_locked
+        stage_prev = not order_locked  # first stage in each section: unlocked iff order booked
         sec_stages = []
         for s in sec['stages']:
             info = _stage_info(s['key'], s['display'], stage_prev)
@@ -224,11 +224,10 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
         order_sections.append({
             'key': sec['key'],
             'display': sec['display'],
-            'is_locked': is_section_locked,
+            'is_locked': order_locked,
             'is_section_complete': is_section_complete,
             'stages': sec_stages,
         })
-        section_prev_complete = is_section_complete
 
     # -- Progress --
     completed_keys = {k for k, sc in completion_map.items() if sc.is_complete}
@@ -374,12 +373,54 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         sc.completed_by = request.user if is_complete else None
         sc.save(update_fields=['is_complete', 'completed_at', 'completed_by'])
 
-        # Update project_stage display field to the current active stage key
         if is_complete:
             project.project_stage = stage_key
             project.save(update_fields=['project_stage', 'updated_at'])
 
-        return Response(StageCompletionSerializer(sc).data)
+        completion_map = {
+            s.stage_key: s
+            for s in StageCompletion.objects.filter(project=project)
+        }
+        return Response(_build_stage_status(project, completion_map))
+
+    @action(detail=True, methods=['post'], url_path='complete-section')
+    def complete_section(self, request, pk=None):
+        """Mark all stages in an Order Phase section complete in one transaction."""
+        project = self.get_object()
+        section_key = request.data.get('section_key', '').strip()
+
+        if not section_key:
+            return Response({'detail': 'section_key is required.'}, status=400)
+
+        section = next((s for s in ORDER_PHASE_SECTIONS if s['key'] == section_key), None)
+        if not section:
+            return Response({'detail': f'Unknown section_key: {section_key}'}, status=400)
+
+        if not project.order_booked:
+            return Response({'detail': 'Order must be booked before marking section stages complete.'}, status=400)
+
+        stage_keys = [s['key'] for s in section['stages']]
+        now = timezone.now()
+
+        # Bulk upsert — create missing rows then update all in one query
+        StageCompletion.objects.bulk_create(
+            [StageCompletion(project=project, stage_key=k) for k in stage_keys],
+            ignore_conflicts=True,
+        )
+        StageCompletion.objects.filter(
+            project=project, stage_key__in=stage_keys
+        ).update(is_complete=True, completed_at=now, completed_by=request.user)
+
+        # Advance project_stage to the last key in the section
+        project.project_stage = stage_keys[-1]
+        project.save(update_fields=['project_stage', 'updated_at'])
+
+        # Return the full updated stage status so the frontend can refresh in one go
+        completion_map = {
+            sc.stage_key: sc
+            for sc in StageCompletion.objects.filter(project=project)
+        }
+        return Response(_build_stage_status(project, completion_map))
 
     # ── Sample approval gate ──────────────────────────────────────────────────
 

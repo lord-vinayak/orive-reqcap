@@ -49,7 +49,10 @@ export const crmApi = {
     api.get<StageStatusResponse>(`/crm/projects/${projectId}/stage-status/`),
 
   completeStage: (projectId: string, stageKey: string, isComplete: boolean) =>
-    api.post<StageCompletion>(`/crm/projects/${projectId}/complete-stage/`, { stage_key: stageKey, is_complete: isComplete }),
+    api.post<StageStatusResponse>(`/crm/projects/${projectId}/complete-stage/`, { stage_key: stageKey, is_complete: isComplete }),
+
+  completeSectionStages: (projectId: string, sectionKey: string) =>
+    api.post<StageStatusResponse>(`/crm/projects/${projectId}/complete-section/`, { section_key: sectionKey }),
 
   approveSample: (projectId: string, approved: boolean, reason?: string) =>
     api.post<StageStatusResponse>(`/crm/projects/${projectId}/approve-sample/`, {

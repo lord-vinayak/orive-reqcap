@@ -7,6 +7,7 @@ interface Props {
   activeStageKey: string | null
   setActiveStageKey: (key: string) => void
   onCompleteStage: (key: string, complete: boolean) => Promise<void>
+  onCompleteSection: (sectionKey: string) => Promise<void>
   onResetBatch: () => Promise<void>
   saving: boolean
   teamMembers?: InternalTeamMember[]
@@ -14,8 +15,8 @@ interface Props {
 }
 
 export function OrderPhaseView({
-  stageStatus, activeStageKey, setActiveStageKey, onCompleteStage, onResetBatch, saving,
-  teamMembers = [], onAssign,
+  stageStatus, activeStageKey, setActiveStageKey, onCompleteStage, onCompleteSection,
+  onResetBatch, saving, teamMembers = [], onAssign,
 }: Props) {
   const { order_phase } = stageStatus
 
@@ -44,6 +45,7 @@ export function OrderPhaseView({
           activeKey={activeStageKey}
           setActiveKey={setActiveStageKey}
           onToggle={onCompleteStage}
+          onCompleteSection={onCompleteSection}
           onResetBatch={section.key === 'production' ? onResetBatch : undefined}
           saving={saving}
           teamMembers={teamMembers}
@@ -57,12 +59,13 @@ export function OrderPhaseView({
 // ── Section accordion ─────────────────────────────────────────────────────────
 
 function SectionAccordion({
-  section, activeKey, setActiveKey, onToggle, onResetBatch, saving, teamMembers, onAssign,
+  section, activeKey, setActiveKey, onToggle, onCompleteSection, onResetBatch, saving, teamMembers, onAssign,
 }: {
   section: SectionStatus
   activeKey: string | null
   setActiveKey: (k: string) => void
   onToggle: (k: string, v: boolean) => Promise<void>
+  onCompleteSection: (sectionKey: string) => Promise<void>
   onResetBatch?: () => Promise<void>
   saving: boolean
   teamMembers?: InternalTeamMember[]
@@ -70,9 +73,20 @@ function SectionAccordion({
 }) {
   const [open, setOpen] = useState(!section.is_locked && !section.is_section_complete)
   const [resetting, setResetting] = useState(false)
+  const [markingAll, setMarkingAll] = useState(false)
 
   const doneCount = section.stages.filter((s) => s.is_complete).length
   const totalCount = section.stages.length
+  const incompleteStages = section.stages.filter((s) => !s.is_complete)
+
+  const handleMarkAllComplete = async () => {
+    setMarkingAll(true)
+    try {
+      await onCompleteSection(section.key)
+    } finally {
+      setMarkingAll(false)
+    }
+  }
 
   const handleResetBatch = async () => {
     if (!onResetBatch) return
@@ -145,8 +159,16 @@ function SectionAccordion({
             <div
               key={stage.key}
               role="listitem"
+              tabIndex={stage.is_locked ? -1 : 0}
+              aria-current={activeKey === stage.key ? 'true' : undefined}
               onClick={() => !stage.is_locked && setActiveKey(stage.key)}
-              className={`cursor-pointer border-t border-black/5 dark:border-white/5 ${
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && !stage.is_locked) {
+                  e.preventDefault()
+                  setActiveKey(stage.key)
+                }
+              }}
+              className={`cursor-pointer border-t border-black/5 dark:border-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mustard ${
                 activeKey === stage.key ? 'ring-2 ring-inset ring-mustard' : ''
               }`}
             >
@@ -156,6 +178,21 @@ function SectionAccordion({
               />
             </div>
           ))}
+
+          {/* Mark all complete button */}
+          {incompleteStages.length > 0 && (
+            <div className="px-3 py-2 border-t border-black/5 dark:border-white/5">
+              <button
+                type="button"
+                onClick={handleMarkAllComplete}
+                disabled={markingAll || saving}
+                aria-label={`Mark all steps in ${section.display} as complete`}
+                className="text-xs text-mustard hover:underline disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-mustard rounded"
+              >
+                {markingAll ? 'Marking…' : '✓ Mark all complete'}
+              </button>
+            </div>
+          )}
 
           {/* Reset batch button — shown in Production section */}
           {onResetBatch && (

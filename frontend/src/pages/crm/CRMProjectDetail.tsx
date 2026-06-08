@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
-import type { CRMProject, ProjectNote, StageStatusResponse, ProjectPayment, InternalTeamMember, TaskItem } from '@/types/crm'
+import type { CRMProject, ProjectNote, StageStatusResponse, StageStatusItem, ProjectPayment, InternalTeamMember, TaskItem } from '@/types/crm'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { MilestoneTable } from '@/components/crm/MilestoneTable'
 import { VendorSidePanel } from '@/components/crm/VendorSidePanel'
@@ -10,6 +10,49 @@ import { PaymentSidePanel } from '@/components/crm/PaymentSidePanel'
 import { SamplePhaseView } from '@/components/crm/SamplePhaseView'
 import { OrderPhaseView } from '@/components/crm/OrderPhaseView'
 import { useTaskSocket } from '@/hooks/useTaskSocket'
+
+// Flip is_complete for the target stage then re-walk the list recomputing
+// is_locked = !previous.is_complete — mirrors the backend _stage_info chain.
+function recomputeLocks(stages: StageStatusItem[], key: string, complete: boolean, firstUnlocked: boolean): StageStatusItem[] {
+  let prev = firstUnlocked
+  return stages.map((s) => {
+    const isComplete = s.key === key ? complete : s.is_complete
+    const updated = { ...s, is_complete: isComplete, is_locked: !prev }
+    prev = isComplete
+    return updated
+  })
+}
+
+function patchStage(status: StageStatusResponse, key: string, complete: boolean): StageStatusResponse {
+  const sp = status.sample_phase
+  const preLoop = recomputeLocks(sp.pre_loop, key, complete, true)
+  const preLoopComplete = preLoop.every((s) => s.is_complete)
+
+  const loopCycles = sp.loop_cycles.map((lc) => {
+    const stages = recomputeLocks(lc.stages, key, complete, preLoopComplete)
+    return { ...lc, stages }
+  })
+
+  // post_approval unlocks only after sample is approved (last stage of active cycle)
+  const activeCycle = loopCycles.find((lc) => lc.is_active)
+  const approvalComplete = activeCycle
+    ? (activeCycle.stages.find((s) => s.key.startsWith('sample_approved'))?.is_complete ?? false)
+    : false
+  const postApproval = recomputeLocks(sp.post_approval, key, complete, approvalComplete)
+
+  const orderLocked = !status.order_booked
+  const sections = status.order_phase.sections.map((sec) => {
+    const stages = recomputeLocks(sec.stages, key, complete, !orderLocked)
+    const is_section_complete = stages.every((s) => s.is_complete)
+    return { ...sec, stages, is_section_complete }
+  })
+
+  return {
+    ...status,
+    sample_phase: { ...sp, pre_loop: preLoop, loop_cycles: loopCycles, post_approval: postApproval },
+    order_phase: { ...status.order_phase, sections },
+  }
+}
 
 export default function CRMProjectDetail() {
   const { id } = useParams<{ id: string }>()
@@ -72,11 +115,23 @@ export default function CRMProjectDetail() {
   // ── Stage action handlers ──────────────────────────────────────────────────
 
   const handleCompleteStage = async (key: string, complete: boolean) => {
+    if (!id || !stageStatus) return
+    const previous = stageStatus
+    setStageStatus(patchStage(previous, key, complete))
+    try {
+      const res = await crmApi.completeStage(id, key, complete)
+      setStageStatus(res.data)
+    } catch {
+      setStageStatus(previous)
+    }
+  }
+
+  const handleCompleteSection = async (sectionKey: string) => {
     if (!id) return
     setActionSaving(true)
     try {
-      await crmApi.completeStage(id, key, complete)
-      await refresh()
+      const res = await crmApi.completeSectionStages(id, sectionKey)
+      setStageStatus(res.data)
     } finally {
       setActionSaving(false)
     }
@@ -320,6 +375,7 @@ export default function CRMProjectDetail() {
                 activeStageKey={activeStageKey}
                 setActiveStageKey={setActiveStageKey}
                 onCompleteStage={handleCompleteStage}
+                onCompleteSection={handleCompleteSection}
                 onResetBatch={handleResetBatch}
                 saving={actionSaving}
                 teamMembers={teamMembers}

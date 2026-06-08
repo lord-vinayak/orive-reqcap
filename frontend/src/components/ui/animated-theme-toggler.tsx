@@ -90,6 +90,7 @@ export function AnimatedThemeToggler({
 
   const toggle = () => {
     const dark = document.documentElement.classList.toggle("dark");
+    localStorage.setItem("theme", dark ? "dark" : "light");
     setIsDark(dark);
     if (sound) tick(lastSnd);
   };
