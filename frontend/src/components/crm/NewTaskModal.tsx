@@ -125,22 +125,24 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="New task">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="new-task-title">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative z-10 w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 space-y-4">
-        <h2 className="text-lg font-bold text-black dark:text-white">New Task</h2>
+        <h2 id="new-task-title" className="text-lg font-bold text-black dark:text-white">New Task</h2>
 
         {/* Title */}
         <div>
-          <label className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
-            Task Title <span className="text-red-500">*</span>
+          <label htmlFor="nt-title" className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
+            Task Title <span aria-hidden="true" className="text-red-500">*</span>
           </label>
           <input
+            id="nt-title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Describe the task…"
             autoFocus
+            aria-required="true"
             className="w-full text-sm border border-black/20 dark:border-white/20 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-black dark:text-white placeholder-black/30 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-mustard"
           />
         </div>
@@ -148,8 +150,9 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
         {/* Priority + Planned date */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">Priority</label>
+            <label htmlFor="nt-priority" className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">Priority</label>
             <select
+              id="nt-priority"
               value={priority}
               onChange={(e) => setPriority(e.target.value as TaskPriority)}
               className="w-full text-sm border border-black/20 dark:border-white/20 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
@@ -160,8 +163,9 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">Planned Closure Date</label>
+            <label htmlFor="nt-planned-date" className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">Planned Closure Date</label>
             <input
+              id="nt-planned-date"
               type="date"
               value={plannedDate}
               onChange={(e) => setPlannedDate(e.target.value)}
@@ -172,8 +176,9 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
 
         {/* Assign to */}
         <div>
-          <label className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">Assign To</label>
+          <label htmlFor="nt-assign" className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">Assign To</label>
           <select
+            id="nt-assign"
             value={assignedTo}
             onChange={(e) => setAssignedTo(e.target.value)}
             className="w-full text-sm border border-black/20 dark:border-white/20 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
@@ -187,10 +192,11 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
 
         {/* Link to project (optional) */}
         <div>
-          <label className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
+          <label htmlFor="nt-project" className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
             Link to Project <span className="text-black/30 dark:text-slate-600 font-normal">(optional)</span>
           </label>
           <select
+            id="nt-project"
             value={projectId}
             onChange={(e) => handleProjectChange(e.target.value)}
             className="w-full text-sm border border-black/20 dark:border-white/20 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
@@ -204,7 +210,7 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
 
         {/* Client searchable combobox */}
         <div ref={clientRef} className="relative">
-          <label className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
+          <label htmlFor="nt-client-search" className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
             Client <span className="text-black/30 dark:text-slate-600 font-normal">(optional)</span>
           </label>
 
@@ -218,16 +224,22 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
               <button
                 type="button"
                 onClick={clearClient}
-                aria-label="Clear client"
-                className="text-black/30 dark:text-slate-600 hover:text-black dark:hover:text-white transition-colors shrink-0"
+                aria-label="Clear selected client"
+                className="text-black/30 dark:text-slate-600 hover:text-black dark:hover:text-white transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-mustard rounded"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
           ) : (
             // Search input
             <input
+              id="nt-client-search"
               type="text"
+              role="combobox"
+              aria-expanded={clientDropdownOpen}
+              aria-autocomplete="list"
+              aria-controls="nt-client-listbox"
+              aria-haspopup="listbox"
               value={clientSearch}
               onChange={(e) => handleClientSearchChange(e.target.value)}
               onFocus={() => clientResults.length > 0 && setClientDropdownOpen(true)}
@@ -238,26 +250,31 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
 
           {/* Dropdown results */}
           {clientDropdownOpen && !selectedClient && (
-            <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            <div
+              id="nt-client-listbox"
+              className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+            >
               {clientSearching ? (
-                <p className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">Searching…</p>
+                <p className="px-3 py-2 text-xs text-black/40 dark:text-slate-500" aria-live="polite">Searching…</p>
               ) : clientResults.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">No clients found</p>
+                <p className="px-3 py-2 text-xs text-black/40 dark:text-slate-500" aria-live="polite">No clients found</p>
               ) : (
-                <ul role="listbox" aria-label="Client results">
+                <ul role="listbox" aria-label="Client search results">
                   {clientResults.map((c) => (
-                    <li key={c.phone_no} role="option">
-                      <button
-                        type="button"
-                        onClick={() => handleSelectClient(c)}
-                        className="w-full text-left px-3 py-2 hover:bg-mustard/10 focus:bg-mustard/10 focus:outline-none"
-                      >
-                        <span className="text-sm font-medium text-black dark:text-white">{c.name}</span>
-                        {c.company_name && (
-                          <span className="text-xs text-black/40 dark:text-slate-500 ml-1">· {c.company_name}</span>
-                        )}
-                        <span className="block text-xs text-black/40 dark:text-slate-500">{c.phone_no}</span>
-                      </button>
+                    <li
+                      key={c.phone_no}
+                      role="option"
+                      aria-selected={false}
+                      tabIndex={0}
+                      onClick={() => handleSelectClient(c)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSelectClient(c)}
+                      className="px-3 py-2 hover:bg-mustard/10 focus:bg-mustard/10 focus:outline-none cursor-pointer"
+                    >
+                      <span className="text-sm font-medium text-black dark:text-white">{c.name}</span>
+                      {c.company_name && (
+                        <span className="text-xs text-black/40 dark:text-slate-500 ml-1">· {c.company_name}</span>
+                      )}
+                      <span className="block text-xs text-black/40 dark:text-slate-500">{c.phone_no}</span>
                     </li>
                   ))}
                 </ul>
@@ -266,19 +283,20 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
           )}
         </div>
 
-        {error && <p className="text-xs text-red-500" role="alert">{error}</p>}
+        {error && <p id="nt-error" className="text-xs text-red-500" role="alert">{error}</p>}
 
         <div className="flex gap-3 pt-2">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 text-sm border border-black/20 dark:border-white/20 rounded-xl text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5"
+            className="flex-1 py-2.5 text-sm border border-black/20 dark:border-white/20 rounded-xl text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-mustard"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="flex-1 py-2.5 text-sm bg-mustard text-white font-medium rounded-xl disabled:opacity-40"
+            aria-describedby={error ? 'nt-error' : undefined}
+            className="flex-1 py-2.5 text-sm bg-mustard text-white font-medium rounded-xl disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-mustard focus-visible:ring-offset-2"
           >
             {submitting ? 'Creating…' : 'Create Task'}
           </button>

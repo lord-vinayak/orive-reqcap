@@ -88,7 +88,7 @@ export default function TaskCommentPanel({ task, onClose, onCommentAdded }: Prop
     })
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label="Task comments">
+    <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="comment-panel-title">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/30 dark:bg-black/50" onClick={onClose} />
 
@@ -98,23 +98,28 @@ export default function TaskCommentPanel({ task, onClose, onCommentAdded }: Prop
         <div className="px-5 py-4 border-b border-black/10 dark:border-white/10 flex items-start gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs text-black/40 dark:text-slate-500 mb-0.5">Comments</p>
-            <h2 className="font-semibold text-black dark:text-white text-sm leading-snug line-clamp-2">
+            <h2 id="comment-panel-title" className="font-semibold text-black dark:text-white text-sm leading-snug line-clamp-2">
               {task.title}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="shrink-0 text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white p-1 rounded"
-            aria-label="Close panel"
+            className="shrink-0 text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white p-1 rounded focus-visible:ring-2 focus-visible:ring-mustard"
+            aria-label="Close comments panel"
           >
-            ✕
+            <span aria-hidden="true">✕</span>
           </button>
         </div>
 
         {/* Comments list */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div
+          role="log"
+          aria-label="Comment thread"
+          aria-live="polite"
+          className="flex-1 overflow-y-auto px-5 py-4 space-y-4"
+        >
           {loading ? (
-            <p className="text-sm text-black/40 dark:text-slate-500">Loading…</p>
+            <p className="text-sm text-black/40 dark:text-slate-500" aria-live="polite">Loading…</p>
           ) : comments.length === 0 ? (
             <p className="text-sm text-black/40 dark:text-slate-500 text-center py-8">No comments yet.</p>
           ) : (
@@ -133,18 +138,19 @@ export default function TaskCommentPanel({ task, onClose, onCommentAdded }: Prop
                     <textarea
                       value={editText}
                       onChange={(e) => setEditText(e.target.value)}
-                      className="w-full text-sm border border-black/20 dark:border-white/20 rounded p-2 bg-white dark:bg-slate-800 text-black dark:text-white resize-none"
+                      aria-label="Edit comment text"
+                      className="w-full text-sm border border-black/20 dark:border-white/20 rounded p-2 bg-white dark:bg-slate-800 text-black dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-mustard"
                       rows={3}
                       autoFocus
                     />
                     <div className="flex gap-2">
                       <button
                         onClick={() => saveEdit(c.id)}
-                        className="text-xs px-3 py-1 bg-mustard text-white rounded"
+                        className="text-xs px-3 py-1 bg-mustard text-white rounded focus-visible:ring-2 focus-visible:ring-mustard focus-visible:ring-offset-1"
                       >Save</button>
                       <button
                         onClick={() => setEditingId(null)}
-                        className="text-xs px-3 py-1 text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white"
+                        className="text-xs px-3 py-1 text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white focus-visible:ring-2 focus-visible:ring-mustard rounded"
                       >Cancel</button>
                     </div>
                   </div>
@@ -153,17 +159,19 @@ export default function TaskCommentPanel({ task, onClose, onCommentAdded }: Prop
                 )}
 
                 {editingId !== c.id && (
-                  <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-3 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                     {c.author === user?.id && (
                       <button
                         onClick={() => startEdit(c)}
-                        className="text-xs text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white"
+                        aria-label={`Edit comment by ${c.author_name ?? 'unknown'}`}
+                        className="text-xs text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white focus-visible:ring-2 focus-visible:ring-mustard rounded"
                       >Edit</button>
                     )}
                     {user?.role === 'admin' && (
                       <button
                         onClick={() => handleDelete(c.id)}
-                        className="text-xs text-red-500 hover:text-red-700"
+                        aria-label={`Delete comment by ${c.author_name ?? 'unknown'}`}
+                        className="text-xs text-red-500 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-400 rounded"
                       >Delete</button>
                     )}
                   </div>
@@ -176,7 +184,9 @@ export default function TaskCommentPanel({ task, onClose, onCommentAdded }: Prop
 
         {/* Input */}
         <div className="px-5 py-4 border-t border-black/10 dark:border-white/10 space-y-2">
+          <label htmlFor="comment-input" className="sr-only">Add a comment</label>
           <textarea
+            id="comment-input"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAdd() }}
@@ -187,7 +197,7 @@ export default function TaskCommentPanel({ task, onClose, onCommentAdded }: Prop
           <button
             onClick={handleAdd}
             disabled={!text.trim() || submitting}
-            className="w-full py-2 bg-mustard text-white text-sm font-medium rounded-lg disabled:opacity-40"
+            className="w-full py-2 bg-mustard text-white text-sm font-medium rounded-lg disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-mustard focus-visible:ring-offset-2"
           >
             {submitting ? 'Sending…' : 'Add Comment'}
           </button>

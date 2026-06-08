@@ -30,18 +30,18 @@ export default function ResampleModal({ cycleFrom, onConfirm, onClose }: Props) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Resample reason">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="resample-title">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative z-10 w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 space-y-4">
 
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0" aria-hidden="true">
+            <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
             </svg>
           </div>
           <div>
-            <h2 className="text-base font-bold text-black dark:text-white">Confirm Resample — Cycle {cycleFrom + 1}</h2>
+            <h2 id="resample-title" className="text-base font-bold text-black dark:text-white">Confirm Resample — Cycle {cycleFrom + 1}</h2>
             <p className="text-sm text-black/60 dark:text-slate-400 mt-0.5">
               This will start a new development cycle. Enter the reason below — it will be visible to all team members.
             </p>
@@ -49,15 +49,17 @@ export default function ResampleModal({ cycleFrom, onConfirm, onClose }: Props) 
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
-            Reason for resampling <span className="text-red-500">*</span>
+          <label htmlFor="resample-reason" className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
+            Reason for resampling <span aria-hidden="true" className="text-red-500">*</span>
           </label>
           <textarea
+            id="resample-reason"
             ref={textareaRef}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             autoFocus
             rows={4}
+            aria-required="true"
             placeholder="e.g. Texture too thick, client requested lighter consistency…"
             className="w-full text-sm border border-black/20 dark:border-white/20 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-black dark:text-white placeholder-black/30 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-mustard resize-none"
           />
@@ -69,14 +71,14 @@ export default function ResampleModal({ cycleFrom, onConfirm, onClose }: Props) 
           <button
             onClick={onClose}
             disabled={saving}
-            className="flex-1 py-2.5 text-sm border border-black/20 dark:border-white/20 rounded-xl text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-40"
+            className="flex-1 py-2.5 text-sm border border-black/20 dark:border-white/20 rounded-xl text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-mustard"
           >
             Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={saving || !reason.trim()}
-            className="flex-1 py-2.5 text-sm bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl disabled:opacity-40 transition-colors"
+            className="flex-1 py-2.5 text-sm bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl disabled:opacity-40 transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
           >
             {saving ? 'Submitting…' : 'Confirm Resample'}
           </button>

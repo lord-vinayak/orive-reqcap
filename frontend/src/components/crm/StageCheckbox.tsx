@@ -128,7 +128,7 @@ export function StageCheckbox({ stage, onToggle, saving, teamMembers = [], onAss
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           {stage.is_complete && stage.completed_by_name && (
             <p className="text-xs text-black/40 dark:text-slate-500">
-              ✓ {stage.completed_by_name}
+              <span aria-hidden="true">✓ </span>{stage.completed_by_name}
               {stage.completed_at && (
                 <> · {new Date(stage.completed_at).toLocaleDateString('en-IN')}</>
               )}
@@ -136,7 +136,7 @@ export function StageCheckbox({ stage, onToggle, saving, teamMembers = [], onAss
           )}
           {assigneeName && (
             <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-              👤 {assigneeName}
+              <span aria-hidden="true">👤 </span>{assigneeName}
               {taskStatus && taskStatus !== 'not_started' && (
                 <span className="ml-1 text-black/40 dark:text-slate-500">· {STATUS_LABELS[taskStatus]}</span>
               )}
@@ -213,16 +213,18 @@ export function StageCheckbox({ stage, onToggle, saving, teamMembers = [], onAss
                     <button
                       type="button"
                       onClick={() => setSelectedMember(null)}
-                      className="text-xs text-mustard hover:underline focus:outline-none"
+                      aria-label="Change selected team member"
+                      className="text-xs text-mustard hover:underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
                     >
                       Change
                     </button>
                   </div>
                   <div>
-                    <label className="block text-xs text-black/50 dark:text-slate-400 mb-1">
+                    <label htmlFor="assign-comment" className="block text-xs text-black/50 dark:text-slate-400 mb-1">
                       Comment <span className="text-black/30 dark:text-slate-600">(optional)</span>
                     </label>
                     <textarea
+                      id="assign-comment"
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
                       autoFocus
