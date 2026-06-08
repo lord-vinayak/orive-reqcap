@@ -25,7 +25,7 @@ export function ProgressBar({ value, label, size = 'md' }: ProgressBarProps) {
         aria-label={label ? `${label}: ${pct}%` : `${pct}% complete`}
       >
         <div
-          className={`${height} rounded-full transition-all duration-300 bg-gradient-to-r ${pct === 100 ? 'from-emerald-500 to-teal-600' : 'from-mustard to-amber-500'}`}
+          className={`${height} rounded-full transition-all duration-300 ${pct === 100 ? 'bg-green-500' : 'bg-mustard'}`}
           style={{ width: `${pct}%` }}
         />
       </div>

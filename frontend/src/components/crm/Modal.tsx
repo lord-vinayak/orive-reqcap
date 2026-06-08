@@ -50,7 +50,7 @@ export function Modal({ title, onClose, children, size = 'md' }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 backdrop-blur-md bg-slate-900/40 dark:bg-slate-950/60 flex items-center justify-center px-4 z-50 overflow-y-auto"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center px-4 z-50 overflow-y-auto"
       aria-hidden="true"
       onClick={onClose}
     >

@@ -18,7 +18,7 @@ export default function Home() {
         <div className="grid sm:grid-cols-2 gap-4">
           <button
             onClick={() => navigate("/requirements")}
-            className="card text-left hover:border-mustard/60 hover:-translate-y-1 hover:shadow-lg hover:shadow-mustard/5 dark:hover:shadow-mustard/10 transition-all duration-300 group"
+            className="card text-left hover:border-mustard transition-colors group"
             aria-label="Capture client requirements">
             <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center mb-4 group-hover:bg-mustard transition-colors">
               <span className="text-2xl text-mustard-700">
@@ -34,7 +34,7 @@ export default function Home() {
           <button
             ref={triggerRef}
             onClick={() => navigate("/crm/dashboard")}
-            className="card text-left hover:border-mustard/60 hover:-translate-y-1 hover:shadow-lg hover:shadow-mustard/5 dark:hover:shadow-mustard/10 transition-all duration-300 group"
+            className="card text-left hover:border-mustard transition-colors group"
             aria-label="Track project - go to CRM dashboard">
             <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center mb-4 group-hover:bg-mustard transition-colors">
               <span className="text-2xl text-mustard-700">
@@ -47,7 +47,7 @@ export default function Home() {
 
           <button
             onClick={() => navigate("/tasks")}
-            className="card text-left hover:border-mustard/60 hover:-translate-y-1 hover:shadow-lg hover:shadow-mustard/5 dark:hover:shadow-mustard/10 transition-all duration-300 group"
+            className="card text-left hover:border-mustard transition-colors group"
             aria-label="Go to Task Tracker">
             <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center mb-4 group-hover:bg-mustard transition-colors">
               <span className="text-2xl text-mustard-700">
