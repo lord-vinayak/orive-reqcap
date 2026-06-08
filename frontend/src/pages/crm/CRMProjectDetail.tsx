@@ -82,11 +82,11 @@ export default function CRMProjectDetail() {
     }
   }
 
-  const handleApproveSample = async (approved: boolean) => {
+  const handleApproveSample = async (approved: boolean, reason?: string) => {
     if (!id) return
     setActionSaving(true)
     try {
-      const res = await crmApi.approveSample(id, approved)
+      const res = await crmApi.approveSample(id, approved, reason)
       setStageStatus(res.data)
       await fetchProject()
     } finally {

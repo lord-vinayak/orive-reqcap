@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { StageStatusResponse, InternalTeamMember } from '@/types/crm'
 import { StageCheckbox } from './StageCheckbox'
+import ResampleModal from './ResampleModal'
 
 interface Props {
   stageStatus: StageStatusResponse
@@ -8,7 +9,7 @@ interface Props {
   activeStageKey: string | null
   setActiveStageKey: (key: string) => void
   onCompleteStage: (key: string, complete: boolean) => Promise<void>
-  onApproveSample: (approved: boolean) => Promise<void>
+  onApproveSample: (approved: boolean, reason?: string) => Promise<void>
   onSetOrderGate: (data: { order_advance_received: boolean; order_booked: boolean }) => Promise<void>
   saving: boolean
   teamMembers?: InternalTeamMember[]
@@ -20,7 +21,7 @@ export function SamplePhaseView({
   onCompleteStage, onApproveSample, onSetOrderGate, saving,
   teamMembers = [], onAssign,
 }: Props) {
-  const { sample_phase, order_advance_received, order_booked, sample_phase_complete, resample_cycle, max_cycles } = stageStatus
+  const { sample_phase, order_advance_received, order_booked, sample_phase_complete, resample_cycle, max_cycles, resample_notes } = stageStatus
 
   return (
     <div className="space-y-6">
@@ -86,9 +87,22 @@ export function SamplePhaseView({
               )}
             </div>
           ) : (
-            // Collapsed past cycle
-            <div className="border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-black/50 dark:text-slate-400 italic">
-              Attempt {cycle.cycle} — sample was not approved, resampling initiated
+            // Collapsed past cycle — show resample reason if recorded
+            <div className="border border-black/10 dark:border-white/10 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 text-sm text-black/50 dark:text-slate-400 italic">
+                Attempt {cycle.cycle} — sample was not approved, resampling initiated
+              </div>
+              {resample_notes?.[String(cycle.cycle)] && (
+                <div className="border-t border-black/5 dark:border-white/5 px-4 py-3 bg-amber-50/60 dark:bg-amber-900/10">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-0.5">Resample Reason</p>
+                  <p className="text-sm text-black dark:text-white">{resample_notes[String(cycle.cycle)].reason}</p>
+                  {resample_notes[String(cycle.cycle)].author_name && (
+                    <p className="text-xs text-black/40 dark:text-slate-500 mt-1">
+                      — {resample_notes[String(cycle.cycle)].author_name}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -165,10 +179,11 @@ function ApprovalGate({
   stage: StageStatusResponse['sample_phase']['pre_loop'][number]
   cycle: number
   maxCycles: number
-  onApprove: (approved: boolean) => Promise<void>
+  onApprove: (approved: boolean, reason?: string) => Promise<void>
   saving: boolean
 }) {
-  const [confirming, setConfirming] = useState<'yes' | 'no' | null>(null)
+  const [confirmingYes, setConfirmingYes] = useState(false)
+  const [showResampleModal, setShowResampleModal] = useState(false)
   const canResample = cycle < maxCycles
 
   if (stage.is_complete) {
@@ -198,65 +213,74 @@ function ApprovalGate({
   }
 
   return (
-    <div
-      className="px-3 py-3 border-t border-black/5 dark:border-white/5 bg-amber-50/50 dark:bg-amber-900/10"
-      role="group"
-      aria-label="Sample approval decision"
-    >
-      <p className="text-sm font-medium text-black dark:text-white mb-2">
-        Sample Approved by Client?
-      </p>
-      {confirming === null ? (
-        <div className="flex gap-2" role="radiogroup" aria-label="Approval decision">
-          <button
-            type="button"
-            onClick={() => setConfirming('yes')}
-            disabled={saving}
-            aria-pressed={false}
-            className="px-4 py-1.5 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-mustard"
-          >
-            Yes — Approved
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirming('no')}
-            disabled={saving || !canResample}
-            aria-pressed={false}
-            title={!canResample ? 'Maximum resample cycles reached' : undefined}
-            className="px-4 py-1.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-mustard"
-          >
-            No — Resample
-          </button>
-          {!canResample && (
-            <p className="text-xs text-red-600 dark:text-red-400 self-center" role="alert">
-              Max {maxCycles} cycles reached
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="flex items-center gap-2">
-          <p className="text-sm text-black/70 dark:text-slate-300">
-            {confirming === 'yes' ? 'Confirm sample is approved?' : 'Confirm resample — this starts a new development cycle.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => { onApprove(confirming === 'yes'); setConfirming(null) }}
-            disabled={saving}
-            className="px-3 py-1 rounded text-xs font-semibold bg-mustard text-black hover:bg-mustard/80 disabled:opacity-50"
-          >
-            {saving ? '…' : 'Confirm'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirming(null)}
-            disabled={saving}
-            className="px-3 py-1 rounded text-xs text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white"
-          >
-            Cancel
-          </button>
-        </div>
+    <>
+      <div
+        className="px-3 py-3 border-t border-black/5 dark:border-white/5 bg-amber-50/50 dark:bg-amber-900/10"
+        role="group"
+        aria-label="Sample approval decision"
+      >
+        <p className="text-sm font-medium text-black dark:text-white mb-2">
+          Sample Approved by Client?
+        </p>
+        {!confirmingYes ? (
+          <div className="flex gap-2" role="radiogroup" aria-label="Approval decision">
+            <button
+              type="button"
+              onClick={() => setConfirmingYes(true)}
+              disabled={saving}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-mustard"
+            >
+              Yes — Approved
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowResampleModal(true)}
+              disabled={saving || !canResample}
+              title={!canResample ? 'Maximum resample cycles reached' : undefined}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-mustard"
+            >
+              No — Resample
+            </button>
+            {!canResample && (
+              <p className="text-xs text-red-600 dark:text-red-400 self-center" role="alert">
+                Max {maxCycles} cycles reached
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-black/70 dark:text-slate-300">Confirm sample is approved?</p>
+            <button
+              type="button"
+              onClick={async () => { await onApprove(true); setConfirmingYes(false) }}
+              disabled={saving}
+              className="px-3 py-1 rounded text-xs font-semibold bg-mustard text-black hover:bg-mustard/80 disabled:opacity-50"
+            >
+              {saving ? '…' : 'Confirm'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingYes(false)}
+              disabled={saving}
+              className="px-3 py-1 rounded text-xs text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+
+      {showResampleModal && (
+        <ResampleModal
+          cycleFrom={cycle}
+          onConfirm={async (reason) => {
+            await onApprove(false, reason)
+            setShowResampleModal(false)
+          }}
+          onClose={() => setShowResampleModal(false)}
+        />
       )}
-    </div>
+    </>
   )
 }
 

@@ -5,6 +5,7 @@ import type {
   Manufacturer, Vendor, InternalTeamMember, VendorRating,
   VendorProjectPayment, DropdownOption, ProjectPayment, PaymentVendorOption,
   StageStatusResponse, StageCompletion, TaskItem, TaskStatus,
+  TaskComment, StandaloneTaskCreate, ResampleNote,
 } from '@/types/crm'
 
 // ─── Projects ────────────────────────────────────────────────────────────────
@@ -50,8 +51,17 @@ export const crmApi = {
   completeStage: (projectId: string, stageKey: string, isComplete: boolean) =>
     api.post<StageCompletion>(`/crm/projects/${projectId}/complete-stage/`, { stage_key: stageKey, is_complete: isComplete }),
 
-  approveSample: (projectId: string, approved: boolean) =>
-    api.post<StageStatusResponse>(`/crm/projects/${projectId}/approve-sample/`, { approved }),
+  approveSample: (projectId: string, approved: boolean, reason?: string) =>
+    api.post<StageStatusResponse>(`/crm/projects/${projectId}/approve-sample/`, {
+      approved,
+      ...(reason ? { reason } : {}),
+    }),
+
+  editResampleNote: (id: string, reason: string) =>
+    api.patch<ResampleNote>(`/crm/resample-notes/${id}/`, { reason }),
+
+  deleteResampleNote: (id: string) =>
+    api.delete(`/crm/resample-notes/${id}/`),
 
   setOrderGate: (projectId: string, data: { order_advance_received: boolean; order_booked: boolean }) =>
     api.post<StageStatusResponse>(`/crm/projects/${projectId}/set-order-gate/`, data),
@@ -60,10 +70,17 @@ export const crmApi = {
     api.post<StageStatusResponse>(`/crm/projects/${projectId}/reset-batch/`),
 
   // Task assignment
-  assignStage: (projectId: string, stageKey: string, assignedTo: string) =>
+  assignStage: (projectId: string, stageKey: string, assignedTo: string, opts?: {
+    comment?: string
+    priority?: string
+    planned_closure_date?: string | null
+  }) =>
     api.post<TaskItem>(`/crm/projects/${projectId}/assign-stage/`, {
       stage_key: stageKey,
       assigned_to: assignedTo,
+      ...(opts?.comment ? { comment: opts.comment } : {}),
+      ...(opts?.priority ? { priority: opts.priority } : {}),
+      ...(opts?.planned_closure_date !== undefined ? { planned_closure_date: opts.planned_closure_date } : {}),
     }),
 
   updateTaskStatus: (projectId: string, stageKey: string, taskStatus: TaskStatus) =>
@@ -74,6 +91,39 @@ export const crmApi = {
 
   listTasks: () =>
     api.get<PaginatedResponse<TaskItem>>('/crm/tasks/'),
+
+  // Standalone tasks
+  listStandaloneTasks: () =>
+    api.get<PaginatedResponse<TaskItem>>('/crm/standalone-tasks/'),
+
+  createStandaloneTask: (data: StandaloneTaskCreate) =>
+    api.post<TaskItem>('/crm/standalone-tasks/', {
+      title: data.title,
+      priority: data.priority,
+      planned_closure_date: data.planned_closure_date,
+      project_input: data.project,
+      client_input: data.client,
+      assigned_to_input: data.assigned_to,
+    }),
+
+  updateStandaloneTask: (id: string, data: Partial<StandaloneTaskCreate> & { task_status?: TaskStatus; actual_closure_date?: string | null }) =>
+    api.patch<TaskItem>(`/crm/standalone-tasks/${id}/`, data),
+
+  deleteStandaloneTask: (id: string) =>
+    api.delete(`/crm/standalone-tasks/${id}/`),
+
+  // Task comments
+  listTaskComments: (params: { stage_task?: string; standalone_task?: string }) =>
+    api.get<PaginatedResponse<TaskComment>>('/crm/task-comments/', { params }),
+
+  addTaskComment: (data: { text: string; stage_task?: string; standalone_task?: string }) =>
+    api.post<TaskComment>('/crm/task-comments/', data),
+
+  editTaskComment: (id: string, text: string) =>
+    api.patch<TaskComment>(`/crm/task-comments/${id}/`, { text }),
+
+  deleteTaskComment: (id: string) =>
+    api.delete(`/crm/task-comments/${id}/`),
 
   allTeamMembers: () =>
     api.get<PaginatedResponse<InternalTeamMember>>('/crm/team-members/'),

@@ -144,12 +144,32 @@ class CRMProject(models.Model):
         return self.milestones.filter(status='at_risk')
 
 
+class ResampleNote(models.Model):
+    """Records the reason each resample cycle was triggered."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(CRMProject, on_delete=models.CASCADE, related_name='resample_notes')
+    cycle_from = models.PositiveSmallIntegerField()  # cycle that was rejected (1 or 2)
+    reason = models.TextField()
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name='resample_notes_authored',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['cycle_from']
+        unique_together = [('project', 'cycle_from')]
+
+
 TASK_STATUS_CHOICES = [
     ('not_started', 'Not Started'),
     ('wip', 'WIP'),
     ('pending', 'Pending'),
     ('closed', 'Closed'),
 ]
+
+PRIORITY_CHOICES = [('high', 'High'), ('medium', 'Medium'), ('low', 'Low')]
 
 
 class StageCompletion(models.Model):
@@ -180,6 +200,14 @@ class StageCompletion(models.Model):
         max_length=15, choices=TASK_STATUS_CHOICES,
         default='not_started', db_index=True,
     )
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    planned_closure_date = models.DateField(null=True, blank=True)
+    actual_closure_date = models.DateField(null=True, blank=True)
+    last_updated_at = models.DateTimeField(null=True, blank=True)
+    last_updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='stage_tasks_updated',
+    )
 
     class Meta:
         unique_together = [('project', 'stage_key')]
@@ -187,6 +215,80 @@ class StageCompletion(models.Model):
 
     def __str__(self):
         return f'{self.project_id} | {self.stage_key} | {"✓" if self.is_complete else "○"}'
+
+
+class StandaloneTask(models.Model):
+    """Ad-hoc task created directly from the Task Tracker (not tied to a project stage)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=255)
+    project = models.ForeignKey(
+        CRMProject, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='standalone_tasks',
+    )
+    client = models.ForeignKey(
+        'clients.Client', on_delete=models.SET_NULL, null=True, blank=True,
+        to_field='phone_no', db_column='client_phone',
+        related_name='standalone_tasks',
+    )
+    assigned_to = models.ForeignKey(
+        'crm_master_data.InternalTeamMember', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='assigned_standalone_tasks',
+    )
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='standalone_tasks_assigned',
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    planned_closure_date = models.DateField(null=True, blank=True)
+    actual_closure_date = models.DateField(null=True, blank=True)
+    task_status = models.CharField(
+        max_length=15, choices=TASK_STATUS_CHOICES, default='not_started', db_index=True,
+    )
+    last_updated_at = models.DateTimeField(auto_now=True)
+    last_updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='standalone_tasks_updated',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name='standalone_tasks_created',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.title} | {self.task_status}'
+
+
+class TaskComment(models.Model):
+    """Comment thread entry for both stage tasks and standalone tasks."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    stage_task = models.ForeignKey(
+        StageCompletion, on_delete=models.CASCADE,
+        null=True, blank=True, related_name='comments',
+    )
+    standalone_task = models.ForeignKey(
+        StandaloneTask, on_delete=models.CASCADE,
+        null=True, blank=True, related_name='comments',
+    )
+    text = models.TextField()
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name='task_comments_authored',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    edited = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        target = f'stage:{self.stage_task_id}' if self.stage_task_id else f'standalone:{self.standalone_task_id}'
+        return f'Comment on {target} by {self.author_id}'
 
 
 class SubStageCompletion(models.Model):

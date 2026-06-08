@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import (
     CRMProject, StageCompletion, SubStageCompletion,
     ProjectNote, ProjectFile, ProjectMilestone, KeyLearning, ProjectPayment,
+    StandaloneTask, TaskComment, ResampleNote,
     TASK_STATUS_CHOICES,
 )
 from .stage_definitions import ALL_INITIAL_STAGE_KEYS, STAGE_DISPLAY_MAP
@@ -21,31 +22,213 @@ class StageCompletionSerializer(serializers.ModelSerializer):
                             'assigned_to_name', 'assigned_at']
 
 
+class TaskCommentSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source='author.name', read_only=True, default=None)
+    author_email = serializers.EmailField(source='author.email', read_only=True, default=None)
+
+    class Meta:
+        model = TaskComment
+        fields = [
+            'id', 'stage_task', 'standalone_task',
+            'text', 'author', 'author_name', 'author_email',
+            'created_at', 'updated_at', 'edited',
+        ]
+        read_only_fields = ['id', 'author', 'author_name', 'author_email', 'created_at', 'updated_at', 'edited']
+
+    def validate(self, data):
+        if not data.get('stage_task') and not data.get('standalone_task'):
+            raise serializers.ValidationError('Either stage_task or standalone_task is required.')
+        if data.get('stage_task') and data.get('standalone_task'):
+            raise serializers.ValidationError('Provide only one of stage_task or standalone_task.')
+        return data
+
+    def validate_text(self, value):
+        if not value.strip():
+            raise serializers.ValidationError('Comment cannot be empty.')
+        return value.strip()
+
+
+class ResampleNoteSerializer(serializers.ModelSerializer):
+    author_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ResampleNote
+        fields = ['id', 'project', 'cycle_from', 'reason', 'author_name', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'project', 'cycle_from', 'author_name', 'created_at', 'updated_at']
+
+    def get_author_name(self, obj):
+        if obj.author:
+            return getattr(obj.author, 'name', None) or obj.author.email
+        return None
+
+    def validate_reason(self, value):
+        if not value.strip():
+            raise serializers.ValidationError('Reason cannot be empty.')
+        return value.strip()
+
+
 class TaskItemSerializer(serializers.ModelSerializer):
-    """Flat task row for the Task Tracker page."""
+    """Flat task row for stage-linked tasks (Task Tracker page)."""
+    task_type = serializers.SerializerMethodField()
     stage_display = serializers.SerializerMethodField()
+    title = serializers.SerializerMethodField()
     project_id = serializers.UUIDField(source='project.id', read_only=True)
     project_no = serializers.CharField(source='project.project_no', read_only=True)
     client_name = serializers.CharField(source='project.client.name', read_only=True)
     client_phone = serializers.CharField(source='project.client.phone_no', read_only=True)
     assigned_to_id = serializers.UUIDField(source='assigned_to.id', read_only=True)
     assigned_to_name = serializers.CharField(source='assigned_to.name', read_only=True)
+    assigned_to_user_id = serializers.SerializerMethodField()
     task_status_display = serializers.SerializerMethodField()
+    last_updated_by_name = serializers.SerializerMethodField()
+    latest_comment = serializers.SerializerMethodField()
 
     class Meta:
         model = StageCompletion
         fields = [
-            'id', 'stage_key', 'stage_display',
+            'id', 'task_type', 'stage_key', 'stage_display', 'title',
             'project_id', 'project_no', 'client_name', 'client_phone',
-            'assigned_to_id', 'assigned_to_name', 'assigned_at',
+            'assigned_to_id', 'assigned_to_name', 'assigned_to_user_id', 'assigned_at',
+            'priority', 'planned_closure_date', 'actual_closure_date',
             'task_status', 'task_status_display',
+            'last_updated_at', 'last_updated_by_name',
+            'latest_comment',
         ]
+
+    def get_task_type(self, obj):
+        return 'stage'
+
+    def get_assigned_to_user_id(self, obj):
+        if obj.assigned_to and obj.assigned_to.user_id:
+            return str(obj.assigned_to.user_id)
+        return None
 
     def get_stage_display(self, obj):
         return STAGE_DISPLAY_MAP.get(obj.stage_key, obj.stage_key)
 
+    def get_title(self, obj):
+        return STAGE_DISPLAY_MAP.get(obj.stage_key, obj.stage_key)
+
     def get_task_status_display(self, obj):
         return dict(TASK_STATUS_CHOICES).get(obj.task_status, obj.task_status)
+
+    def get_last_updated_by_name(self, obj):
+        if obj.last_updated_by:
+            return getattr(obj.last_updated_by, 'name', None) or obj.last_updated_by.email
+        return None
+
+    def get_latest_comment(self, obj):
+        comment = obj.comments.order_by('-created_at').first()
+        if not comment:
+            return None
+        return {
+            'id': str(comment.id),
+            'text': comment.text,
+            'author_name': getattr(comment.author, 'name', None) if comment.author else None,
+            'created_at': comment.created_at.isoformat(),
+            'edited': comment.edited,
+        }
+
+
+class StandaloneTaskSerializer(serializers.ModelSerializer):
+    """Serializer for standalone tasks created directly from Task Tracker."""
+    task_type = serializers.SerializerMethodField()
+    project_id = serializers.UUIDField(source='project.id', read_only=True)
+    project_no = serializers.CharField(source='project.project_no', read_only=True)
+    client_name = serializers.CharField(source='client.name', read_only=True)
+    client_phone = serializers.CharField(source='client.phone_no', read_only=True)
+    assigned_to_id = serializers.UUIDField(source='assigned_to.id', read_only=True)
+    assigned_to_name = serializers.CharField(source='assigned_to.name', read_only=True)
+    assigned_to_user_id = serializers.SerializerMethodField()
+    task_status_display = serializers.SerializerMethodField()
+    last_updated_by_name = serializers.SerializerMethodField()
+    latest_comment = serializers.SerializerMethodField()
+    # Input-only fields (not model fields — resolved in create/update)
+    project_input = serializers.UUIDField(write_only=True, required=False, allow_null=True)
+    client_input = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
+    assigned_to_input = serializers.UUIDField(write_only=True, required=False, allow_null=True)
+
+    class Meta:
+        model = StandaloneTask
+        fields = [
+            'id', 'task_type', 'title',
+            'project_id', 'project_no',
+            'client_name', 'client_phone',
+            'assigned_to_id', 'assigned_to_name', 'assigned_to_user_id', 'assigned_at',
+            'priority', 'planned_closure_date', 'actual_closure_date',
+            'task_status', 'task_status_display',
+            'last_updated_at', 'last_updated_by_name',
+            'latest_comment', 'created_at',
+            # write-only inputs
+            'project_input', 'client_input', 'assigned_to_input',
+        ]
+        read_only_fields = ['id', 'assigned_at', 'created_at', 'last_updated_at']
+
+    def get_task_type(self, obj):
+        return 'standalone'
+
+    def get_assigned_to_user_id(self, obj):
+        if obj.assigned_to and obj.assigned_to.user_id:
+            return str(obj.assigned_to.user_id)
+        return None
+
+    def get_task_status_display(self, obj):
+        return dict(TASK_STATUS_CHOICES).get(obj.task_status, obj.task_status)
+
+    def get_last_updated_by_name(self, obj):
+        if obj.last_updated_by:
+            return getattr(obj.last_updated_by, 'name', None) or obj.last_updated_by.email
+        return None
+
+    def get_latest_comment(self, obj):
+        comment = obj.comments.order_by('-created_at').first()
+        if not comment:
+            return None
+        return {
+            'id': str(comment.id),
+            'text': comment.text,
+            'author_name': getattr(comment.author, 'name', None) if comment.author else None,
+            'created_at': comment.created_at.isoformat(),
+            'edited': comment.edited,
+        }
+
+    def _resolve_related(self, validated_data):
+        from apps.clients.models import Client
+        from apps.crm_master_data.models import InternalTeamMember
+
+        project_id = validated_data.pop('project_input', None)
+        if project_id:
+            try:
+                validated_data['project'] = CRMProject.objects.get(id=project_id)
+            except CRMProject.DoesNotExist:
+                pass
+
+        client_phone = validated_data.pop('client_input', None)
+        if client_phone:
+            try:
+                validated_data['client'] = Client.objects.get(phone_no=client_phone)
+            except Client.DoesNotExist:
+                pass
+
+        assigned_to_id = validated_data.pop('assigned_to_input', None)
+        if assigned_to_id:
+            try:
+                validated_data['assigned_to'] = InternalTeamMember.objects.get(id=assigned_to_id)
+            except InternalTeamMember.DoesNotExist:
+                pass
+
+        return validated_data
+
+    def create(self, validated_data):
+        validated_data = self._resolve_related(validated_data)
+        return StandaloneTask.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data = self._resolve_related(validated_data)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 
 class ProjectNoteSerializer(serializers.ModelSerializer):

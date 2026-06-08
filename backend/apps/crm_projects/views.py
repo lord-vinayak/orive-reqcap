@@ -8,13 +8,15 @@ from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import (
     CRMProject, StageCompletion, SubStageCompletion,
-    ProjectNote, ProjectFile, ProjectMilestone, KeyLearning, ProjectPayment, _add_weekdays,
+    ProjectNote, ProjectFile, ProjectMilestone, KeyLearning, ProjectPayment,
+    StandaloneTask, TaskComment, ResampleNote, _add_weekdays,
 )
 from .serializers import (
     CRMProjectListSerializer, CRMProjectDetailSerializer, CRMProjectWriteSerializer,
     StageCompletionSerializer, ProjectNoteSerializer, ProjectFileSerializer,
     ProjectMilestoneSerializer, KeyLearningSerializer, ProjectPaymentSerializer,
-    TaskItemSerializer,
+    TaskItemSerializer, StandaloneTaskSerializer, TaskCommentSerializer,
+    ResampleNoteSerializer,
 )
 from .stage_definitions import (
     SAMPLE_PRE_LOOP, RESAMPLE_LOOP_BASE, SAMPLE_POST_APPROVAL,
@@ -23,6 +25,86 @@ from .stage_definitions import (
     get_loop_key, get_loop_stage_keys_for_cycle, ALL_INITIAL_STAGE_KEYS,
 )
 from .consumers import broadcast_task_update
+
+
+# ── Task payload helper ───────────────────────────────────────────────────────
+
+def _build_stage_task_payload(sc, project):
+    """Build a flat task payload for WebSocket broadcast (stage task)."""
+    latest = sc.comments.order_by('-created_at').first()
+    return {
+        'id': str(sc.id),
+        'task_type': 'stage',
+        'stage_key': sc.stage_key,
+        'stage_display': STAGE_DISPLAY_MAP.get(sc.stage_key, sc.stage_key),
+        'title': STAGE_DISPLAY_MAP.get(sc.stage_key, sc.stage_key),
+        'project_id': str(project.id),
+        'project_no': project.project_no,
+        'client_name': project.client.name,
+        'client_phone': project.client.phone_no,
+        'assigned_to_id': str(sc.assigned_to_id) if sc.assigned_to_id else None,
+        'assigned_to_name': sc.assigned_to.name if sc.assigned_to else None,
+        'assigned_to_user_id': str(sc.assigned_to.user_id) if sc.assigned_to and sc.assigned_to.user_id else None,
+        'assigned_at': sc.assigned_at.isoformat() if sc.assigned_at else None,
+        'priority': sc.priority,
+        'planned_closure_date': sc.planned_closure_date.isoformat() if sc.planned_closure_date else None,
+        'actual_closure_date': sc.actual_closure_date.isoformat() if sc.actual_closure_date else None,
+        'task_status': sc.task_status,
+        'task_status_display': dict(sc._meta.get_field('task_status').choices).get(sc.task_status, sc.task_status),
+        'last_updated_at': sc.last_updated_at.isoformat() if sc.last_updated_at else None,
+        'last_updated_by_name': (
+            getattr(sc.last_updated_by, 'name', None) or sc.last_updated_by.email
+        ) if sc.last_updated_by else None,
+        'latest_comment': {
+            'id': str(latest.id),
+            'text': latest.text,
+            'author_name': getattr(latest.author, 'name', None) if latest.author else None,
+            'created_at': latest.created_at.isoformat(),
+            'edited': latest.edited,
+        } if latest else None,
+    }
+
+
+def _build_standalone_task_payload(task):
+    """Build a flat task payload for WebSocket broadcast (standalone task)."""
+    # Re-fetch with all relations so the payload is complete after any save
+    task = (
+        StandaloneTask.objects
+        .select_related('project__client', 'client', 'assigned_to', 'last_updated_by')
+        .prefetch_related('comments__author')
+        .get(pk=task.pk)
+    )
+    latest = task.comments.order_by('-created_at').first()
+    return {
+        'id': str(task.id),
+        'task_type': 'standalone',
+        'stage_key': None,
+        'title': task.title,
+        'project_id': str(task.project_id) if task.project_id else None,
+        'project_no': task.project.project_no if task.project else None,
+        'client_name': task.client.name if task.client else None,
+        'client_phone': task.client.phone_no if task.client else None,
+        'assigned_to_id': str(task.assigned_to_id) if task.assigned_to_id else None,
+        'assigned_to_name': task.assigned_to.name if task.assigned_to else None,
+        'assigned_to_user_id': str(task.assigned_to.user_id) if task.assigned_to and task.assigned_to.user_id else None,
+        'assigned_at': task.assigned_at.isoformat() if task.assigned_at else None,
+        'priority': task.priority,
+        'planned_closure_date': task.planned_closure_date.isoformat() if task.planned_closure_date else None,
+        'actual_closure_date': task.actual_closure_date.isoformat() if task.actual_closure_date else None,
+        'task_status': task.task_status,
+        'task_status_display': dict(task._meta.get_field('task_status').choices).get(task.task_status, task.task_status),
+        'last_updated_at': task.last_updated_at.isoformat() if task.last_updated_at else None,
+        'last_updated_by_name': (
+            getattr(task.last_updated_by, 'name', None) or task.last_updated_by.email
+        ) if task.last_updated_by else None,
+        'latest_comment': {
+            'id': str(latest.id),
+            'text': latest.text,
+            'author_name': getattr(latest.author, 'name', None) if latest.author else None,
+            'created_at': latest.created_at.isoformat(),
+            'edited': latest.edited,
+        } if latest else None,
+    }
 
 
 # ── Milestone helpers ─────────────────────────────────────────────────────────
@@ -159,6 +241,17 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
     total = SAMPLE_TOTAL_STAGES + ORDER_TOTAL_STAGES
     overall_pct = round(((sample_done + order_done) / total) * 100)
 
+    # Resample notes keyed by cycle_from for direct frontend lookup
+    notes_map = {}
+    for note in project.resample_notes.select_related('author').all():
+        notes_map[str(note.cycle_from)] = {
+            'id': str(note.id),
+            'reason': note.reason,
+            'author_name': (getattr(note.author, 'name', None) or note.author.email) if note.author else None,
+            'created_at': note.created_at.isoformat(),
+            'updated_at': note.updated_at.isoformat(),
+        }
+
     return {
         'phase': project.phase,
         'resample_cycle': cycle,
@@ -166,6 +259,7 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
         'order_advance_received': project.order_advance_received,
         'order_booked': project.order_booked,
         'sample_phase_complete': sample_phase_complete,
+        'resample_notes': notes_map,
         'sample_phase': {
             'pre_loop': pre_loop,
             'loop_cycles': loop_cycles,
@@ -315,6 +409,11 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
                     {'detail': f'Maximum resample cycles ({MAX_RESAMPLE_CYCLES}) reached.'},
                     status=400,
                 )
+            # Require a reason for the resample
+            reason = (request.data.get('reason') or '').strip()
+            if not reason:
+                return Response({'detail': 'A resample reason is required.'}, status=400)
+
             # Mark current approval as explicitly not complete (stays False)
             sc, _ = StageCompletion.objects.get_or_create(project=project, stage_key=approval_key)
             sc.is_complete = False
@@ -330,6 +429,21 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
             project.resample_cycle = next_cycle
             project.project_stage = get_loop_key('formula_made', next_cycle)
             project.save(update_fields=['resample_cycle', 'project_stage', 'updated_at'])
+
+            # Record the resample reason
+            from .models import ResampleNote
+            ResampleNote.objects.update_or_create(
+                project=project,
+                cycle_from=cycle,
+                defaults={'reason': reason, 'author': request.user},
+            )
+
+            # Auto-post a tagged ProjectNote for the audit trail
+            ProjectNote.objects.create(
+                project=project,
+                text=f'[RESAMPLE|Cycle {next_cycle}] {reason}',
+                added_by=request.user,
+            )
 
         completion_map = {
             sc.stage_key: sc
@@ -381,10 +495,13 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='assign-stage')
     def assign_stage(self, request, pk=None):
-        """Assign a stage task to an InternalTeamMember."""
+        """Assign a stage task to an InternalTeamMember, with optional comment."""
         project = self.get_object()
         stage_key = request.data.get('stage_key', '').strip()
         assigned_to_id = request.data.get('assigned_to')
+        priority = request.data.get('priority', 'medium')
+        planned_closure_date = request.data.get('planned_closure_date') or None
+        comment_text = (request.data.get('comment') or '').strip()
 
         if not stage_key:
             return Response({'detail': 'stage_key is required.'}, status=400)
@@ -397,35 +514,33 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         except (InternalTeamMember.DoesNotExist, Exception):
             return Response({'detail': 'Team member not found.'}, status=400)
 
+        now = timezone.now()
         sc, _ = StageCompletion.objects.get_or_create(project=project, stage_key=stage_key)
         sc.assigned_to = member
-        sc.assigned_at = timezone.now()
+        sc.assigned_at = now
         sc.assigned_by = request.user
-        sc.save(update_fields=['assigned_to', 'assigned_at', 'assigned_by'])
+        sc.priority = priority
+        sc.planned_closure_date = planned_closure_date
+        sc.last_updated_at = now
+        sc.last_updated_by = request.user
+        sc.save(update_fields=[
+            'assigned_to', 'assigned_at', 'assigned_by',
+            'priority', 'planned_closure_date',
+            'last_updated_at', 'last_updated_by',
+        ])
+
+        if comment_text:
+            TaskComment.objects.create(stage_task=sc, text=comment_text, author=request.user)
 
         sc.refresh_from_db()
-        sc.assigned_to  # ensure cached
 
-        task_payload = {
-            'id': str(sc.id),
-            'stage_key': sc.stage_key,
-            'stage_display': STAGE_DISPLAY_MAP.get(sc.stage_key, sc.stage_key),
-            'project_id': str(project.id),
-            'project_no': project.project_no,
-            'client_name': project.client.name,
-            'client_phone': project.client.phone_no,
-            'assigned_to_id': str(member.id),
-            'assigned_to_name': member.name,
-            'assigned_at': sc.assigned_at.isoformat(),
-            'task_status': sc.task_status,
-            'task_status_display': dict(sc._meta.get_field('task_status').choices).get(sc.task_status, sc.task_status),
-        }
+        task_payload = _build_stage_task_payload(sc, project)
         broadcast_task_update(task_payload)
         return Response(task_payload)
 
     @action(detail=True, methods=['patch'], url_path='task-status')
     def task_status_update(self, request, pk=None):
-        """Update the task_status for a stage."""
+        """Update the task_status for a stage (assigned person + admin only)."""
         project = self.get_object()
         stage_key = request.data.get('stage_key', '').strip()
         new_status = request.data.get('task_status', '').strip()
@@ -438,28 +553,30 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
 
         try:
             sc = StageCompletion.objects.select_related(
-                'assigned_to', 'project__client'
+                'assigned_to__user', 'project__client'
             ).get(project=project, stage_key=stage_key)
         except StageCompletion.DoesNotExist:
             return Response({'detail': 'Stage not found for this project.'}, status=404)
 
-        sc.task_status = new_status
-        sc.save(update_fields=['task_status'])
+        # Permission: only assignee or admin
+        if request.user.role != 'admin':
+            assignee_user = sc.assigned_to.user if sc.assigned_to else None
+            if assignee_user != request.user:
+                return Response({'detail': 'Only the assigned person or admin can update task status.'}, status=403)
 
-        task_payload = {
-            'id': str(sc.id),
-            'stage_key': sc.stage_key,
-            'stage_display': STAGE_DISPLAY_MAP.get(sc.stage_key, sc.stage_key),
-            'project_id': str(project.id),
-            'project_no': project.project_no,
-            'client_name': project.client.name,
-            'client_phone': project.client.phone_no,
-            'assigned_to_id': str(sc.assigned_to_id) if sc.assigned_to_id else None,
-            'assigned_to_name': sc.assigned_to.name if sc.assigned_to else None,
-            'assigned_at': sc.assigned_at.isoformat() if sc.assigned_at else None,
-            'task_status': sc.task_status,
-            'task_status_display': dict(sc._meta.get_field('task_status').choices).get(sc.task_status, sc.task_status),
-        }
+        now = timezone.now()
+        sc.task_status = new_status
+        sc.last_updated_at = now
+        sc.last_updated_by = request.user
+        update_fields = ['task_status', 'last_updated_at', 'last_updated_by']
+
+        if new_status == 'closed' and not sc.actual_closure_date:
+            sc.actual_closure_date = now.date()
+            update_fields.append('actual_closure_date')
+
+        sc.save(update_fields=update_fields)
+
+        task_payload = _build_stage_task_payload(sc, project)
         broadcast_task_update(task_payload)
         return Response(task_payload)
 
@@ -609,7 +726,9 @@ class TaskListViewSet(viewsets.ReadOnlyModelViewSet):
             .select_related(
                 'project', 'project__client',
                 'assigned_to', 'assigned_by',
+                'last_updated_by',
             )
+            .prefetch_related('comments__author')
             .order_by('-assigned_at')
         )
 
@@ -665,4 +784,171 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         if request.user.role != 'admin':
             return Response({'detail': 'Only admin can delete payments.'}, status=403)
+        return super().destroy(request, *args, **kwargs)
+
+
+class StandaloneTaskViewSet(viewsets.ModelViewSet):
+    """CRUD for standalone tasks created from the Task Tracker."""
+    serializer_class = StandaloneTaskSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            StandaloneTask.objects
+            .select_related(
+                'project', 'client', 'assigned_to',
+                'assigned_by', 'last_updated_by', 'created_by',
+            )
+            .prefetch_related('comments__author')
+            .order_by('-created_at')
+        )
+
+    def perform_create(self, serializer):
+        if self.request.user.role != 'admin':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only admin can create tasks.')
+        task = serializer.save(
+            created_by=self.request.user,
+            assigned_by=self.request.user,
+            last_updated_by=self.request.user,
+        )
+        broadcast_task_update(_build_standalone_task_payload(task))
+
+    def perform_update(self, serializer):
+        new_status = serializer.validated_data.get('task_status')
+        instance = serializer.instance
+
+        # Permission check
+        if self.request.user.role != 'admin':
+            assignee_user = instance.assigned_to.user if instance.assigned_to else None
+            if assignee_user != self.request.user:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied('Only the assigned person or admin can update this task.')
+
+        extra = {'last_updated_by': self.request.user}
+
+        # Auto-set actual_closure_date on first close
+        if new_status == 'closed' and not instance.actual_closure_date:
+            from datetime import date as _date
+            extra['actual_closure_date'] = _date.today()
+
+        task = serializer.save(**extra)
+        broadcast_task_update(_build_standalone_task_payload(task))
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admin can delete tasks.'}, status=403)
+        return super().destroy(request, *args, **kwargs)
+
+
+class TaskCommentViewSet(viewsets.ModelViewSet):
+    """CRUD for task comments (both stage tasks and standalone tasks)."""
+    serializer_class = TaskCommentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        qs = TaskComment.objects.select_related('author')
+        stage_task_id = self.request.query_params.get('stage_task')
+        standalone_task_id = self.request.query_params.get('standalone_task')
+        if stage_task_id:
+            qs = qs.filter(stage_task_id=stage_task_id)
+        if standalone_task_id:
+            qs = qs.filter(standalone_task_id=standalone_task_id)
+        return qs.order_by('created_at')
+
+    def perform_create(self, serializer):
+        comment = serializer.save(author=self.request.user)
+        # Touch last_updated_at on the parent task
+        self._touch_parent(comment)
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.author != request.user and request.user.role != 'admin':
+            return Response({'detail': 'You can only edit your own comments.'}, status=403)
+        serializer = self.get_serializer(instance, data={'text': request.data.get('text', '')}, partial=True)
+        serializer.is_valid(raise_exception=True)
+        comment = serializer.save(edited=True)
+        self._touch_parent(comment)
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admin can delete comments.'}, status=403)
+        # Capture parent IDs before deleting so we can broadcast after
+        stage_task_id = instance.stage_task_id
+        standalone_task_id = instance.standalone_task_id
+        response = super().destroy(request, *args, **kwargs)
+        # Broadcast updated parent task (comment is now gone)
+        if stage_task_id:
+            try:
+                sc = StageCompletion.objects.select_related(
+                    'project__client', 'assigned_to', 'last_updated_by'
+                ).prefetch_related('comments__author').get(pk=stage_task_id)
+                broadcast_task_update(_build_stage_task_payload(sc, sc.project))
+            except StageCompletion.DoesNotExist:
+                pass
+        elif standalone_task_id:
+            try:
+                task = StandaloneTask.objects.get(pk=standalone_task_id)
+                broadcast_task_update(_build_standalone_task_payload(task))
+            except StandaloneTask.DoesNotExist:
+                pass
+        return response
+
+    def _touch_parent(self, comment):
+        now = timezone.now()
+        if comment.stage_task_id:
+            StageCompletion.objects.filter(id=comment.stage_task_id).update(
+                last_updated_at=now,
+                last_updated_by=comment.author,
+            )
+            # Broadcast updated stage task
+            try:
+                sc = StageCompletion.objects.select_related(
+                    'project__client', 'assigned_to', 'last_updated_by'
+                ).prefetch_related('comments__author').get(pk=comment.stage_task_id)
+                broadcast_task_update(_build_stage_task_payload(sc, sc.project))
+            except StageCompletion.DoesNotExist:
+                pass
+        elif comment.standalone_task_id:
+            # auto_now=True doesn't fire on .update() — set last_updated_at explicitly
+            StandaloneTask.objects.filter(id=comment.standalone_task_id).update(
+                last_updated_at=now,
+                last_updated_by=comment.author,
+            )
+            # Broadcast updated standalone task
+            try:
+                task = StandaloneTask.objects.get(pk=comment.standalone_task_id)
+                broadcast_task_update(_build_standalone_task_payload(task))
+            except StandaloneTask.DoesNotExist:
+                pass
+
+
+class ResampleNoteViewSet(viewsets.ModelViewSet):
+    """Edit (author) or delete (admin) resample cycle reasons."""
+    serializer_class = ResampleNoteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'patch', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        qs = ResampleNote.objects.select_related('author')
+        project_id = self.request.query_params.get('project')
+        if project_id:
+            qs = qs.filter(project_id=project_id)
+        return qs
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.author != request.user and request.user.role != 'admin':
+            return Response({'detail': 'You can only edit your own resample notes.'}, status=403)
+        serializer = self.get_serializer(instance, data={'reason': request.data.get('reason', '')}, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admin can delete resample notes.'}, status=403)
         return super().destroy(request, *args, **kwargs)

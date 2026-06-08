@@ -16,6 +16,7 @@ export interface StageCompletion {
 // ─── Stage status (returned by /stage-status/ endpoint) ──────────────────────
 
 export type TaskStatus = 'not_started' | 'wip' | 'pending' | 'closed'
+export type TaskPriority = 'high' | 'medium' | 'low'
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   not_started: 'Not Started',
@@ -24,19 +25,66 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   closed: 'Closed',
 }
 
+export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+}
+
+export interface TaskComment {
+  id: string
+  stage_task: string | null
+  standalone_task: string | null
+  text: string
+  author: string | null
+  author_name: string | null
+  author_email: string | null
+  created_at: string
+  updated_at: string
+  edited: boolean
+}
+
+export interface LatestComment {
+  id: string
+  text: string
+  author_name: string | null
+  created_at: string
+  edited: boolean
+}
+
 export interface TaskItem {
   id: string
-  stage_key: string
-  stage_display: string
-  project_id: string
-  project_no: string
-  client_name: string
-  client_phone: string
+  task_type: 'stage' | 'standalone'
+  // stage-task fields (null for standalone)
+  stage_key: string | null
+  stage_display: string | null
+  // standalone-task field
+  title: string
+  project_id: string | null
+  project_no: string | null
+  client_name: string | null
+  client_phone: string | null
   assigned_to_id: string | null
   assigned_to_name: string | null
+  assigned_to_user_id: string | null
   assigned_at: string | null
+  priority: TaskPriority
+  planned_closure_date: string | null
+  actual_closure_date: string | null
   task_status: TaskStatus
   task_status_display: string
+  last_updated_at: string | null
+  last_updated_by_name: string | null
+  latest_comment: LatestComment | null
+}
+
+export interface StandaloneTaskCreate {
+  title: string
+  project?: string | null       // project UUID
+  client?: string | null        // client phone_no
+  assigned_to?: string | null   // InternalTeamMember UUID
+  priority?: TaskPriority
+  planned_closure_date?: string | null
 }
 
 export interface StageStatusItem {
@@ -66,6 +114,15 @@ export interface SectionStatus {
   stages: StageStatusItem[]
 }
 
+export interface ResampleNote {
+  id: string
+  cycle_from: number
+  reason: string
+  author_name: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface StageStatusResponse {
   phase: ProjectPhase
   resample_cycle: number
@@ -73,6 +130,7 @@ export interface StageStatusResponse {
   order_advance_received: boolean
   order_booked: boolean
   sample_phase_complete: boolean
+  resample_notes: Record<string, ResampleNote>  // keyed by cycle_from as string
   sample_phase: {
     pre_loop: StageStatusItem[]
     loop_cycles: LoopCycle[]
