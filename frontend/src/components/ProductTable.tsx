@@ -70,7 +70,7 @@ export default function ProductTable({
     <section className="card p-0 overflow-hidden" aria-labelledby="products-heading">
       <div className="px-4 py-3 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
         <h2 id="products-heading" className="text-lg font-semibold">Product details</h2>
-        <span className="text-xs text-black/60 dark:text-slate-400">{products.length} row{products.length === 1 ? '' : 's'}</span>
+        <span className="text-xs text-black/60 dark:text-slate-300">{products.length} row{products.length === 1 ? '' : 's'}</span>
       </div>
 
       {/* Shared <datalist>s — provide suggestions while still allowing free text */}
@@ -118,9 +118,11 @@ export default function ProductTable({
                 <tr
                   key={p.id}
                   onClick={() => onActiveChange?.(i)}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onActiveChange?.(i) } }}
                   className={isActive ? 'bg-mustard-50/40 dark:bg-slate-700/40' : ''}
                 >
-                  <td className={`${cellCls} text-center text-black/60 dark:text-slate-400 font-medium`}>{p.row_number}</td>
+                  <td className={`${cellCls} text-center text-black/60 dark:text-slate-300 font-medium`}>{p.row_number}</td>
 
                   {/* Body part — free-text + datalist */}
                   <td className={cellCls}>
@@ -331,7 +333,7 @@ export default function ProductTable({
                       )}
                     </div>
                     {showValidation && rowErrors.length > 0 && (
-                      <p role="alert" className="text-[10px] text-red-700 mt-1 text-left">
+                      <p role="alert" className="text-xs text-red-700 mt-1 text-left">
                         {rowErrors.join('; ')}
                       </p>
                     )}
@@ -342,7 +344,7 @@ export default function ProductTable({
 
             {products.length === 0 && (
               <tr>
-                <td colSpan={16} className="text-center text-sm text-black/60 dark:text-slate-400 py-6">
+                <td colSpan={16} className="text-center text-sm text-black/60 dark:text-slate-300 py-6">
                   No product rows yet. Click "+ Add row" below to start.
                 </td>
               </tr>

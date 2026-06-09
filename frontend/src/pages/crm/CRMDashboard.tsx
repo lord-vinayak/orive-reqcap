@@ -58,7 +58,7 @@ export default function CRMDashboard() {
         )}
 
         {loading ? (
-          <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-400 text-sm">
+          <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm">
             Loading dashboard…
           </div>
         ) : stats && (
@@ -92,7 +92,7 @@ export default function CRMDashboard() {
                 Stage Distribution
               </h2>
               {stageEntries.length === 0 ? (
-                <p className="text-black/60 dark:text-slate-400 text-sm">No projects yet.</p>
+                <p className="text-black/60 dark:text-slate-300 text-sm">No projects yet.</p>
               ) : (
                 <div className="space-y-2" role="list" aria-label="Project count per stage">
                   {stageEntries.map(([stage, count]) => (
@@ -119,7 +119,7 @@ export default function CRMDashboard() {
                 Project Health
               </h2>
               {projects.length === 0 ? (
-                <p className="text-black/60 dark:text-slate-400 text-sm">No projects to display.</p>
+                <p className="text-black/60 dark:text-slate-300 text-sm">No projects to display.</p>
               ) : (
                 <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
                   <table className="w-full text-sm" aria-label="Project health overview">
@@ -151,7 +151,7 @@ export default function CRMDashboard() {
                               {p.client_name}
                             </Link>
                             {p.client_company && (
-                              <div className="text-xs text-black/50 dark:text-slate-500">{p.client_company}</div>
+                              <div className="text-xs text-black/50 dark:text-slate-300">{p.client_company}</div>
                             )}
                           </td>
                           <td className="px-4 py-3">
@@ -169,7 +169,7 @@ export default function CRMDashboard() {
                           <td className="px-4 py-3">
                             <StatusBadge hasDelays={p.has_delays} />
                           </td>
-                          <td className="px-4 py-3 text-black/60 dark:text-slate-400 text-xs">
+                          <td className="px-4 py-3 text-black/60 dark:text-slate-300 text-xs">
                             {p.next_milestone
                               ? `${p.next_milestone.display} · ${p.next_milestone.planned_date}`
                               : '—'}
@@ -198,7 +198,7 @@ function StatCard({ label, value, accent }: { label: string; value: number; acce
       <div className={`text-3xl font-bold ${accent === 'red' ? 'text-red-600 dark:text-red-400' : 'text-mustard'}`}>
         {value}
       </div>
-      <div className="text-sm text-black/60 dark:text-slate-400 mt-1">{label}</div>
+      <div className="text-sm text-black/60 dark:text-slate-300 mt-1">{label}</div>
     </div>
   )
 }
@@ -211,7 +211,7 @@ function PipelineCard({ label, count, stageKey }: { label: string; count: number
       aria-label={`${label}: ${count} projects`}
     >
       <div className="text-2xl font-bold text-black dark:text-white">{count}</div>
-      <div className="text-sm text-black/60 dark:text-slate-400 mt-1">{label}</div>
+      <div className="text-sm text-black/60 dark:text-slate-300 mt-1">{label}</div>
     </Link>
   )
 }

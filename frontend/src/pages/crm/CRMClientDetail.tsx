@@ -59,7 +59,7 @@ export default function CRMClientDetail() {
   if (loading) {
     return (
       <Layout title="Client">
-        <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-400 text-sm">
+        <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm">
           Loading client details…
         </div>
       </Layout>
@@ -84,7 +84,7 @@ export default function CRMClientDetail() {
           <div>
             <h1 className="text-2xl font-bold text-black dark:text-white">{client.name}</h1>
             {client.company_name && (
-              <p className="text-black/60 dark:text-slate-400 text-sm mt-0.5">{client.company_name}</p>
+              <p className="text-black/60 dark:text-slate-300 text-sm mt-0.5">{client.company_name}</p>
             )}
           </div>
           <div className="flex gap-2">
@@ -117,7 +117,7 @@ export default function CRMClientDetail() {
             <DetailField label="City" value={client.city} />
             <DetailField label="GST Details" value={client.gst_details} />
             <div>
-              <p className="text-xs text-black/40 dark:text-slate-500 mb-1">Lead Status</p>
+              <p className="text-xs text-black/70 dark:text-slate-300 mb-1">Lead Status</p>
               <LeadStatusBadge
                 client={client}
                 onUpdated={(patch) => setClient((prev) => prev ? { ...prev, ...patch } : prev)}
@@ -139,7 +139,7 @@ export default function CRMClientDetail() {
             </h2>
           </div>
           {crmProjects.length === 0 ? (
-            <p className="text-black/60 dark:text-slate-400 text-sm">No CRM projects for this client yet.</p>
+            <p className="text-black/60 dark:text-slate-300 text-sm">No CRM projects for this client yet.</p>
           ) : (
             <div className="space-y-3">
               {crmProjects.map((p) => (
@@ -150,7 +150,7 @@ export default function CRMClientDetail() {
                   aria-label={`Project ${p.project_no}, stage: ${p.project_stage.replace(/_/g, ' ')}, ${p.progress_percentage}% complete`}
                 >
                   <div className="font-medium text-black dark:text-white w-36 shrink-0">{p.project_no}</div>
-                  <div className="text-sm text-black/60 dark:text-slate-400 capitalize w-32 shrink-0">
+                  <div className="text-sm text-black/60 dark:text-slate-300 capitalize w-32 shrink-0">
                     {p.project_stage.replace(/_/g, ' ')}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -169,7 +169,7 @@ export default function CRMClientDetail() {
             Requirements (Req. Tool) ({requirements.length})
           </h2>
           {requirements.length === 0 ? (
-            <p className="text-black/60 dark:text-slate-400 text-sm">No requirements captured yet.</p>
+            <p className="text-black/60 dark:text-slate-300 text-sm">No requirements captured yet.</p>
           ) : (
             <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
               <table className="w-full text-sm" aria-label="Requirements for this client">
@@ -185,8 +185,8 @@ export default function CRMClientDetail() {
                   {requirements.map((r) => (
                     <tr key={r.id}>
                       <td className="px-4 py-3 text-black dark:text-white">{r.title}</td>
-                      <td className="px-4 py-3 text-black/60 dark:text-slate-400 capitalize">{r.status}</td>
-                      <td className="px-4 py-3 text-black/60 dark:text-slate-400 text-xs">
+                      <td className="px-4 py-3 text-black/60 dark:text-slate-300 capitalize">{r.status}</td>
+                      <td className="px-4 py-3 text-black/60 dark:text-slate-300 text-xs">
                         {new Date(r.created_at).toLocaleDateString('en-IN')}
                       </td>
                       <td className="px-4 py-3">
@@ -213,7 +213,7 @@ export default function CRMClientDetail() {
 function DetailField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-medium text-black/50 dark:text-slate-500 uppercase tracking-wide">{label}</dt>
+      <dt className="text-xs font-medium text-black/70 dark:text-slate-300 uppercase tracking-wide">{label}</dt>
       <dd className="mt-0.5 text-sm text-black dark:text-white">{value || '—'}</dd>
     </div>
   )

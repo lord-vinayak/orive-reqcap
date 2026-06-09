@@ -26,6 +26,13 @@ export default function KeyBenefitsCell({ bodyPart, value, onChange }: Props) {
   const options = [...presetOptions, ...customSelected]
 
   useEffect(() => {
+    if (open) {
+      const first = dropdownRef.current?.querySelector<HTMLElement>('input, button, [tabindex]')
+      first?.focus()
+    }
+  }, [open])
+
+  useEffect(() => {
     if (!open) return
     const handleMouse = (e: MouseEvent) => {
       const target = e.target as Node
@@ -83,7 +90,7 @@ export default function KeyBenefitsCell({ bodyPart, value, onChange }: Props) {
         type="button"
         onClick={handleOpen}
         className="w-full text-left px-2 py-1 border border-black/15 dark:border-white/15 rounded bg-white dark:bg-slate-800 dark:text-slate-100 text-sm truncate hover:border-mustard"
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         aria-expanded={open}
         title={summary}
       >
@@ -92,10 +99,27 @@ export default function KeyBenefitsCell({ bodyPart, value, onChange }: Props) {
       {open && createPortal(
         <div
           ref={dropdownRef}
-          role="group"
-          aria-label="Key benefits options"
+          role="dialog"
+          aria-label="Select key benefits"
+          aria-modal="false"
           style={dropdownStyle}
           className="max-h-72 overflow-auto bg-white dark:bg-slate-800 border border-black/15 dark:border-white/15 rounded shadow-lg p-2"
+          onKeyDown={(e) => {
+            if (!dropdownRef.current) return
+            const focusable = Array.from(
+              dropdownRef.current.querySelectorAll<HTMLElement>('input, button, [tabindex]')
+            ).filter((el) => !el.hasAttribute('disabled'))
+            if (focusable.length === 0) return
+            const first = focusable[0]
+            const last = focusable[focusable.length - 1]
+            if (e.key === 'Tab') {
+              if (e.shiftKey) {
+                if (document.activeElement === first) { e.preventDefault(); last.focus() }
+              } else {
+                if (document.activeElement === last) { e.preventDefault(); first.focus() }
+              }
+            }
+          }}
         >
           {options.length === 0 && (
             <p className="text-xs text-black/60 p-2">

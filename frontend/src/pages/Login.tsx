@@ -12,6 +12,11 @@ export default function Login() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
   const [email, setEmail] = useState('')
+
+  useEffect(() => {
+    document.title = 'Sign In – Skinovation Sciences CRM'
+    return () => { document.title = 'Skinovation Sciences CRM' }
+  }, [])
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -79,7 +84,7 @@ export default function Login() {
             <img src="/logo.png" alt="Skinovation Sciences" />
           </div>
           <h1 className="text-2xl font-semibold text-black dark:text-slate-100">Skinovation Sciences CRM</h1>
-          <p className="text-sm text-black/60 dark:text-slate-400 mt-1">We help our clients succeed</p>
+          <p className="text-sm text-black/60 dark:text-slate-300 mt-1">We help our clients succeed</p>
         </div>
 
         <div className="card">
@@ -89,14 +94,14 @@ export default function Login() {
           <div id="googleBtn" className="flex justify-center mb-4" aria-label="Sign in with Google" />
 
           {!googleClientId && (
-            <p className="text-xs text-black/50 text-center mb-4">
+            <p className="text-xs text-black/70 text-center mb-4">
               Google Sign-In not configured. Use email & password below.
             </p>
           )}
 
           <div className="relative my-4 text-center">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-black/10" /></div>
-            <span className="relative bg-white dark:bg-slate-800 px-2 text-xs text-black/60 dark:text-slate-400 uppercase">or</span>
+            <span className="relative bg-white dark:bg-slate-800 px-2 text-xs text-black/60 dark:text-slate-300 uppercase">or</span>
           </div>
 
           <form onSubmit={handlePasswordLogin} className="space-y-4" noValidate>
@@ -137,7 +142,7 @@ export default function Login() {
           </form>
         </div>
 
-        <p className="text-xs text-black/60 dark:text-slate-400 text-center mt-6">
+        <p className="text-xs text-black/60 dark:text-slate-300 text-center mt-6">
           Don't have an account? Please contact your admin.
         </p>
       </div>

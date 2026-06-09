@@ -57,7 +57,7 @@ export default function ClientBulkUpload() {
         {/* ── Header ── */}
         <div>
           <h1 className="text-2xl font-bold text-black dark:text-white">Import Clients from Excel</h1>
-          <p className="text-sm text-black/60 dark:text-slate-400 mt-1">
+          <p className="text-sm text-black/60 dark:text-slate-300 mt-1">
             Upload a <code className="bg-black/5 dark:bg-white/10 px-1 rounded">.xlsx</code> file to bulk-create clients.
             The logged-in user is automatically set as the POC for all imported clients.
           </p>
@@ -68,10 +68,10 @@ export default function ClientBulkUpload() {
           <h2 id="columns-heading" className="font-semibold text-black dark:text-white">Expected columns</h2>
           <table className="w-full text-xs" aria-label="Required and optional column names">
             <thead>
-              <tr className="text-left text-black/50 dark:text-slate-500 border-b border-black/10 dark:border-white/10">
-                <th className="pb-1 pr-4 font-semibold">Column name (header row)</th>
-                <th className="pb-1 pr-4 font-semibold">Required?</th>
-                <th className="pb-1 font-semibold">Notes</th>
+              <tr className="text-left text-black/70 dark:text-slate-300 border-b border-black/10 dark:border-white/10">
+                <th scope="col" className="pb-1 pr-4 font-semibold">Column name (header row)</th>
+                <th scope="col" className="pb-1 pr-4 font-semibold">Required?</th>
+                <th scope="col" className="pb-1 font-semibold">Notes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5 dark:divide-white/5">
@@ -86,13 +86,13 @@ export default function ClientBulkUpload() {
               ].map(([col, req, note]) => (
                 <tr key={col}>
                   <td className="py-1.5 pr-4 font-mono text-black dark:text-white">{col}</td>
-                  <td className={`py-1.5 pr-4 font-medium ${req === 'Required' ? 'text-red-600 dark:text-red-400' : 'text-black/50 dark:text-slate-500'}`}>{req}</td>
-                  <td className="py-1.5 text-black/60 dark:text-slate-400">{note}</td>
+                  <td className={`py-1.5 pr-4 font-medium ${req === 'Required' ? 'text-red-600 dark:text-red-400' : 'text-black/70 dark:text-slate-300'}`}>{req}</td>
+                  <td className="py-1.5 text-black/60 dark:text-slate-300">{note}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-black/50 dark:text-slate-500 pt-1">
+          <p className="text-xs text-black/70 dark:text-slate-300 pt-1">
             Rows with an existing phone number, missing name, or unreadable phone are skipped and shown in the Skipped section below.
           </p>
         </section>
@@ -117,7 +117,7 @@ export default function ClientBulkUpload() {
               aria-label="Select an Excel file to upload"
             />
             {file && (
-              <p className="text-xs text-black/50 dark:text-slate-500 mt-1" aria-live="polite">
+              <p className="text-xs text-black/70 dark:text-slate-300 mt-1" aria-live="polite">
                 Selected: <span className="font-medium">{file.name}</span> ({(file.size / 1024).toFixed(1)} KB)
               </p>
             )}
@@ -171,22 +171,22 @@ export default function ClientBulkUpload() {
             {result.created.length > 0 && (
               <section aria-labelledby="created-heading">
                 <h2 id="created-heading" className="text-base font-semibold text-black dark:text-white mb-2">
-                  ✓ Created ({result.created.length})
+                  <span aria-hidden="true">✓</span> Created ({result.created.length})
                 </h2>
                 <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
                   <table className="w-full text-sm" aria-label="Successfully created clients">
                     <thead>
                       <tr className="bg-black/5 dark:bg-white/5 text-left">
-                        <th scope="col" className="px-3 py-2 font-semibold text-black/60 dark:text-slate-400">Row</th>
-                        <th scope="col" className="px-3 py-2 font-semibold text-black/60 dark:text-slate-400">Name</th>
-                        <th scope="col" className="px-3 py-2 font-semibold text-black/60 dark:text-slate-400">Phone</th>
-                        <th scope="col" className="px-3 py-2 font-semibold text-black/60 dark:text-slate-400">Note</th>
+                        <th scope="col" className="px-3 py-2 font-semibold text-black/60 dark:text-slate-300">Row</th>
+                        <th scope="col" className="px-3 py-2 font-semibold text-black/60 dark:text-slate-300">Name</th>
+                        <th scope="col" className="px-3 py-2 font-semibold text-black/60 dark:text-slate-300">Phone</th>
+                        <th scope="col" className="px-3 py-2 font-semibold text-black/60 dark:text-slate-300">Note</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-black/5 dark:divide-white/5">
                       {result.created.map((r) => (
                         <tr key={r.row}>
-                          <td className="px-3 py-2 text-black/50 dark:text-slate-500 tabular-nums">{r.row}</td>
+                          <td className="px-3 py-2 text-black/70 dark:text-slate-300 tabular-nums">{r.row}</td>
                           <td className="px-3 py-2 text-black dark:text-white font-medium">{r.name}</td>
                           <td className="px-3 py-2 text-black/70 dark:text-slate-300 font-mono">{r.phone}</td>
                           <td className="px-3 py-2 text-amber-600 dark:text-amber-400 text-xs">{r.warning ?? ''}</td>
@@ -202,7 +202,7 @@ export default function ClientBulkUpload() {
             {result.skipped.length > 0 && (
               <section aria-labelledby="skipped-heading">
                 <h2 id="skipped-heading" className="text-base font-semibold text-black dark:text-white mb-2">
-                  ⚠ Skipped ({result.skipped.length})
+                  <span aria-hidden="true">⚠</span> Skipped ({result.skipped.length})
                 </h2>
                 <div className="overflow-x-auto rounded border border-amber-200 dark:border-amber-800">
                   <table className="w-full text-sm" aria-label="Skipped rows with reasons">
@@ -217,7 +217,7 @@ export default function ClientBulkUpload() {
                     <tbody className="divide-y divide-amber-100 dark:divide-amber-900/30">
                       {result.skipped.map((r) => (
                         <tr key={r.row}>
-                          <td className="px-3 py-2 text-black/50 dark:text-slate-500 tabular-nums">{r.row}</td>
+                          <td className="px-3 py-2 text-black/70 dark:text-slate-300 tabular-nums">{r.row}</td>
                           <td className="px-3 py-2 text-black dark:text-white">{r.name}</td>
                           <td className="px-3 py-2 text-black/70 dark:text-slate-300 font-mono">{r.phone}</td>
                           <td className="px-3 py-2 text-red-600 dark:text-red-400">{r.reason}</td>

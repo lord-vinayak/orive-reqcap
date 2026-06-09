@@ -8,6 +8,7 @@ export default function AdminUsers() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ email: '', name: '', role: 'poc_sales', password: '' })
   const [error, setError] = useState('')
+  const [statusMsg, setStatusMsg] = useState('')
 
   const load = async () => {
     const res = await userService.list()
@@ -30,12 +31,15 @@ export default function AdminUsers() {
   }
 
   const handleToggle = async (u: User) => {
-    await userService.update(u.id, { is_active: !u.is_active })
+    const newStatus = !u.is_active
+    await userService.update(u.id, { is_active: newStatus })
+    setStatusMsg(`User ${u.name} has been ${newStatus ? 'activated' : 'deactivated'}`)
     load()
   }
 
   return (
     <Layout title="Manage Users">
+      <div role="status" aria-live="polite" className="sr-only">{statusMsg}</div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Users</h1>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">
@@ -72,7 +76,7 @@ export default function AdminUsers() {
               className="w-full"
               aria-describedby="password-hint"
             />
-            <p id="password-hint" className="text-xs text-black/60 mt-1">User can sign in with Google using this email, or use email + password.</p>
+            <p id="password-hint" className="text-xs text-black/60 dark:text-slate-300 mt-1">User can sign in with Google using this email, or use email + password.</p>
           </div>
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
           <button type="submit" className="btn-primary">Create user</button>

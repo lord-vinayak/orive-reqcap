@@ -164,14 +164,14 @@ export default function CRMProjectCreate() {
               <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
                 <div className="flex-1">
                   <div className="font-medium text-black dark:text-white text-sm">{selectedClient.name}</div>
-                  <div className="text-xs text-black/50 dark:text-slate-500">
+                  <div className="text-xs text-black/60 dark:text-slate-300">
                     {selectedClient.company_name && `${selectedClient.company_name} · `}{selectedClient.phone_no}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => { setSelectedClient(null); setForm((f) => ({ ...f, client: '' })); setClientSearch('') }}
-                  className="text-xs text-black/50 hover:text-black dark:hover:text-white underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                  className="text-xs text-black/60 hover:text-black dark:hover:text-white underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
                   aria-label="Change selected client"
                 >
                   Change
@@ -193,7 +193,7 @@ export default function CRMProjectCreate() {
                   autoComplete="off"
                 />
                 {clientLoading && (
-                  <div className="absolute right-3 top-2.5 text-xs text-black/40 dark:text-slate-500" aria-live="polite">
+                  <div className="absolute right-3 top-2.5 text-xs text-black/60 dark:text-slate-300" aria-live="polite">
                     Searching…
                   </div>
                 )}
@@ -204,17 +204,19 @@ export default function CRMProjectCreate() {
                     className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded shadow-lg max-h-48 overflow-y-auto"
                   >
                     {clients.map((c) => (
-                      <li key={c.phone_no} role="option" aria-selected={false}>
-                        <button
-                          type="button"
-                          onClick={() => selectClient(c)}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-mustard/10 focus:bg-mustard/10 focus:outline-none"
-                          aria-label={`Select client ${c.name}, phone ${c.phone_no}`}
-                        >
-                          <span className="font-medium text-black dark:text-white">{c.name}</span>
-                          {c.company_name && <span className="text-black/50 dark:text-slate-500 ml-2">{c.company_name}</span>}
-                          <span className="text-black/40 dark:text-slate-500 text-xs block">{c.phone_no}</span>
-                        </button>
+                      <li
+                        key={c.phone_no}
+                        role="option"
+                        aria-selected={false}
+                        tabIndex={0}
+                        onClick={() => selectClient(c)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectClient(c) } }}
+                        className="px-3 py-2 text-sm hover:bg-mustard/10 focus:bg-mustard/10 focus:outline-none cursor-pointer"
+                        aria-label={`Select client ${c.name}, phone ${c.phone_no}`}
+                      >
+                        <span className="font-medium text-black dark:text-white">{c.name}</span>
+                        {c.company_name && <span className="text-black/50 dark:text-slate-300 ml-2">{c.company_name}</span>}
+                        <span className="text-black/40 dark:text-slate-400 text-xs block">{c.phone_no}</span>
                       </li>
                     ))}
                   </ul>
@@ -285,7 +287,7 @@ export default function CRMProjectCreate() {
               ))}
             </select>
             {manufacturers.length === 0 && (
-              <p className="text-xs text-black/40 dark:text-slate-500 mt-1">
+              <p className="text-xs text-black/60 dark:text-slate-300 mt-1">
                 No manufacturers in Master Data yet.
               </p>
             )}
@@ -307,7 +309,7 @@ export default function CRMProjectCreate() {
                 ))}
               </select>
               {salesUsers.length === 0 && (
-                <p className="text-xs text-black/40 dark:text-slate-500 mt-1">No Sales POC users found.</p>
+                <p className="text-xs text-black/60 dark:text-slate-300 mt-1">No Sales POC users found.</p>
               )}
             </Field>
 
@@ -325,7 +327,7 @@ export default function CRMProjectCreate() {
                 ))}
               </select>
               {formulationUsers.length === 0 && (
-                <p className="text-xs text-black/40 dark:text-slate-500 mt-1">No Formulation POC users found.</p>
+                <p className="text-xs text-black/60 dark:text-slate-300 mt-1">No Formulation POC users found.</p>
               )}
             </Field>
           </div>
@@ -404,7 +406,7 @@ function Field({
       </label>
       {children}
       {hint && !error && (
-        <p id={`${id}-hint`} className="text-xs text-black/40 dark:text-slate-500 mt-1">{hint}</p>
+        <p id={`${id}-hint`} className="text-xs text-black/60 dark:text-slate-300 mt-1">{hint}</p>
       )}
       {error && (
         <p id={`${id}-error`} role="alert" className="text-xs text-red-600 dark:text-red-400 mt-1">{error}</p>

@@ -41,7 +41,7 @@ export default function FileUploadSection({ requirementId }: Props) {
   return (
     <section className="card" aria-labelledby="files-heading">
       <h2 id="files-heading" className="text-lg font-semibold mb-3">Files</h2>
-      <p className="text-xs text-black/50 mb-3">Upload images, videos, or documents the client has shared.</p>
+      <p className="text-xs text-black/70 dark:text-slate-300 mb-3">Upload images, videos, or documents the client has shared.</p>
 
       <div className="flex items-center gap-2 mb-4">
         <input
@@ -57,19 +57,20 @@ export default function FileUploadSection({ requirementId }: Props) {
       {error && <p role="alert" className="text-sm text-red-700 mb-3">{error}</p>}
 
       {files.length === 0 ? (
-        <p className="text-sm text-black/50">No files yet.</p>
+        <p className="text-sm text-black/70 dark:text-slate-300">No files yet.</p>
       ) : (
         <ul className="space-y-2">
           {files.map((f) => (
             <li key={f.id} className="flex items-center justify-between text-sm">
-              <a href={f.drive_url} target="_blank" rel="noreferrer" className="text-mustard-700 hover:underline">
+              <a href={f.drive_url} target="_blank" rel="noreferrer" className="text-mustard-700 hover:underline" aria-label={`Open file: ${f.filename} (opens in new tab)`}>
                 {f.filename}
               </a>
-              <div className="flex items-center gap-3 text-xs text-black/50">
+              <div className="flex items-center gap-3 text-xs text-black/70 dark:text-slate-300">
                 <span>{f.file_type}</span>
                 <span>{new Date(f.uploaded_at).toLocaleDateString()}</span>
                 {isAdmin && (
                   <button
+                    type="button"
                     onClick={() => handleDelete(f.id)}
                     className="text-red-700 hover:underline"
                     aria-label={`Delete file: ${f.filename}`}

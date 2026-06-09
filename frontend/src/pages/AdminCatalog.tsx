@@ -214,21 +214,25 @@ export default function AdminCatalog() {
           </button>
 
           {/* Append-import button */}
-          <label
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={importing}
             className={`btn-primary text-sm cursor-pointer flex items-center gap-2 ${importing ? 'opacity-60 pointer-events-none' : ''}`}
             title="Upload an Excel file to append rows to the catalog (existing rows are kept)"
+            aria-label="Append catalog rows from Excel file"
           >
             {importing ? 'Importing…' : '⬆ Append catalog (Excel)'}
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".xlsx"
-              onChange={handleImport}
-              className="hidden"
-              disabled={importing}
-              aria-label="Append catalog rows from Excel file"
-            />
-          </label>
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx"
+            onChange={handleImport}
+            className="hidden"
+            disabled={importing}
+            aria-label="Select Excel file to append to catalog"
+          />
         </div>
       </div>
 
@@ -251,8 +255,9 @@ export default function AdminCatalog() {
       <div className="card mb-4 flex flex-wrap gap-3 items-end p-4 dark:bg-slate-800">
         {/* Body Part */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-black/60">Body Part</label>
+          <label htmlFor="admin-filter-body-part" className="text-xs font-medium text-black/60 dark:text-slate-300">Body Part</label>
           <select
+            id="admin-filter-body-part"
             value={filters.body_part}
             onChange={(e) => setFilters((f) => ({ ...f, body_part: e.target.value }))}
             className="text-sm min-w-[120px]"
@@ -266,8 +271,9 @@ export default function AdminCatalog() {
 
         {/* Product Type */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-black/60">Product Type</label>
+          <label htmlFor="admin-filter-product-type" className="text-xs font-medium text-black/60 dark:text-slate-300">Product Type</label>
           <select
+            id="admin-filter-product-type"
             value={filters.product_type}
             onChange={(e) => setFilters((f) => ({ ...f, product_type: e.target.value }))}
             className="text-sm min-w-[130px]"
@@ -279,8 +285,9 @@ export default function AdminCatalog() {
 
         {/* Sub Product Type */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-black/60">Sub Product Type</label>
+          <label htmlFor="admin-filter-sub" className="text-xs font-medium text-black/60 dark:text-slate-300">Sub Product Type</label>
           <select
+            id="admin-filter-sub"
             value={filters.sub_product_type}
             onChange={(e) => setFilters((f) => ({ ...f, sub_product_type: e.target.value }))}
             className="text-sm min-w-[150px]"
@@ -292,12 +299,13 @@ export default function AdminCatalog() {
 
         {/* Key Benefits multi-select */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-black/60">Key Benefits</label>
+          <label htmlFor="admin-filter-key-benefits" className="text-xs font-medium text-black/60 dark:text-slate-300">Key Benefits</label>
           <button
+            id="admin-filter-key-benefits"
             ref={kbBtnRef}
             type="button"
             onClick={openKbDrop}
-            aria-haspopup="true"
+            aria-haspopup="dialog"
             aria-expanded={kbOpen}
             className="text-sm text-left px-2 py-1 border border-black/15 rounded bg-white hover:border-mustard min-w-[160px] truncate"
           >
@@ -332,8 +340,9 @@ export default function AdminCatalog() {
 
         {/* Rate Category */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-black/60">Rate Category</label>
+          <label htmlFor="admin-filter-rate" className="text-xs font-medium text-black/60 dark:text-slate-300">Rate Category</label>
           <select
+            id="admin-filter-rate"
             value={filters.rate_category}
             onChange={(e) => setFilters((f) => ({ ...f, rate_category: e.target.value }))}
             className="text-sm min-w-[130px]"
@@ -347,8 +356,9 @@ export default function AdminCatalog() {
 
         {/* Free text search */}
         <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
-          <label className="text-xs font-medium text-black/60">Search</label>
+          <label htmlFor="admin-filter-search" className="text-xs font-medium text-black/60 dark:text-slate-300">Search</label>
           <input
+            id="admin-filter-search"
             placeholder="Search by ingredient, client, type…"
             value={filters.q}
             onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}

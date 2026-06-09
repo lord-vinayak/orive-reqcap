@@ -120,6 +120,14 @@ export default function CatalogSuggestions({
     setCheckedIds(new Set())
   }, [filters])
 
+  // Focus first element when KB dropdown opens
+  useEffect(() => {
+    if (kbOpen) {
+      const first = kbDropRef.current?.querySelector<HTMLElement>('input, button, [tabindex]')
+      first?.focus()
+    }
+  }, [kbOpen])
+
   // ---------- Close KB dropdown on outside click or Escape ----------
   useEffect(() => {
     if (!kbOpen) return
@@ -271,7 +279,7 @@ export default function CatalogSuggestions({
             Matching catalog items
           </h2>
           {checkedIds.size > 0 && (
-            <span className="text-xs text-black/60 dark:text-slate-400" aria-live="polite">
+            <span className="text-xs text-black/60 dark:text-slate-300" aria-live="polite">
               {checkedIds.size} selected — use “Add to Client Costing” in the bottom bar
             </span>
           )}
@@ -281,10 +289,11 @@ export default function CatalogSuggestions({
         <div className="px-4 py-3 border-b border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.03] flex flex-wrap gap-3 items-end">
           {/* Body Part */}
           <div className="flex flex-col gap-1 min-w-[110px]">
-            <label className="text-xs font-medium text-black/60 dark:text-slate-400">
+            <label htmlFor="cat-filter-body-part" className="text-xs font-medium text-black/70 dark:text-slate-300">
               Body Part
             </label>
             <select
+              id="cat-filter-body-part"
               value={filters.body_part}
               onChange={(e) => {
                 const bp = e.target.value
@@ -306,10 +315,11 @@ export default function CatalogSuggestions({
 
           {/* Product Type */}
           <div className="flex flex-col gap-1 min-w-[120px]">
-            <label className="text-xs font-medium text-black/60 dark:text-slate-400">
+            <label htmlFor="cat-filter-product-type" className="text-xs font-medium text-black/70 dark:text-slate-300">
               Product Type
             </label>
             <select
+              id="cat-filter-product-type"
               value={filters.product_type}
               onChange={(e) =>
                 setFilters((f) => ({
@@ -329,10 +339,11 @@ export default function CatalogSuggestions({
 
           {/* Sub Product Type */}
           <div className="flex flex-col gap-1 min-w-[130px]">
-            <label className="text-xs font-medium text-black/60 dark:text-slate-400">
+            <label htmlFor="cat-filter-sub-product-type" className="text-xs font-medium text-black/70 dark:text-slate-300">
               Sub Product Type
             </label>
             <select
+              id="cat-filter-sub-product-type"
               value={filters.sub_product_type}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, sub_product_type: e.target.value }))
@@ -352,14 +363,15 @@ export default function CatalogSuggestions({
 
           {/* Key Benefits multi-select */}
           <div className="flex flex-col gap-1 min-w-[160px]" ref={kbWrapRef}>
-            <label className="text-xs font-medium text-black/60 dark:text-slate-400">
+            <label htmlFor="cat-filter-kb" className="text-xs font-medium text-black/70 dark:text-slate-300">
               Key Benefits
             </label>
             <button
+              id="cat-filter-kb"
               ref={kbBtnRef}
               type="button"
               onClick={openKbDrop}
-              aria-haspopup="true"
+              aria-haspopup="dialog"
               aria-expanded={kbOpen}
               className="text-sm text-left px-2 py-1 border border-black/15 dark:border-white/15 rounded bg-white dark:bg-slate-800 dark:text-slate-100 truncate hover:border-mustard"
             >
@@ -371,10 +383,27 @@ export default function CatalogSuggestions({
               createPortal(
                 <div
                   ref={kbDropRef}
-                  role="group"
-                  aria-label="Key benefits options"
+                  role="dialog"
+                  aria-label="Select key benefits"
+                  aria-modal="false"
                   style={kbDropStyle}
                   className="max-h-52 overflow-auto bg-white dark:bg-slate-800 border border-black/15 dark:border-white/15 rounded shadow-lg p-2"
+                  onKeyDown={(e) => {
+                    if (!kbDropRef.current) return
+                    const focusable = Array.from(
+                      kbDropRef.current.querySelectorAll<HTMLElement>('input, button, [tabindex]')
+                    ).filter((el) => !el.hasAttribute('disabled'))
+                    if (focusable.length === 0) return
+                    const first = focusable[0]
+                    const last = focusable[focusable.length - 1]
+                    if (e.key === 'Tab') {
+                      if (e.shiftKey) {
+                        if (document.activeElement === first) { e.preventDefault(); last.focus() }
+                      } else {
+                        if (document.activeElement === last) { e.preventDefault(); first.focus() }
+                      }
+                    }
+                  }}
                 >
                   {(() => {
                     const options = filters.body_part
@@ -387,7 +416,7 @@ export default function CatalogSuggestions({
                           )
                         )
                     return options.length === 0 ? (
-                      <p className="text-xs text-black/60 dark:text-slate-400 px-2 py-1">
+                      <p className="text-xs text-black/70 dark:text-slate-300 px-2 py-1">
                         No options available.
                       </p>
                     ) : (
@@ -414,10 +443,11 @@ export default function CatalogSuggestions({
 
           {/* Rate Category */}
           <div className="flex flex-col gap-1 min-w-[130px]">
-            <label className="text-xs font-medium text-black/60 dark:text-slate-400">
+            <label htmlFor="cat-filter-rate-category" className="text-xs font-medium text-black/70 dark:text-slate-300">
               Rate Category
             </label>
             <select
+              id="cat-filter-rate-category"
               value={filters.rate_category}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, rate_category: e.target.value }))
@@ -433,10 +463,11 @@ export default function CatalogSuggestions({
 
           {/* Free text search */}
           <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
-            <label className="text-xs font-medium text-black/60 dark:text-slate-400">
+            <label htmlFor="cat-filter-search" className="text-xs font-medium text-black/70 dark:text-slate-300">
               Search
             </label>
             <input
+              id="cat-filter-search"
               placeholder="Free text search…"
               value={filters.q}
               onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
@@ -495,7 +526,7 @@ export default function CatalogSuggestions({
                 <tr>
                   <td
                     colSpan={8}
-                    className="text-center text-sm text-black/60 dark:text-slate-400 py-8"
+                    className="text-center text-sm text-black/60 dark:text-slate-300 py-8"
                   >
                     No matching catalog items found.
                   </td>
@@ -552,7 +583,7 @@ export default function CatalogSuggestions({
           </table>
         </div>
 
-        <div className="px-4 py-2 border-t border-black/10 dark:border-white/10 text-xs text-black/60 dark:text-slate-400 flex items-center justify-between">
+        <div className="px-4 py-2 border-t border-black/10 dark:border-white/10 text-xs text-black/60 dark:text-slate-300 flex items-center justify-between">
           <span>
             {results.length} result{results.length === 1 ? '' : 's'}
           </span>
@@ -573,7 +604,7 @@ export default function CatalogSuggestions({
           <h2 id="proposal-items-heading" className="text-lg font-semibold">
             Items in Client Costing
           </h2>
-          <span className="text-xs text-black/60 dark:text-slate-400">
+          <span className="text-xs text-black/60 dark:text-slate-300">
             {proposalLoading
               ? 'Loading…'
               : `${proposalItems.length} item${proposalItems.length === 1 ? '' : 's'}`}
@@ -602,7 +633,7 @@ export default function CatalogSuggestions({
                 <tr>
                   <td
                     colSpan={9}
-                    className="text-center text-sm text-black/60 dark:text-slate-400 py-8"
+                    className="text-center text-sm text-black/60 dark:text-slate-300 py-8"
                   >
                     {requirementId
                       ? 'No items added yet. Select items above and click "Add selected to Client Costing".'
@@ -623,7 +654,7 @@ export default function CatalogSuggestions({
                         : ''
                     }`}
                   >
-                    <td className="px-3 py-2 text-center text-black/50 dark:text-slate-500 font-medium text-xs">
+                    <td className="px-3 py-2 text-center text-black/70 dark:text-slate-300 font-medium text-xs">
                       {idx + 1}
                     </td>
                     <td className="px-3 py-2 dark:text-slate-200">{c.body_part}</td>

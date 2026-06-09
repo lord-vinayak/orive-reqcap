@@ -18,6 +18,18 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
   const [pendingStatus, setPendingStatus] = useState<LeadStatus>(client.lead_status)
   const [saving, setSaving] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuContainerRef = useRef<HTMLDivElement>(null)
+
+  // Focus first menu item when open
+  useEffect(() => {
+    if (open) {
+      const first = menuContainerRef.current?.querySelector<HTMLElement>('[role="menuitemradio"], [role="menuitem"]')
+      first?.focus()
+    } else {
+      triggerRef.current?.focus()
+    }
+  }, [open])
 
   // Close on outside click / Escape
   useEffect(() => {
@@ -73,10 +85,11 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
     <div className="relative inline-block" ref={ref}>
       {saving && <span className="sr-only" role="status" aria-live="polite">Saving lead status…</span>}
       <button
+        ref={triggerRef}
         type="button"
         onClick={openPopover}
         disabled={readOnly || saving}
-        aria-haspopup="listbox"
+        aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Lead status: ${label}${readOnly ? '' : '. Click to change'}`}
         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mustard focus-visible:ring-offset-1
@@ -90,13 +103,29 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
 
       {open && (
         <div
-          role="dialog"
-          aria-label="Change lead status"
+          ref={menuContainerRef}
           className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-xl shadow-xl w-64 py-1"
+          onKeyDown={(e) => {
+            const items = Array.from(
+              menuContainerRef.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]:not(:disabled), [role="menuitem"]:not(:disabled)') ?? []
+            )
+            if (items.length === 0) return
+            const idx = items.indexOf(document.activeElement as HTMLElement)
+            if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              items[(idx + 1) % items.length]?.focus()
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              items[(idx - 1 + items.length) % items.length]?.focus()
+            } else if (e.key === 'Escape') {
+              e.preventDefault()
+              closePopover()
+            }
+          }}
         >
           {step === 'status' ? (
             <>
-              <p className="px-3 py-1.5 text-xs font-semibold text-black/40 dark:text-slate-500 uppercase tracking-wide">
+              <p className="px-3 py-1.5 text-xs font-semibold text-black/70 dark:text-slate-300 uppercase tracking-wide">
                 Lead Status
               </p>
               <ul role="menu" aria-label="Lead status options">
@@ -128,11 +157,11 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
                   type="button"
                   onClick={() => setStep('status')}
                   aria-label="Back to status selection"
-                  className="text-xs text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                  className="text-xs text-black/70 dark:text-slate-300 hover:text-black dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mustard rounded"
                 >
                   ← Back
                 </button>
-                <p className="text-xs font-semibold text-black/40 dark:text-slate-500 uppercase tracking-wide">
+                <p className="text-xs font-semibold text-black/70 dark:text-slate-300 uppercase tracking-wide">
                   {LEAD_STATUS_OPTIONS.find((o) => o.value === pendingStatus)?.label} — Sub-status
                 </p>
               </div>
@@ -158,7 +187,7 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
                   type="button"
                   onClick={skipSub}
                   disabled={saving}
-                  className="text-xs text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white"
+                  className="text-xs text-black/70 dark:text-slate-300 hover:text-black dark:hover:text-white"
                 >
                   Skip — no sub-status
                 </button>

@@ -20,6 +20,11 @@ export default function Layout({
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const firstMenuItemRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (menuOpen) firstMenuItemRef.current?.focus()
+  }, [menuOpen])
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -83,7 +88,7 @@ export default function Layout({
               <div className="font-semibold text-black dark:text-slate-100 leading-tight">
                 Skinovation Sciences
               </div>
-              <div className="text-xs text-black/60 dark:text-slate-400 leading-tight">
+              <div className="text-xs text-black/60 dark:text-slate-300 leading-tight">
                 We help our clients succeed
               </div>
             </div>
@@ -126,7 +131,7 @@ export default function Layout({
             <div ref={menuRef} className="relative">
               <button
                 onClick={() => setMenuOpen((o) => !o)}
-                className="text-sm text-black/60 dark:text-slate-400 px-2 cursor-pointer hover:text-black dark:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                className="text-sm text-black/60 dark:text-slate-300 px-2 cursor-pointer hover:text-black dark:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard rounded"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 aria-label={`User menu for ${user?.name}`}
@@ -139,6 +144,7 @@ export default function Layout({
                   className="absolute right-0 mt-1 w-40 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded shadow-lg z-50 py-1"
                 >
                   <button
+                    ref={firstMenuItemRef}
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); handleLogout(); }}
                     className="w-full text-left px-4 py-2 text-sm text-black dark:text-white hover:bg-mustard/10 focus:bg-mustard/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mustard focus:outline-none"

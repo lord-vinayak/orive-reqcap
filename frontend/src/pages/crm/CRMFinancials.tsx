@@ -118,7 +118,7 @@ export default function CRMFinancials() {
         )}
 
         {loading ? (
-          <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-400 text-sm">Loading…</div>
+          <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm">Loading…</div>
         ) : (
           <>
             {/* ── Summary cards ── */}
@@ -187,7 +187,7 @@ export default function CRMFinancials() {
                 <h2 id="transactions-heading" className="text-lg font-semibold text-black dark:text-white">
                   Transactions
                 </h2>
-                <div className="flex rounded border border-black/10 dark:border-white/10 overflow-hidden text-sm" role="group" aria-label="Transaction view">
+                <div className="flex rounded border border-black/10 dark:border-white/10 overflow-hidden text-sm" role="toolbar" aria-label="Transaction view">
                   {(['all', 'by_project', 'by_vendor'] as TableView[]).map((v) => (
                     <button
                       key={v}
@@ -195,7 +195,7 @@ export default function CRMFinancials() {
                       className={`px-3 py-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard ${
                         tableView === v
                           ? 'bg-mustard text-black font-medium'
-                          : 'bg-white dark:bg-slate-800 text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'
+                          : 'bg-white dark:bg-slate-800 text-black/60 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
                       }`}
                       aria-pressed={tableView === v}
                     >
@@ -232,7 +232,7 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
   const id = useId()
   return (
     <div>
-      <label htmlFor={id} className="block text-xs text-black/60 dark:text-slate-400 mb-1">{label}</label>
+      <label htmlFor={id} className="block text-xs text-black/60 dark:text-slate-300 mb-1">{label}</label>
       <input
         id={id}
         type="date"
@@ -251,7 +251,7 @@ function SummaryCard({ label, amount, color, bold }: { label: string; amount: nu
       <div className={`${bold ? 'text-2xl' : 'text-xl'} font-bold ${colorClass}`}>
         {fmt(amount)}
       </div>
-      <div className="text-sm text-black/60 dark:text-slate-400 mt-1">{label}</div>
+      <div className="text-sm text-black/60 dark:text-slate-300 mt-1">{label}</div>
     </div>
   )
 }
@@ -355,5 +355,5 @@ function Td({ children, right, green, red, colored }: {
 }
 
 function Empty() {
-  return <p className="text-black/50 dark:text-slate-500 text-sm">No payments in this date range.</p>
+  return <p className="text-black/70 dark:text-slate-300 text-sm">No payments in this date range.</p>
 }

@@ -187,7 +187,7 @@ export default function CRMProjectDetail() {
   if (loading) {
     return (
       <Layout title="Project">
-        <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-400 text-sm">
+        <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm">
           Loading project…
         </div>
       </Layout>
@@ -224,7 +224,7 @@ export default function CRMProjectDetail() {
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold text-black dark:text-white">{project.project_no}</h1>
-            <p className="text-sm text-black/60 dark:text-slate-400 mt-0.5">
+            <p className="text-sm text-black/60 dark:text-slate-300 mt-0.5">
               <Link to={`/crm/clients/${project.client}`} className="hover:underline text-mustard">
                 {project.client_name}
               </Link>
@@ -260,7 +260,7 @@ export default function CRMProjectDetail() {
               </svg>
               Vendors
             </button>
-            <div className="text-sm text-black/60 dark:text-slate-400 text-right">
+            <div className="text-sm text-black/60 dark:text-slate-300 text-right">
               <div>
                 Phase:{' '}
                 <span className={`font-medium ${project.phase === 'order' ? 'text-green-600 dark:text-green-400' : 'text-mustard'}`}>
@@ -303,7 +303,7 @@ export default function CRMProjectDetail() {
             />
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-xs text-black/50 dark:text-slate-500 mb-1">
+                <p className="text-xs text-black/50 dark:text-slate-300 mb-1">
                   Sample Phase ({progress.sample_done}/{progress.sample_total})
                 </p>
                 <ProgressBar
@@ -312,7 +312,7 @@ export default function CRMProjectDetail() {
                 />
               </div>
               <div>
-                <p className="text-xs text-black/50 dark:text-slate-500 mb-1">
+                <p className="text-xs text-black/50 dark:text-slate-300 mb-1">
                   {stageStatus?.order_phase.locked ? '🔒 ' : ''}Order Phase ({progress.order_done}/{progress.order_total})
                 </p>
                 <ProgressBar
@@ -332,9 +332,10 @@ export default function CRMProjectDetail() {
               return (
                 <button
                   key={phase}
+                  id={`phase-tab-${phase}`}
                   role="tab"
                   aria-selected={activePhase === phase}
-                  aria-controls={`panel-${phase}`}
+                  aria-controls={`phase-panel-${phase}`}
                   onClick={() => !isLocked && setActivePhase(phase)}
                   disabled={isLocked}
                   className={`px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors focus-visible:ring-2 focus-visible:ring-mustard ${
@@ -342,7 +343,7 @@ export default function CRMProjectDetail() {
                       ? 'border-mustard text-mustard'
                       : isLocked
                       ? 'border-transparent text-black/30 dark:text-slate-600 cursor-not-allowed'
-                      : 'border-transparent text-black/60 dark:text-slate-400 hover:text-black dark:hover:text-white hover:border-black/20'
+                      : 'border-transparent text-black/60 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-black/20'
                   }`}
                 >
                   {phase === 'sample' ? 'Sample Phase' : 'Order Phase'}
@@ -360,8 +361,9 @@ export default function CRMProjectDetail() {
           <div
             className="lg:col-span-2"
             role="tabpanel"
-            id={`panel-${activePhase}`}
-            aria-labelledby={`tab-${activePhase}`}
+            id={`phase-panel-${activePhase}`}
+            aria-labelledby={`phase-tab-${activePhase}`}
+            tabIndex={0}
           >
             {stageStatus && activePhase === 'sample' && (
               <SamplePhaseView
@@ -423,7 +425,7 @@ export default function CRMProjectDetail() {
                   key={v}
                   onClick={() => setNotesView(v)}
                   className={`px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-mustard ${
-                    notesView === v ? 'bg-mustard text-black' : 'text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'
+                    notesView === v ? 'bg-mustard text-black' : 'text-black/60 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                   aria-pressed={notesView === v}
                 >
@@ -451,13 +453,13 @@ export default function CRMProjectDetail() {
                 )
               })}
               {project.notes.length === 0 && (
-                <p className="text-black/60 dark:text-slate-400 text-sm">No notes yet.</p>
+                <p className="text-black/60 dark:text-slate-300 text-sm">No notes yet.</p>
               )}
             </div>
           ) : (
             <div className="space-y-2">
               {allNotes.length === 0 && (
-                <p className="text-black/60 dark:text-slate-400 text-sm">No notes yet.</p>
+                <p className="text-black/60 dark:text-slate-300 text-sm">No notes yet.</p>
               )}
               {allNotes.map((note) => (
                 <div key={note.id} className="flex gap-3">
@@ -542,7 +544,7 @@ function ActiveStagePanel({
 
       {files.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-black/50 dark:text-slate-400 mb-1.5">Attachments ({files.length})</p>
+          <p className="text-xs font-medium text-black/50 dark:text-slate-300 mb-1.5">Attachments ({files.length})</p>
           <ul className="space-y-1">
             {files.map((f) => (
               <li key={f.id}>
@@ -562,7 +564,7 @@ function ActiveStagePanel({
 
       {notes.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-black/50 dark:text-slate-400">Notes ({notes.length})</p>
+          <p className="text-xs font-medium text-black/50 dark:text-slate-300">Notes ({notes.length})</p>
           {notes.map((note) => <NoteItem key={note.id} note={note} />)}
         </div>
       )}
@@ -642,11 +644,11 @@ function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefre
         {/* Sample Booked Date */}
         <div>
           <div className="flex justify-between items-center gap-2">
-            <dt className="text-black/50 dark:text-slate-500 shrink-0">Sample Booked</dt>
+            <dt className="text-black/50 dark:text-slate-300 shrink-0">Sample Booked</dt>
             {!editing && (
               <dd className="flex items-center gap-2">
                 <span className="font-medium text-black dark:text-white text-right">
-                  {project.sample_booked_date ?? <span className="text-black/30 dark:text-slate-600 font-normal">Not set</span>}
+                  {project.sample_booked_date ?? <span className="text-black/50 dark:text-slate-300 font-normal">Not set</span>}
                 </span>
                 <button
                   onClick={startEdit}
@@ -696,7 +698,7 @@ function NoteItem({ note }: { note: ProjectNote }) {
       aria-label={`Note by ${note.added_by_name || 'Unknown'}`}
     >
       <p className="text-black dark:text-white">{note.text}</p>
-      <footer className="text-xs text-black/50 dark:text-slate-500 mt-1.5">
+      <footer className="text-xs text-black/50 dark:text-slate-300 mt-1.5">
         <span>{note.added_by_name || note.added_by_email || 'Unknown'}</span>
         <span className="mx-1">·</span>
         <time dateTime={note.created_at}>
@@ -710,7 +712,7 @@ function NoteItem({ note }: { note: ProjectNote }) {
 function MetaField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-2">
-      <dt className="text-black/50 dark:text-slate-500">{label}</dt>
+      <dt className="text-black/50 dark:text-slate-300">{label}</dt>
       <dd className="font-medium text-black dark:text-white text-right">{value}</dd>
     </div>
   )
@@ -731,7 +733,7 @@ function PLSection({ payments }: { payments: import('@/types/crm').ProjectPaymen
           <svg className={`w-4 h-4 shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
-          P&L Summary <span className="text-xs font-normal text-black/40 dark:text-slate-500">(no payments yet)</span>
+          P&L Summary <span className="text-xs font-normal text-black/40 dark:text-slate-300">(no payments yet)</span>
         </button>
       </section>
     )
@@ -887,7 +889,7 @@ function KeyLearningsSection({ projectId }: { projectId: string }) {
           {learnings.map((l) => (
             <li key={l.id} className="text-sm border-l-2 border-mustard pl-3 py-1 text-black dark:text-white">
               {l.text}
-              <div className="text-xs text-black/50 dark:text-slate-500 mt-0.5">
+              <div className="text-xs text-black/50 dark:text-slate-300 mt-0.5">
                 {l.created_by_name} · {new Date(l.created_at).toLocaleDateString('en-IN')}
               </div>
             </li>

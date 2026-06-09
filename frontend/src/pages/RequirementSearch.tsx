@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { clientService, requirementService, userService } from '@/services'
@@ -143,17 +143,17 @@ export default function RequirementSearch() {
 
       {/* ---- Client list ---- */}
       {!hasFilters && (
-        <p className="text-sm text-black/60 dark:text-slate-400">
+        <p className="text-sm text-black/60 dark:text-slate-300">
           Select a POC or type a client name / phone number to search.
         </p>
       )}
 
       {hasFilters && loadingClients && (
-        <p className="text-sm text-black/60 dark:text-slate-400">Searching…</p>
+        <p className="text-sm text-black/60 dark:text-slate-300">Searching…</p>
       )}
 
       {hasFilters && !loadingClients && clients.length === 0 && (
-        <p className="text-sm text-black/60 dark:text-slate-400">No clients found matching those filters.</p>
+        <p className="text-sm text-black/60 dark:text-slate-300">No clients found matching those filters.</p>
       )}
 
       {clients.length > 0 && (
@@ -170,8 +170,8 @@ export default function RequirementSearch() {
             </thead>
             <tbody>
               {clients.map((c) => (
-                <>
-                  <tr key={c.phone_no} className={expandedPhone === c.phone_no ? 'bg-mustard-50/40 dark:bg-slate-700/40' : ''}>
+                <React.Fragment key={c.phone_no}>
+                  <tr className={expandedPhone === c.phone_no ? 'bg-mustard-50/40 dark:bg-slate-700/40' : ''}>
                     <td className="font-medium">{c.name}</td>
                     <td>{c.phone_no}</td>
                     <td>{c.poc_name || '—'}</td>
@@ -195,13 +195,13 @@ export default function RequirementSearch() {
 
                   {/* Expanded requirements sub-rows */}
                   {expandedPhone === c.phone_no && (
-                    <tr key={`${c.phone_no}-reqs`}>
+                    <tr>
                       <td colSpan={6} className="p-0">
                         <div className="bg-black/[0.015] dark:bg-white/[0.03] px-6 py-4 border-t border-black/5 dark:border-white/5">
                           {/* Always show a Create button for this client */}
                           {!loadingReqs && (
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs text-black/50 dark:text-slate-500">
+                              <span className="text-xs text-black/70 dark:text-slate-300">
                                 {requirements.length > 0
                                   ? `${requirements.length} requirement${requirements.length !== 1 ? 's' : ''}`
                                   : 'No requirements yet'}
@@ -216,10 +216,10 @@ export default function RequirementSearch() {
                             </div>
                           )}
                           {loadingReqs && (
-                            <p className="text-sm text-black/60 dark:text-slate-400">Loading requirements…</p>
+                            <p className="text-sm text-black/60 dark:text-slate-300">Loading requirements…</p>
                           )}
                           {reqError && !requirements.length && (
-                            <p className="text-sm text-black/60 dark:text-slate-400">{reqError}</p>
+                            <p className="text-sm text-black/60 dark:text-slate-300">{reqError}</p>
                           )}
                           {!loadingReqs && requirements.length > 0 && (
                             <table className="table-clean" aria-label={`Requirements for ${c.name}`}>
@@ -257,7 +257,7 @@ export default function RequirementSearch() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>

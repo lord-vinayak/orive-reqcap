@@ -104,8 +104,15 @@ export default function ProposalPage() {
     catalogService.search(params).then(setResults)
   }, [filters])
 
-  // Close KB dropdown on outside click or Escape
+  // Focus first focusable element inside KB dropdown when it opens
   const kbBtnRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!kbOpen || !kbDropRef.current) return
+    const first = kbDropRef.current.querySelector<HTMLElement>('input, button, [tabindex]')
+    first?.focus()
+  }, [kbOpen])
+
+  // Close KB dropdown on outside click or Escape
   useEffect(() => {
     if (!kbOpen) return
     const handleMouse = (e: MouseEvent) => {
@@ -174,7 +181,7 @@ export default function ProposalPage() {
       <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-2xl font-semibold">Client Costing</h1>
-          <p className="text-sm text-black/60">{requirement.title}</p>
+          <p className="text-sm text-black/60 dark:text-white/70">{requirement.title}</p>
         </div>
         <span className="badge">{proposal.status}</span>
       </div>
@@ -184,8 +191,10 @@ export default function ProposalPage() {
         {(['edit', 'preview', 'export'] as Tab[]).map((t) => (
           <button
             key={t}
+            id={`tab-${t}`}
             role="tab"
             aria-selected={tab === t}
+            aria-controls={`panel-${t}`}
             onClick={() => setTab(t)}
             className={`px-5 py-2 text-sm font-medium capitalize border-b-2 transition-colors ${
               tab === t ? 'border-mustard text-black' : 'border-transparent text-black/60 hover:text-black'
@@ -197,7 +206,7 @@ export default function ProposalPage() {
       </div>
 
       {tab === 'edit' && (
-        <div className="flex flex-col gap-6">
+        <div id="panel-edit" role="tabpanel" aria-labelledby="tab-edit" tabIndex={0} className="flex flex-col gap-6">
 
           {/* ── Top pane: Catalog search ── */}
           <section className="card" aria-labelledby="catalog-search-heading">
@@ -207,47 +216,61 @@ export default function ProposalPage() {
             <div className="flex flex-wrap gap-2 mb-3">
 
               {/* Body Part */}
-              <select
-                className="flex-1 min-w-[130px] text-sm h-9 px-2"
-                value={filters.body_part}
-                onChange={(e) => setFilters((f) => ({ ...f, body_part: e.target.value, product_type: '', sub_product_type: '' }))}
-              >
-                <option value="">Body Part —</option>
-                {facets.body_parts.map((v) => <option key={v}>{v}</option>)}
-              </select>
+              <div className="flex-1 min-w-[130px] flex flex-col gap-0.5">
+                <label htmlFor="proposal-filter-body-part" className="text-xs font-medium text-black/60 dark:text-slate-300">Body Part</label>
+                <select
+                  id="proposal-filter-body-part"
+                  className="text-sm h-9 px-2"
+                  value={filters.body_part}
+                  onChange={(e) => setFilters((f) => ({ ...f, body_part: e.target.value, product_type: '', sub_product_type: '' }))}
+                >
+                  <option value="">All</option>
+                  {facets.body_parts.map((v) => <option key={v}>{v}</option>)}
+                </select>
+              </div>
 
               {/* Product Type */}
-              <select
-                className="flex-1 min-w-[130px] text-sm h-9 px-2"
-                value={filters.product_type}
-                onChange={(e) => setFilters((f) => ({ ...f, product_type: e.target.value, sub_product_type: '' }))}
-              >
-                <option value="">Product Type —</option>
-                {facets.product_types.map((v) => <option key={v}>{v}</option>)}
-              </select>
+              <div className="flex-1 min-w-[130px] flex flex-col gap-0.5">
+                <label htmlFor="proposal-filter-product-type" className="text-xs font-medium text-black/60 dark:text-slate-300">Product Type</label>
+                <select
+                  id="proposal-filter-product-type"
+                  className="text-sm h-9 px-2"
+                  value={filters.product_type}
+                  onChange={(e) => setFilters((f) => ({ ...f, product_type: e.target.value, sub_product_type: '' }))}
+                >
+                  <option value="">All</option>
+                  {facets.product_types.map((v) => <option key={v}>{v}</option>)}
+                </select>
+              </div>
 
               {/* Sub Product Type */}
-              <select
-                className="flex-1 min-w-[130px] text-sm h-9 px-2"
-                value={filters.sub_product_type}
-                onChange={(e) => setFilters((f) => ({ ...f, sub_product_type: e.target.value }))}
-              >
-                <option value="">Sub Product Type —</option>
-                {facets.sub_product_types.map((v) => <option key={v}>{v}</option>)}
-              </select>
+              <div className="flex-1 min-w-[130px] flex flex-col gap-0.5">
+                <label htmlFor="proposal-filter-sub" className="text-xs font-medium text-black/60 dark:text-slate-300">Sub Type</label>
+                <select
+                  id="proposal-filter-sub"
+                  className="text-sm h-9 px-2"
+                  value={filters.sub_product_type}
+                  onChange={(e) => setFilters((f) => ({ ...f, sub_product_type: e.target.value }))}
+                >
+                  <option value="">All</option>
+                  {facets.sub_product_types.map((v) => <option key={v}>{v}</option>)}
+                </select>
+              </div>
 
               {/* Key Benefits — multi-select dropdown */}
-              <div ref={kbWrapRef} className="flex-1 min-w-[130px] relative">
+              <div ref={kbWrapRef} className="flex-1 min-w-[130px] relative flex flex-col gap-0.5">
+                <label htmlFor="proposal-filter-key-benefits" className="text-xs font-medium text-black/60 dark:text-slate-300">Key Benefits</label>
                 <button
+                  id="proposal-filter-key-benefits"
                   ref={kbBtnRef}
                   type="button"
                   onClick={openKbDrop}
-                  aria-haspopup="true"
+                  aria-haspopup="dialog"
                   aria-expanded={kbOpen}
                   className="w-full h-9 text-left px-2 border border-black/15 rounded bg-white text-sm truncate hover:border-mustard"
                 >
                   {filters.key_benefits.length === 0
-                    ? 'Key Benefits —'
+                    ? 'All'
                     : filters.key_benefits.join(', ')}
                 </button>
                 {kbOpen && createPortal(
@@ -278,24 +301,32 @@ export default function ProposalPage() {
               </div>
 
               {/* Rate Category */}
-              <select
-                className="flex-1 min-w-[120px] text-sm h-9 px-2"
-                value={filters.rate_category}
-                onChange={(e) => setFilters((f) => ({ ...f, rate_category: e.target.value }))}
-              >
-                <option value="">Rate Category —</option>
-                {(facets.rate_categories.length ? facets.rate_categories : RATE_CATEGORIES).map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-              </select>
+              <div className="flex-1 min-w-[120px] flex flex-col gap-0.5">
+                <label htmlFor="proposal-filter-rate" className="text-xs font-medium text-black/60 dark:text-slate-300">Rate Category</label>
+                <select
+                  id="proposal-filter-rate"
+                  className="text-sm h-9 px-2"
+                  value={filters.rate_category}
+                  onChange={(e) => setFilters((f) => ({ ...f, rate_category: e.target.value }))}
+                >
+                  <option value="">All</option>
+                  {(facets.rate_categories.length ? facets.rate_categories : RATE_CATEGORIES).map((v) => (
+                    <option key={v}>{v}</option>
+                  ))}
+                </select>
+              </div>
 
               {/* Free text */}
-              <input
-                className="flex-1 min-w-[140px] text-sm h-9 px-2"
-                placeholder="Free text search…"
-                value={filters.q}
-                onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
-              />
+              <div className="flex-1 min-w-[140px] flex flex-col gap-0.5">
+                <label htmlFor="proposal-filter-search" className="text-xs font-medium text-black/60 dark:text-slate-300">Search</label>
+                <input
+                  id="proposal-filter-search"
+                  className="text-sm h-9 px-2"
+                  placeholder="Free text search…"
+                  value={filters.q}
+                  onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+                />
+              </div>
             </div>
 
             {/* Result count */}
@@ -374,10 +405,13 @@ export default function ProposalPage() {
       )}
 
       {tab === 'preview' && (
-        <ProposalPreview proposal={proposal} requirement={requirement} />
+        <div id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" tabIndex={0}>
+          <ProposalPreview proposal={proposal} requirement={requirement} />
+        </div>
       )}
 
       {tab === 'export' && (
+        <div id="panel-export" role="tabpanel" aria-labelledby="tab-export" tabIndex={0}>
         <section className="card max-w-xl">
           <h2 className="text-lg font-semibold mb-2">Export to Excel</h2>
           <p className="text-sm text-black/60 mb-4">
@@ -401,6 +435,7 @@ export default function ProposalPage() {
             </button>
           </div>
         </section>
+        </div>
       )}
 
       {/* Email modal */}
@@ -531,7 +566,7 @@ function EditableItemsTable({
                 key={col.key}
                 scope="col"
                 className={`px-2 py-1 text-left font-medium whitespace-nowrap ${
-                  col.kind === 'calc' ? 'text-black/50 italic' : ''
+                  col.kind === 'calc' ? 'text-black/70 italic' : ''
                 }`}
               >
                 {col.label}
@@ -557,7 +592,7 @@ function EditableItemsTable({
             }
             return (
               <tr key={it.id} className={idx % 2 === 1 ? 'bg-black/[0.02]' : ''}>
-                <td className="px-2 py-1 text-center text-black/50 font-medium">{idx + 1}</td>
+                <td className="px-2 py-1 text-center text-black/70 font-medium">{idx + 1}</td>
                 {TABLE_COLUMNS.map((col) => {
                   if (col.kind === 'calc') {
                     const val = calcValues[col.key]
@@ -575,7 +610,7 @@ function EditableItemsTable({
                     return (
                       <td
                         key={col.key}
-                        className="px-2 py-1 text-right bg-amber-50/50 text-black/60 font-medium tabular-nums whitespace-nowrap"
+                        className="px-2 py-1 text-right bg-amber-50/50 text-black/70 font-medium tabular-nums whitespace-nowrap"
                         title={hint}
                       >
                         {val === null

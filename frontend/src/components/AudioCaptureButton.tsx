@@ -11,6 +11,7 @@ export default function AudioCaptureButton({ onExtract }: Props) {
   const { isSupported, isRecording, transcript, error, start, stop } = useSpeechRecognition()
   const [extracting, setExtracting] = useState(false)
   const [extractMsg, setExtractMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  const [statusMsg, setStatusMsg] = useState('')
 
   // Always hold the latest transcript in a ref so the effect never reads stale state
   const transcriptRef = useRef(transcript)
@@ -26,6 +27,7 @@ export default function AudioCaptureButton({ onExtract }: Props) {
     if (isRecording) {
       wasRecordingRef.current = true
       setExtractMsg(null)
+      setStatusMsg('Recording…')
       return
     }
     // Fired on transition: recording → stopped
@@ -37,27 +39,31 @@ export default function AudioCaptureButton({ onExtract }: Props) {
 
     setExtracting(true)
     setExtractMsg(null)
+    setStatusMsg('Extracting fields…')
     audioService.extract(text)
       .then((res) => {
         if (res.fields && Object.keys(res.fields).length > 0) {
           onExtractRef.current(res.fields)
           setExtractMsg({ text: 'Fields filled from audio.', ok: true })
+          setStatusMsg('Fields filled from audio.')
         } else {
           setExtractMsg({ text: 'No fields recognised — fill manually.', ok: false })
+          setStatusMsg('No fields recognised — fill manually.')
         }
       })
       .catch(() => {
         setExtractMsg({ text: 'Extraction failed — fill fields manually.', ok: false })
+        setStatusMsg('Extraction failed — fill fields manually.')
       })
       .finally(() => {
         setExtracting(false)
-        setTimeout(() => setExtractMsg(null), 4000)
+        setTimeout(() => { setExtractMsg(null); setStatusMsg('') }, 4000)
       })
   }, [isRecording])
 
   if (!isSupported) {
     return (
-      <div className="text-xs text-black/50" role="status">
+      <div className="text-xs text-black/70" role="status">
         Audio capture requires Chrome browser.
       </div>
     )
@@ -65,24 +71,24 @@ export default function AudioCaptureButton({ onExtract }: Props) {
 
   return (
     <div className="flex items-center gap-3 flex-wrap">
+      <div role="status" aria-live="polite" className="sr-only">{statusMsg}</div>
       {isRecording && (
-        <div className="flex items-center gap-2 text-sm text-red-700" aria-live="polite">
+        <div className="flex items-center gap-2 text-sm text-red-700" aria-hidden="true">
           <span className="w-2.5 h-2.5 bg-red-700 rounded-full animate-pulse" aria-hidden="true" />
           Recording…
         </div>
       )}
       {isRecording && transcript && (
-        <span className="text-xs text-black/50 max-w-xs truncate" aria-live="polite">
+        <span className="text-xs text-black/70 max-w-xs truncate" aria-hidden="true">
           {transcript}
         </span>
       )}
       {extracting && (
-        <span className="text-xs text-black/50" aria-live="polite">Extracting fields…</span>
+        <span className="text-xs text-black/70" aria-hidden="true">Extracting fields…</span>
       )}
       {extractMsg && (
         <span
-          role="status"
-          aria-live="polite"
+          aria-hidden="true"
           className={`text-xs ${extractMsg.ok ? 'text-green-700' : 'text-amber-700'}`}
         >
           {extractMsg.text}

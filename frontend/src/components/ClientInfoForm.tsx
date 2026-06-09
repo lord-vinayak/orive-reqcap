@@ -87,14 +87,14 @@ export default function ClientInfoForm({
                 Phone number must be 10 digits.
               </p>
             )}
-          <p id="phone-help" className="text-xs text-black/60 dark:text-slate-400 mt-1">
+          <p id="phone-help" className="text-xs text-black/60 dark:text-slate-300 mt-1">
             Primary key — used to link all data.
           </p>
         </div>
 
         <div>
           <label htmlFor="ci_company" className="block mb-1">
-            Company name <span className="text-black/40 dark:text-slate-500 text-xs">(optional)</span>
+            Company name <span className="text-black/60 dark:text-slate-300 text-xs">(optional)</span>
           </label>
           <input
             id="ci_company"
@@ -142,7 +142,7 @@ export default function ClientInfoForm({
             aria-readonly="true"
             aria-describedby="poc-help"
           />
-          <p id="poc-help" className="text-xs text-black/60 dark:text-slate-400 mt-1">
+          <p id="poc-help" className="text-xs text-black/60 dark:text-slate-300 mt-1">
             Automatically set to the logged-in user.
           </p>
         </div>
@@ -202,7 +202,7 @@ export default function ClientInfoForm({
         <div>
           <label htmlFor="ci_price_range" className="block mb-1">
             Planned selling price range{" "}
-            <span className="text-black/40 dark:text-slate-500 text-xs">(optional)</span>
+            <span className="text-black/60 dark:text-slate-300 text-xs">(optional)</span>
           </label>
           <input
             id="ci_price_range"
@@ -216,7 +216,7 @@ export default function ClientInfoForm({
         <div>
           <label htmlFor="ci_units" className="block mb-1">
             Units per product{" "}
-            <span className="text-black/40 dark:text-slate-500 text-xs">(optional)</span>
+            <span className="text-black/60 dark:text-slate-300 text-xs">(optional)</span>
           </label>
           <input
             id="ci_units"
@@ -247,7 +247,7 @@ export default function ClientInfoForm({
             />
             <AudioCaptureButton onExtract={onExtract} />
           </div>
-          <p id="age-audio-hint" className="text-xs text-black/60 dark:text-slate-400 mt-1">
+          <p id="age-audio-hint" className="text-xs text-black/60 dark:text-slate-300 mt-1">
             Press{" "}
             <kbd className="px-1 py-0.5 rounded border border-black/20 text-xs font-mono">
               Alt+R
@@ -262,8 +262,9 @@ export default function ClientInfoForm({
         <button
           type="button"
           onClick={() => setOptionalOpen((v) => !v)}
-          className="flex items-center gap-2 w-full text-left text-sm font-medium text-black/60 dark:text-slate-400 hover:text-black dark:hover:text-slate-200 transition-colors"
+          className="flex items-center gap-2 w-full text-left text-sm font-medium text-black/60 dark:text-slate-300 hover:text-black dark:hover:text-slate-100 transition-colors"
           aria-expanded={optionalOpen}
+          aria-controls="optional-details-panel"
         >
           <svg
             className={`w-4 h-4 shrink-0 transition-transform duration-200 ${optionalOpen ? "rotate-90" : ""}`}
@@ -282,7 +283,7 @@ export default function ClientInfoForm({
         </button>
 
         {optionalOpen && (
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div id="optional-details-panel" className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label htmlFor="ci_address" className="block mb-1">
                 Physical Address

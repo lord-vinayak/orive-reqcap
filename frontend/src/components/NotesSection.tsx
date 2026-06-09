@@ -47,11 +47,13 @@ export default function NotesSection({ requirementId, refreshKey }: Props) {
   return (
     <section className="card" aria-labelledby="notes-heading">
       <h2 id="notes-heading" className="text-lg font-semibold mb-3">Notes</h2>
-      <p className="text-xs text-black/60 dark:text-slate-400 mb-3">Notes are append-only. Each note records the author and timestamp.</p>
+      <p className="text-xs text-black/60 dark:text-slate-300 mb-3">Notes are append-only. Each note records the author and timestamp.</p>
 
       <form onSubmit={handleAdd} className="mb-4 flex flex-col gap-2">
         <div className="flex gap-2">
+          <label htmlFor="new-note-input" className="sr-only">Add a note</label>
           <input
+            id="new-note-input"
             value={text}
             onChange={(e) => { setText(e.target.value); setAddError('') }}
             placeholder="Add a note…"
@@ -68,18 +70,19 @@ export default function NotesSection({ requirementId, refreshKey }: Props) {
       </form>
 
       {notes.length === 0 ? (
-        <p className="text-sm text-black/60 dark:text-slate-400">No notes yet.</p>
+        <p className="text-sm text-black/60 dark:text-slate-300">No notes yet.</p>
       ) : (
         <ol className="space-y-2" aria-label="Note history">
           {notes.map((n) => (
             <li key={n.id} className="border-l-2 border-mustard pl-3 py-1">
               <div className="text-sm text-black dark:text-slate-100">{n.text.replace(AUTO_NOTE_MARKER_RE, '')}</div>
-              <div className="text-xs text-black/60 dark:text-slate-400 mt-0.5 flex items-center gap-2">
+              <div className="text-xs text-black/60 dark:text-slate-300 mt-0.5 flex items-center gap-2">
                 <span>{n.added_by_name || 'Unknown'}</span>
                 <span>•</span>
                 <span>{new Date(n.created_at).toLocaleString()}</span>
                 {isAdmin && (
                   <button
+                    type="button"
                     onClick={() => handleDelete(n.id)}
                     className="ml-2 text-red-700 underline-offset-2 hover:underline"
                     aria-label="Delete note"

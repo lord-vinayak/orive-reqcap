@@ -21,7 +21,7 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
 ]
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
-  not_started: 'bg-black/5 dark:bg-white/5 text-black/60 dark:text-slate-400',
+  not_started: 'bg-black/5 dark:bg-white/5 text-black/60 dark:text-slate-300',
   wip: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300',
   pending: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300',
   closed: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300',
@@ -30,7 +30,7 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
 const PRIORITY_COLORS: Record<TaskPriority, string> = {
   high: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300',
   medium: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300',
-  low: 'bg-black/5 dark:bg-white/5 text-black/50 dark:text-slate-500',
+  low: 'bg-black/5 dark:bg-white/5 text-black/70 dark:text-slate-300',
 }
 
 export default function TaskTracker() {
@@ -220,7 +220,7 @@ export default function TaskTracker() {
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-black dark:text-white">Task Tracker</h1>
-            <span className="text-xs text-black/40 dark:text-slate-500 flex items-center gap-1.5" aria-label="Live updates active">
+            <span className="text-xs text-black/60 dark:text-slate-300 flex items-center gap-1.5" aria-label="Live updates active">
               <span className="w-2 h-2 rounded-full bg-green-500 inline-block animate-pulse" aria-hidden="true" />
               Live
             </span>
@@ -244,7 +244,7 @@ export default function TaskTracker() {
         >
           {/* Owner */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="filter-owner" className="text-xs font-medium text-black/50 dark:text-slate-400">Owner</label>
+            <label htmlFor="filter-owner" className="text-xs font-medium text-black/70 dark:text-slate-300">Owner</label>
             <select
               id="filter-owner"
               value={filterOwner}
@@ -258,7 +258,7 @@ export default function TaskTracker() {
 
           {/* Status */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="filter-status" className="text-xs font-medium text-black/50 dark:text-slate-400">Status</label>
+            <label htmlFor="filter-status" className="text-xs font-medium text-black/70 dark:text-slate-300">Status</label>
             <select
               id="filter-status"
               value={filterStatus}
@@ -272,7 +272,7 @@ export default function TaskTracker() {
 
           {/* Priority */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="filter-priority" className="text-xs font-medium text-black/50 dark:text-slate-400">Priority</label>
+            <label htmlFor="filter-priority" className="text-xs font-medium text-black/70 dark:text-slate-300">Priority</label>
             <select
               id="filter-priority"
               value={filterPriority}
@@ -288,7 +288,7 @@ export default function TaskTracker() {
 
           {/* Client — searchable combobox */}
           <div className="flex flex-col gap-1" ref={clientComboRef}>
-            <label htmlFor="filter-client-search" className="text-xs font-medium text-black/50 dark:text-slate-400">Client</label>
+            <label htmlFor="filter-client-search" className="text-xs font-medium text-black/70 dark:text-slate-300">Client</label>
             <div className="relative">
               {filterClient ? (
                 // Selected state — chip with clear
@@ -298,7 +298,7 @@ export default function TaskTracker() {
                     type="button"
                     onClick={() => { setFilterClient(''); setClientSearch('') }}
                     aria-label="Clear client filter"
-                    className="shrink-0 text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white focus-visible:ring-1 focus-visible:ring-mustard rounded"
+                    className="shrink-0 text-black/60 dark:text-slate-300 hover:text-black dark:hover:text-white focus-visible:ring-1 focus-visible:ring-mustard rounded"
                   >
                     <span aria-hidden="true">✕</span>
                   </button>
@@ -340,7 +340,7 @@ export default function TaskTracker() {
                     const matches = clientOptions.filter((c) => !q || c.toLowerCase().includes(q))
                     if (matches.length === 0) {
                       return (
-                        <li className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">No clients found</li>
+                        <li className="px-3 py-2 text-xs text-black/60 dark:text-slate-300">No clients found</li>
                       )
                     }
                     return matches.map((c) => (
@@ -369,7 +369,7 @@ export default function TaskTracker() {
 
           {/* Date Assigned */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="filter-date" className="text-xs font-medium text-black/50 dark:text-slate-400">Assigned on</label>
+            <label htmlFor="filter-date" className="text-xs font-medium text-black/70 dark:text-slate-300">Assigned on</label>
             <input
               id="filter-date"
               type="date"
@@ -386,7 +386,7 @@ export default function TaskTracker() {
               onClick={resetFilters}
               disabled={!isFiltered}
               aria-label="Reset all filters"
-              className="w-full py-1.5 text-sm rounded-lg border border-black/15 dark:border-white/15 text-black/60 dark:text-slate-400 hover:border-red-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-black/15 disabled:hover:text-black/60 dark:disabled:hover:border-white/15 dark:disabled:hover:text-slate-400 transition-colors"
+              className="w-full py-1.5 text-sm rounded-lg border border-black/15 dark:border-white/15 text-black/60 dark:text-slate-300 hover:border-red-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-black/15 disabled:hover:text-black/60 dark:disabled:hover:border-white/15 dark:disabled:hover:text-slate-300 transition-colors"
             >
               ✕ Reset
             </button>
@@ -394,11 +394,11 @@ export default function TaskTracker() {
         </div>
 
         {loading ? (
-          <div role="status" aria-live="polite" className="text-sm text-black/60 dark:text-slate-400">
+          <div role="status" aria-live="polite" className="text-sm text-black/60 dark:text-slate-300">
             Loading tasks…
           </div>
         ) : tasks.length === 0 ? (
-          <div className="text-center py-16 text-black/50 dark:text-slate-400">
+          <div className="text-center py-16 text-black/70 dark:text-slate-300">
             <p className="text-sm">No tasks yet.</p>
             {user?.role === 'admin' && (
               <p className="text-xs mt-1">Create a standalone task or assign stages from a project.</p>
@@ -425,7 +425,7 @@ export default function TaskTracker() {
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
                 {filteredTasks.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-4 py-12 text-center text-sm text-black/40 dark:text-slate-500">
+                    <td colSpan={11} className="px-4 py-12 text-center text-sm text-black/60 dark:text-slate-300">
                       No tasks match the selected filters.{' '}
                       <button onClick={resetFilters} className="underline hover:text-mustard transition-colors">
                         Reset filters
@@ -435,7 +435,7 @@ export default function TaskTracker() {
                 )}
                 {filteredTasks.map((task) => (
                   <tr key={task.id} className="hover:bg-black/1 dark:hover:bg-white/1 transition-colors align-top">
-                    <td className="px-4 py-3 whitespace-nowrap text-black/60 dark:text-slate-400 tabular-nums">
+                    <td className="px-4 py-3 whitespace-nowrap text-black/60 dark:text-slate-300 tabular-nums">
                       {fmtDate(task.assigned_at)}
                     </td>
 
@@ -453,7 +453,7 @@ export default function TaskTracker() {
                           className="text-xs px-1.5 py-0.5 rounded border border-black/15 dark:border-white/15 bg-transparent text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-mustard cursor-pointer"
                         />
                       ) : (
-                        <span className="text-sm text-black/60 dark:text-slate-400 tabular-nums">
+                        <span className="text-sm text-black/60 dark:text-slate-300 tabular-nums">
                           {fmtDate(task.planned_closure_date)}
                         </span>
                       )}
@@ -462,7 +462,7 @@ export default function TaskTracker() {
                     <td className="px-4 py-3 max-w-[200px]">
                       <div className="font-medium text-black dark:text-white leading-snug">{task.title}</div>
                       {(task.last_updated_at || task.last_updated_by_name) && (
-                        <div className="text-xs text-black/40 dark:text-slate-500 mt-0.5">
+                        <div className="text-xs text-black/60 dark:text-slate-300 mt-0.5">
                           Updated {fmtRelative(task.last_updated_at)}
                           {task.last_updated_by_name ? ` by ${task.last_updated_by_name}` : ''}
                         </div>
@@ -478,7 +478,7 @@ export default function TaskTracker() {
                           {task.project_no}
                         </Link>
                       ) : (
-                        <span className="text-black/30 dark:text-slate-600">—</span>
+                        <span className="text-black/50 dark:text-slate-400">—</span>
                       )}
                     </td>
 
@@ -491,7 +491,7 @@ export default function TaskTracker() {
                           {task.client_name}
                         </Link>
                       ) : (
-                        <span className="text-black/30 dark:text-slate-600">—</span>
+                        <span className="text-black/50 dark:text-slate-400">—</span>
                       )}
                     </td>
 
@@ -510,7 +510,7 @@ export default function TaskTracker() {
                           ))}
                         />
                       ) : (
-                        <span className="text-black/30 dark:text-slate-600">—</span>
+                        <span className="text-black/50 dark:text-slate-400">—</span>
                       )}
                     </td>
 
@@ -521,7 +521,7 @@ export default function TaskTracker() {
                     </td>
 
                     <td className="px-4 py-3 text-black dark:text-white whitespace-nowrap">
-                      {task.assigned_to_name ?? <span className="text-black/30 dark:text-slate-600">—</span>}
+                      {task.assigned_to_name ?? <span className="text-black/50 dark:text-slate-400">—</span>}
                     </td>
 
                     <td className="px-4 py-3">
@@ -544,7 +544,7 @@ export default function TaskTracker() {
                       )}
                     </td>
 
-                    <td className="px-4 py-3 whitespace-nowrap text-black/60 dark:text-slate-400 tabular-nums">
+                    <td className="px-4 py-3 whitespace-nowrap text-black/60 dark:text-slate-300 tabular-nums">
                       {fmtDate(task.actual_closure_date)}
                     </td>
 
@@ -559,12 +559,12 @@ export default function TaskTracker() {
                             <p className="text-xs text-black dark:text-white line-clamp-2 group-hover:text-mustard transition-colors">
                               {task.latest_comment.text}
                             </p>
-                            <p className="text-xs text-black/40 dark:text-slate-500 mt-0.5">
+                            <p className="text-xs text-black/60 dark:text-slate-300 mt-0.5">
                               {task.latest_comment.author_name} · {fmtRelative(task.latest_comment.created_at)}
                             </p>
                           </div>
                         ) : (
-                          <span className="text-xs text-black/30 dark:text-slate-600 group-hover:text-mustard transition-colors">
+                          <span className="text-xs text-black/50 dark:text-slate-400 group-hover:text-mustard transition-colors">
                             + Add comment
                           </span>
                         )}

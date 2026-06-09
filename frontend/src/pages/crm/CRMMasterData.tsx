@@ -1,4 +1,4 @@
-import { useEffect, useState, useId } from 'react'
+import React, { useEffect, useState, useId } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
@@ -28,20 +28,35 @@ export default function CRMMasterData() {
   const isAdmin = user?.role === 'admin'
   const [activeTab, setActiveTab] = useState<Tab>('manufacturers')
 
+  const tabValues = TABS.map((t) => t.id)
+
+  const handleTabKeyDown = (e: React.KeyboardEvent, currentIndex: number) => {
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      const next = (currentIndex + 1) % tabValues.length
+      setActiveTab(tabValues[next])
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      const prev = (currentIndex - 1 + tabValues.length) % tabValues.length
+      setActiveTab(tabValues[prev])
+    }
+  }
+
   return (
     <Layout title="Master Data">
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-black dark:text-white">Master Data</h1>
 
-        <nav aria-label="Master data categories" className="flex flex-wrap gap-1 border-b border-black/10 dark:border-white/10">
-          {TABS.map((tab) => (
+        <div role="tablist" aria-label="Master data categories" className="flex flex-wrap gap-1 border-b border-black/10 dark:border-white/10">
+          {TABS.map((tab, index) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(e) => handleTabKeyDown(e, index)}
               className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors focus-visible:ring-2 focus-visible:ring-mustard -mb-px ${
                 activeTab === tab.id
                   ? 'border-mustard text-mustard'
-                  : 'border-transparent text-black/60 dark:text-slate-400 hover:text-black dark:hover:text-white hover:border-black/20'
+                  : 'border-transparent text-black/60 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-black/20'
               }`}
               role="tab"
               aria-selected={activeTab === tab.id}
@@ -51,9 +66,9 @@ export default function CRMMasterData() {
               {tab.label}
             </button>
           ))}
-        </nav>
+        </div>
 
-        <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
+        <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`} tabIndex={0}>
           {activeTab === 'manufacturers' && <ManufacturerTab isAdmin={isAdmin} />}
           {VENDOR_TABS.includes(activeTab as VendorType) && (
             <VendorTab vendorType={activeTab as VendorType} isAdmin={isAdmin} />
@@ -157,12 +172,14 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
                 <tr
                   key={m.id}
                   className="hover:bg-black/2 dark:hover:bg-white/2 cursor-pointer"
+                  tabIndex={0}
                   onClick={() => setTxnEntity({ id: m.id, vendor_id: m.vendor_id, company_name: m.company_name, kind: 'manufacturer' })}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTxnEntity({ id: m.id, vendor_id: m.vendor_id, company_name: m.company_name, kind: 'manufacturer' }) } }}
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-black/50 dark:text-slate-400">{m.vendor_id}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-black/70 dark:text-slate-300">{m.vendor_id}</td>
                   <td className="px-4 py-3 font-medium text-black dark:text-white">
                     {m.company_name}
-                    {m.phone_no && <div className="text-xs text-black/50 dark:text-slate-500">{m.phone_no}</div>}
+                    {m.phone_no && <div className="text-xs text-black/70 dark:text-slate-300">{m.phone_no}</div>}
                   </td>
                   <td className="px-4 py-3 text-black/70 dark:text-slate-300">{m.poc_name || '—'}</td>
                   <td className="px-4 py-3 text-black/70 dark:text-slate-300">
@@ -193,7 +210,7 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
               ))}
             </tbody>
           </table>
-          <p className="px-4 py-2 text-xs text-black/30 dark:text-slate-600">Click any row to view transaction history</p>
+          <p className="px-4 py-2 text-xs text-black/70 dark:text-slate-300">Click any row to view transaction history</p>
         </div>
       )}
     </div>
@@ -288,7 +305,7 @@ function ManufacturerForm({
 
       {/* Bank details */}
       <details>
-        <summary className="text-sm font-medium text-black/60 dark:text-slate-400 cursor-pointer select-none hover:text-black dark:hover:text-white">
+        <summary className="text-sm font-medium text-black/60 dark:text-slate-300 cursor-pointer select-none hover:text-black dark:hover:text-white">
           Bank / Accounting Details (optional)
         </summary>
         <div className="grid grid-cols-2 gap-4 mt-3">
@@ -400,9 +417,11 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
                 <tr
                   key={v.id}
                   className="hover:bg-black/2 dark:hover:bg-white/2 cursor-pointer"
+                  tabIndex={0}
                   onClick={() => setTxnEntity({ id: v.id, vendor_id: v.vendor_id, company_name: v.company_name, kind: 'vendor' })}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTxnEntity({ id: v.id, vendor_id: v.vendor_id, company_name: v.company_name, kind: 'vendor' }) } }}
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-black/50 dark:text-slate-400">{v.vendor_id}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-black/70 dark:text-slate-300">{v.vendor_id}</td>
                   <td className="px-4 py-3 font-medium text-black dark:text-white">{v.company_name}</td>
                   <td className="px-4 py-3 text-black/70 dark:text-slate-300">{v.poc_name || '—'}</td>
                   <td className="px-4 py-3 text-black/70 dark:text-slate-300">{v.city || '—'}</td>
@@ -426,7 +445,7 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
               ))}
             </tbody>
           </table>
-          <p className="px-4 py-2 text-xs text-black/30 dark:text-slate-600">Click any row to view transaction history</p>
+          <p className="px-4 py-2 text-xs text-black/70 dark:text-slate-300">Click any row to view transaction history</p>
         </div>
       )}
     </div>
@@ -484,7 +503,7 @@ function VendorForm({
       </div>
 
       <details>
-        <summary className="text-sm font-medium text-black/60 dark:text-slate-400 cursor-pointer select-none hover:text-black dark:hover:text-white">
+        <summary className="text-sm font-medium text-black/60 dark:text-slate-300 cursor-pointer select-none hover:text-black dark:hover:text-white">
           Bank / Accounting Details (optional)
         </summary>
         <div className="grid grid-cols-2 gap-4 mt-3">
@@ -700,23 +719,23 @@ function VendorTransactionModal({ entity, onClose }: VendorTransactionModalProps
       size="lg"
     >
       {loading ? (
-        <p className="text-sm text-black/50 dark:text-slate-400 py-4">Loading…</p>
+        <p className="text-sm text-black/70 dark:text-slate-300 py-4">Loading…</p>
       ) : payments.length === 0 ? (
-        <p className="text-sm text-black/50 dark:text-slate-400 py-4">No payment transactions recorded yet.</p>
+        <p className="text-sm text-black/70 dark:text-slate-300 py-4">No payment transactions recorded yet.</p>
       ) : (
         <div className="space-y-4">
           {/* Summary strip */}
           <div className="flex gap-6 text-sm">
             <div>
-              <span className="text-black/50 dark:text-slate-400 text-xs">Total Paid</span>
+              <span className="text-black/70 dark:text-slate-300 text-xs">Total Paid</span>
               <p className="font-semibold text-red-600 dark:text-red-400">₹{fmtAmount(totalPaid)}</p>
             </div>
             <div>
-              <span className="text-black/50 dark:text-slate-400 text-xs">Total Received</span>
+              <span className="text-black/70 dark:text-slate-300 text-xs">Total Received</span>
               <p className="font-semibold text-green-600 dark:text-green-400">₹{fmtAmount(totalReceived)}</p>
             </div>
             <div>
-              <span className="text-black/50 dark:text-slate-400 text-xs">Net</span>
+              <span className="text-black/70 dark:text-slate-300 text-xs">Net</span>
               <p className={`font-semibold ${totalReceived - totalPaid >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 {totalReceived - totalPaid >= 0 ? '+' : ''}₹{fmtAmount(totalReceived - totalPaid)}
               </p>
@@ -767,15 +786,15 @@ function VendorTransactionModal({ entity, onClose }: VendorTransactionModalProps
                         {p.project_no}
                       </Link>
                       {p.project_client_name && (
-                        <div className="text-xs text-black/40 dark:text-slate-500">{p.project_client_name}</div>
+                        <div className="text-xs text-black/70 dark:text-slate-300">{p.project_client_name}</div>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-black/60 dark:text-slate-400 max-w-[120px]">
+                    <td className="px-3 py-2 text-black/60 dark:text-slate-300 max-w-[120px]">
                       <span className="truncate block">{p.comments || '—'}</span>
                     </td>
-                    <td className="px-3 py-2 text-black/50 dark:text-slate-400 text-xs whitespace-nowrap">
+                    <td className="px-3 py-2 text-black/70 dark:text-slate-300 text-xs whitespace-nowrap">
                       <div>{p.created_by_name || '—'}</div>
-                      <div className="text-black/30 dark:text-slate-600">
+                      <div className="text-black/70 dark:text-slate-300">
                         {new Date(p.created_at).toLocaleDateString('en-IN')}
                       </div>
                     </td>
@@ -793,7 +812,7 @@ function VendorTransactionModal({ entity, onClose }: VendorTransactionModalProps
                           <span className="max-w-[80px] truncate">{p.invoice_filename}</span>
                         </a>
                       ) : (
-                        <span className="text-black/20 dark:text-slate-600 text-xs">—</span>
+                        <span className="text-black/70 dark:text-slate-300 text-xs">—</span>
                       )}
                     </td>
                   </tr>
@@ -817,29 +836,30 @@ function MField({ label, required, children }: { label: string; required?: boole
   const id = useId()
   return (
     <div>
-      <label htmlFor={id} className="block text-xs font-medium text-black/60 dark:text-slate-400 mb-1">
+      <label htmlFor={id} className="block text-xs font-medium text-black/60 dark:text-slate-300 mb-1">
         {label}{required && <span className="text-red-500 ml-1" aria-hidden="true">*</span>}
       </label>
-      {/* Clone children to inject id */}
-      {children}
+      {React.isValidElement(children)
+        ? React.cloneElement(children as React.ReactElement<{ id?: string }>, { id })
+        : children}
     </div>
   )
 }
 
 function StarRating({ value }: { value: number | null }) {
-  if (value === null) return <span className="text-black/30 dark:text-slate-600 text-xs">No ratings</span>
+  if (value === null) return <span className="text-black/70 dark:text-slate-300 text-xs">No ratings</span>
   return (
     <span aria-label={`Rating: ${value} out of 5 stars`} className="text-sm">
       {'★'.repeat(Math.round(value))}{'☆'.repeat(5 - Math.round(value))}
-      <span className="text-black/50 dark:text-slate-500 text-xs ml-1">({value})</span>
+      <span className="text-black/70 dark:text-slate-300 text-xs ml-1">({value})</span>
     </span>
   )
 }
 
 function LoadingState() {
-  return <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-400 text-sm py-4">Loading…</div>
+  return <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm py-4">Loading…</div>
 }
 
 function EmptyState({ label }: { label: string }) {
-  return <p className="text-black/60 dark:text-slate-400 text-sm py-4">No {label} added yet.</p>
+  return <p className="text-black/60 dark:text-slate-300 text-sm py-4">No {label} added yet.</p>
 }

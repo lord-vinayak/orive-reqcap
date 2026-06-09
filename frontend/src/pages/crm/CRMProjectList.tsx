@@ -80,11 +80,11 @@ export default function CRMProjectList() {
         </form>
 
         {loading ? (
-          <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-400 text-sm">
+          <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm">
             Loading projects…
           </div>
         ) : projects.length === 0 ? (
-          <p className="text-black/60 dark:text-slate-400 text-sm">No projects found.</p>
+          <p className="text-black/60 dark:text-slate-300 text-sm">No projects found.</p>
         ) : (
           <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
             <table className="w-full text-sm" aria-label="Project list">
@@ -115,7 +115,7 @@ export default function CRMProjectList() {
                         {p.client_name}
                       </Link>
                       {p.client_company && (
-                        <div className="text-xs text-black/50 dark:text-slate-500">{p.client_company}</div>
+                        <div className="text-xs text-black/70 dark:text-slate-300">{p.client_company}</div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300 capitalize">
@@ -133,7 +133,7 @@ export default function CRMProjectList() {
                     <td className="px-4 py-3">
                       <StatusBadge hasDelays={p.has_delays} />
                     </td>
-                    <td className="px-4 py-3 text-xs text-black/60 dark:text-slate-400">
+                    <td className="px-4 py-3 text-xs text-black/60 dark:text-slate-300">
                       {p.next_milestone
                         ? `${p.next_milestone.display} · ${p.next_milestone.planned_date}`
                         : '—'}

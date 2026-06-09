@@ -612,7 +612,7 @@ export default function RequirementForm() {
             {isEdit ? "Edit requirement" : "Capture new requirement"}
           </h1>
           {statusText && (
-            <p className="text-xs text-black/60 dark:text-slate-400 mt-1" aria-live="polite" role="status">
+            <p className="text-xs text-black/60 dark:text-slate-300 mt-1" aria-live="polite" role="status">
               {statusText}
             </p>
           )}
@@ -620,7 +620,7 @@ export default function RequirementForm() {
       </div>
 
       {showDraftBanner && (
-        <div role="region" aria-label="Draft recovery" className="border border-mustard dark:border-mustard/60 bg-mustard-50 dark:bg-mustard-800/70 rounded p-3 mb-4 flex items-center justify-between gap-3 flex-wrap">
+        <div role="region" aria-label="Draft recovery" aria-live="polite" className="border border-mustard dark:border-mustard/60 bg-mustard-50 dark:bg-mustard-800/70 rounded p-3 mb-4 flex items-center justify-between gap-3 flex-wrap">
           <span className="text-sm text-black dark:text-mustard-50">You have an unsaved draft from a previous session.</span>
           <div className="flex gap-2">
             <button onClick={restoreDraft} className="btn-primary text-sm">Restore</button>
@@ -657,7 +657,7 @@ export default function RequirementForm() {
                   <FileUploadSection requirementId={requirement.id} />
                 </>
               ) : (
-                <div className="card text-sm text-black/60 dark:text-slate-400">
+                <div className="card text-sm text-black/60 dark:text-slate-300">
                   <p className="font-medium text-black dark:text-slate-100 mb-1">Notes &amp; files</p>
                   <p>Save the requirement first to add notes or upload files.</p>
                 </div>
@@ -698,7 +698,7 @@ export default function RequirementForm() {
         <button onClick={handleSave} disabled={manualSaving} className="btn-primary">
           {manualSaving ? "Saving…" : "Save requirements"}
         </button>
-        <button onClick={handleCreateProposal} disabled={manualSaving} className="btn-secondary">
+        <button onClick={handleCreateProposal} disabled={manualSaving} className="btn-secondary" aria-label="Open Client Costing editor">
           Open Client Costing →
         </button>
 

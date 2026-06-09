@@ -108,8 +108,9 @@ export default function SendEmailModal({
             Send Client Costing
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-black/40 hover:text-black dark:text-slate-500 dark:hover:text-slate-200 text-xl leading-none"
+            className="text-black/40 hover:text-black dark:text-slate-300 dark:hover:text-slate-100 text-xl leading-none focus-visible:ring-2 focus-visible:ring-mustard focus-visible:ring-offset-1 rounded"
             aria-label="Close"
           >
             ×
@@ -119,10 +120,11 @@ export default function SendEmailModal({
         <div className="space-y-4 text-sm">
           {/* Proposal selector */}
           <div>
-            <label className="block text-xs font-medium text-black/60 dark:text-slate-400 mb-1">
+            <label htmlFor="email-modal-proposal" className="block text-xs font-medium text-black/60 dark:text-slate-300 mb-1">
               Which Client Costing to send?
             </label>
             <select
+              id="email-modal-proposal"
               className="w-full"
               value={selectedProposalId}
               onChange={(e) => setSelectedProposalId(e.target.value)}
@@ -138,10 +140,11 @@ export default function SendEmailModal({
 
           {/* Recipient email */}
           <div>
-            <label className="block text-xs font-medium text-black/60 dark:text-slate-400 mb-1">
+            <label htmlFor="email-modal-to" className="block text-xs font-medium text-black/60 dark:text-slate-300 mb-1">
               Recipient email {!clientEmail && <span className="text-red-500">*</span>}
             </label>
             <input
+              id="email-modal-to"
               type="email"
               className="w-full"
               placeholder="client@example.com"
@@ -175,21 +178,21 @@ export default function SendEmailModal({
 
           {/* Subject (read-only preview) */}
           <div>
-            <label className="block text-xs font-medium text-black/60 dark:text-slate-400 mb-1">
+            <label htmlFor="email-modal-subject" className="block text-xs font-medium text-black/60 dark:text-slate-300 mb-1">
               Subject
             </label>
-            <p className="text-sm text-black/70 dark:text-slate-300 bg-black/[0.03] dark:bg-white/5 rounded px-3 py-2">
+            <p id="email-modal-subject" className="text-sm text-black/70 dark:text-slate-300 bg-black/[0.03] dark:bg-white/5 rounded px-3 py-2">
               Product Proposal, Cost & Next Steps for Sample Development
             </p>
           </div>
 
           {/* Proposal document attachment picker */}
           <div>
-            <label className="block text-xs font-medium text-black/60 dark:text-slate-400 mb-1">
+            <label className="block text-xs font-medium text-black/60 dark:text-slate-300 mb-1">
               Attach Proposal Document(s)
             </label>
             {proposalDocs.length === 0 ? (
-              <p className="text-xs text-black/50 dark:text-slate-500 italic">
+              <p className="text-xs text-black/50 dark:text-slate-300 italic">
                 No proposal documents uploaded yet.
               </p>
             ) : (
@@ -207,7 +210,7 @@ export default function SendEmailModal({
                       <span className="text-xs text-black/70 dark:text-slate-300 truncate" title={doc.filename}>
                         {doc.filename}
                       </span>
-                      <span className="text-xs text-black/40 dark:text-slate-500 whitespace-nowrap ml-auto">
+                      <span className="text-xs text-black/40 dark:text-slate-300 whitespace-nowrap ml-auto">
                         {new Date(doc.uploaded_at).toLocaleDateString()}
                       </span>
                     </label>
@@ -218,7 +221,7 @@ export default function SendEmailModal({
           </div>
 
           {/* Attachment note */}
-          <p className="text-xs text-black/50 dark:text-slate-500">
+          <p className="text-xs text-black/70 dark:text-slate-300">
             📎 The Client Costing XLSX is always attached automatically.
           </p>
 
@@ -229,11 +232,14 @@ export default function SendEmailModal({
           )}
         </div>
 
+        <div role="status" aria-live="polite" className="sr-only">
+          {sending ? 'Sending email…' : ''}
+        </div>
         <div className="flex justify-end gap-3 mt-6">
-          <button onClick={onClose} disabled={sending} className="btn-secondary">
+          <button type="button" onClick={onClose} disabled={sending} className="btn-secondary">
             Cancel
           </button>
-          <button onClick={handleSend} disabled={sending || !toEmail.trim()} className="btn-primary">
+          <button type="button" onClick={handleSend} disabled={sending || !toEmail.trim()} className="btn-primary">
             {sending ? 'Sending…' : '✉ Send Email'}
           </button>
         </div>

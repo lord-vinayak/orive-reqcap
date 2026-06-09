@@ -102,7 +102,7 @@ export default function RequirementView() {
   if (loading) {
     return (
       <Layout title="View Requirement">
-        <p className="text-black/60 dark:text-slate-400" role="status">Loading…</p>
+        <p className="text-black/60 dark:text-slate-300" role="status">Loading…</p>
       </Layout>
     )
   }
@@ -123,7 +123,7 @@ export default function RequirementView() {
       <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-semibold">{requirement.title}</h1>
-          <p className="text-xs text-black/60 dark:text-slate-400 mt-1">
+          <p className="text-xs text-black/60 dark:text-slate-300 mt-1">
             Last updated {new Date(requirement.updated_at).toLocaleString()}
           </p>
         </div>
@@ -162,7 +162,7 @@ export default function RequirementView() {
                 : undefined}
             />
             <div>
-              <dt className="text-xs font-medium text-black/60 dark:text-slate-400 mb-1">Requirement Status</dt>
+              <dt className="text-xs font-medium text-black/60 dark:text-slate-300 mb-1">Requirement Status</dt>
               <dd>
                 <Badge
                   text={requirement.status}
@@ -172,7 +172,7 @@ export default function RequirementView() {
             </div>
             {client && (
               <div>
-                <dt className="text-xs font-medium text-black/60 dark:text-slate-400 mb-1">Lead Status</dt>
+                <dt className="text-xs font-medium text-black/60 dark:text-slate-300 mb-1">Lead Status</dt>
                 <dd>
                   <LeadStatusBadge
                     client={client}
@@ -188,7 +188,7 @@ export default function RequirementView() {
         <section className="card p-0 overflow-hidden" aria-labelledby="view-products-heading">
           <div className="px-4 py-3 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
             <h2 id="view-products-heading" className="text-lg font-semibold">Product Requirements</h2>
-            <span className="text-xs text-black/60 dark:text-slate-400">
+            <span className="text-xs text-black/60 dark:text-slate-300">
               {requirement.products.length} row{requirement.products.length === 1 ? '' : 's'}
             </span>
           </div>
@@ -208,7 +208,7 @@ export default function RequirementView() {
               <tbody>
                 {requirement.products.length === 0 && (
                   <tr>
-                    <td colSpan={13} className="text-center text-sm text-black/60 dark:text-slate-400 py-6">
+                    <td colSpan={13} className="text-center text-sm text-black/60 dark:text-slate-300 py-6">
                       No product rows captured.
                     </td>
                   </tr>
@@ -223,7 +223,7 @@ export default function RequirementView() {
                     : 'Luxury High-End Range'
                   return (
                     <tr key={p.id} className="border-b border-black/5 dark:border-white/5">
-                      <td className="px-3 py-2 text-center text-black/60 dark:text-slate-400 font-medium text-xs">{p.row_number}</td>
+                      <td className="px-3 py-2 text-center text-black/60 dark:text-slate-300 font-medium text-xs">{p.row_number}</td>
                       <td className="px-3 py-2 dark:text-slate-200 whitespace-nowrap">{p.body_part || '—'}</td>
                       <td className="px-3 py-2 dark:text-slate-200 whitespace-nowrap">{p.category || '—'}</td>
                       <td className="px-3 py-2 dark:text-slate-200 whitespace-nowrap">{p.sub_category || '—'}</td>
@@ -253,16 +253,16 @@ export default function RequirementView() {
         {/* ── Section 3: Notes ── */}
         <section className="card" aria-labelledby="view-notes-heading">
           <h2 id="view-notes-heading" className="text-lg font-semibold mb-3">
-            Notes <span className="text-sm font-normal text-black/60 dark:text-slate-400">({notes.length})</span>
+            Notes <span className="text-sm font-normal text-black/60 dark:text-slate-300">({notes.length})</span>
           </h2>
           {notes.length === 0 ? (
-            <p className="text-sm text-black/60 dark:text-slate-400">No notes added.</p>
+            <p className="text-sm text-black/60 dark:text-slate-300">No notes added.</p>
           ) : (
             <ol className="space-y-3">
               {notes.map((note) => (
                 <li key={note.id} className="border border-black/8 dark:border-white/8 rounded p-3">
                   <p className="text-sm dark:text-slate-200">{note.text}</p>
-                  <p className="text-xs text-black/50 dark:text-slate-500 mt-1">
+                  <p className="text-xs text-black/70 dark:text-slate-300 mt-1">
                     {note.added_by_name} · {new Date(note.created_at).toLocaleString()}
                   </p>
                 </li>
@@ -274,10 +274,10 @@ export default function RequirementView() {
         {/* ── Section 4: Files ── */}
         <section className="card" aria-labelledby="view-files-heading">
           <h2 id="view-files-heading" className="text-lg font-semibold mb-3">
-            Files & Images <span className="text-sm font-normal text-black/60 dark:text-slate-400">({files.length})</span>
+            Files & Images <span className="text-sm font-normal text-black/60 dark:text-slate-300">({files.length})</span>
           </h2>
           {files.length === 0 ? (
-            <p className="text-sm text-black/60 dark:text-slate-400">No files uploaded.</p>
+            <p className="text-sm text-black/60 dark:text-slate-300">No files uploaded.</p>
           ) : (
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {files.map((f) => (
@@ -291,11 +291,11 @@ export default function RequirementView() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm font-medium truncate block hover:underline text-mustard-700 dark:text-mustard-400"
-                      aria-label={`Open file: ${f.filename}`}
+                      aria-label={`Open file: ${f.filename} (opens in new tab)`}
                     >
                       {f.filename}
                     </a>
-                    <p className="text-xs text-black/50 dark:text-slate-500">
+                    <p className="text-xs text-black/70 dark:text-slate-300">
                       {f.uploaded_by_name} · {new Date(f.uploaded_at).toLocaleDateString()}
                     </p>
                   </div>
@@ -317,37 +317,39 @@ export default function RequirementView() {
             .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime())
           return (
             <section className="card" aria-labelledby="view-emails-heading">
-              <button
-                type="button"
-                className="w-full flex items-center justify-between text-left"
-                onClick={() => setEmailHistoryExpanded((v) => !v)}
-                aria-expanded={emailHistoryExpanded}
-              >
+              <div className="w-full flex items-center justify-between">
                 <h2 id="view-emails-heading" className="text-lg font-semibold">
                   Email History{' '}
-                  <span className="text-sm font-normal text-black/60 dark:text-slate-400">
+                  <span className="text-sm font-normal text-black/60 dark:text-slate-300">
                     ({allEmails.length})
                   </span>
                 </h2>
-                <span className="text-black/40 dark:text-slate-500 text-xs" aria-hidden="true">
-                  {emailHistoryExpanded ? '▲' : '▼'}
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setEmailHistoryExpanded((v) => !v)}
+                  aria-expanded={emailHistoryExpanded}
+                  aria-controls="email-history-content"
+                  aria-label={emailHistoryExpanded ? 'Collapse email history' : 'Expand email history'}
+                  className="text-black/40 dark:text-slate-300 text-xs p-1"
+                >
+                  <span aria-hidden="true">{emailHistoryExpanded ? '▲' : '▼'}</span>
+                </button>
+              </div>
 
               {emailHistoryExpanded && (
-                <div className="mt-3">
+                <div id="email-history-content" className="mt-3">
                   {allEmails.length === 0 ? (
-                    <p className="text-sm text-black/60 dark:text-slate-400">No emails sent yet.</p>
+                    <p className="text-sm text-black/60 dark:text-slate-300">No emails sent yet.</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm border-collapse">
                         <thead>
-                          <tr className="text-xs text-black/60 dark:text-slate-400 border-b border-black/8 dark:border-white/8">
-                            <th className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Sent To</th>
-                            <th className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Subject</th>
-                            <th className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Proposal</th>
-                            <th className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Date &amp; Time</th>
-                            <th className="text-left font-medium py-1.5 whitespace-nowrap">Sent By</th>
+                          <tr className="text-xs text-black/60 dark:text-slate-300 border-b border-black/8 dark:border-white/8">
+                            <th scope="col" className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Sent To</th>
+                            <th scope="col" className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Subject</th>
+                            <th scope="col" className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Proposal</th>
+                            <th scope="col" className="text-left font-medium py-1.5 pr-4 whitespace-nowrap">Date &amp; Time</th>
+                            <th scope="col" className="text-left font-medium py-1.5 whitespace-nowrap">Sent By</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -355,11 +357,11 @@ export default function RequirementView() {
                             <tr key={e.id} className="border-b border-black/5 dark:border-white/5">
                               <td className="py-2 pr-4 dark:text-slate-200">{e.sent_to}</td>
                               <td className="py-2 pr-4 text-xs text-black/70 dark:text-slate-300 max-w-[200px] truncate" title={e.subject}>{e.subject}</td>
-                              <td className="py-2 pr-4 text-xs text-black/60 dark:text-slate-400 whitespace-nowrap">{e.proposalLabel}</td>
-                              <td className="py-2 pr-4 text-xs text-black/60 dark:text-slate-400 whitespace-nowrap">
+                              <td className="py-2 pr-4 text-xs text-black/60 dark:text-slate-300 whitespace-nowrap">{e.proposalLabel}</td>
+                              <td className="py-2 pr-4 text-xs text-black/60 dark:text-slate-300 whitespace-nowrap">
                                 {new Date(e.sent_at).toLocaleString()}
                               </td>
-                              <td className="py-2 text-xs text-black/60 dark:text-slate-400 whitespace-nowrap">
+                              <td className="py-2 text-xs text-black/60 dark:text-slate-300 whitespace-nowrap">
                                 {e.sent_by_name ?? '—'}
                               </td>
                             </tr>
@@ -378,7 +380,7 @@ export default function RequirementView() {
         <section aria-labelledby="view-proposals-heading">
           <div className="flex items-center justify-between mb-3">
             <h2 id="view-proposals-heading" className="text-lg font-semibold">
-              Client Costings <span className="text-sm font-normal text-black/60 dark:text-slate-400">({proposals.length})</span>
+              Client Costings <span className="text-sm font-normal text-black/60 dark:text-slate-300">({proposals.length})</span>
             </h2>
             <button
               onClick={handleCreateNewProposal}
@@ -391,7 +393,7 @@ export default function RequirementView() {
           </div>
 
           {proposals.length === 0 && (
-            <div className="card text-sm text-black/60 dark:text-slate-400">
+            <div className="card text-sm text-black/60 dark:text-slate-300">
               No Client Costings created yet. Click "+ New Client Costing" to start one.
             </div>
           )}
@@ -416,17 +418,17 @@ export default function RequirementView() {
                         text={proposal.status}
                         cls={proposal.status === 'exported'
                           ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700'
-                          : 'bg-black/5 text-black/60 border-black/10 dark:bg-white/5 dark:text-slate-400 dark:border-white/10'}
+                          : 'bg-black/5 text-black/60 border-black/10 dark:bg-white/5 dark:text-slate-300 dark:border-white/10'}
                       />
-                      <span className="text-xs text-black/60 dark:text-slate-400">
+                      <span className="text-xs text-black/60 dark:text-slate-300">
                         Created {new Date(proposal.created_at).toLocaleString()}
                         {proposal.created_by_name ? ` by ${proposal.created_by_name}` : ''}
                       </span>
-                      <span className="text-xs text-black/60 dark:text-slate-400">
+                      <span className="text-xs text-black/60 dark:text-slate-300">
                         {proposal.items.length} item{proposal.items.length === 1 ? '' : 's'}
                       </span>
                       {proposal.last_exported_at && (
-                        <span className="text-xs text-black/60 dark:text-slate-400">
+                        <span className="text-xs text-black/60 dark:text-slate-300">
                           · Last exported {new Date(proposal.last_exported_at).toLocaleString()}
                         </span>
                       )}
@@ -456,7 +458,7 @@ export default function RequirementView() {
                           <tbody>
                             {proposal.items.length === 0 && (
                               <tr>
-                                <td colSpan={8} className="text-center text-sm text-black/60 dark:text-slate-400 py-4">
+                                <td colSpan={8} className="text-center text-sm text-black/60 dark:text-slate-300 py-4">
                                   No items in this proposal.
                                 </td>
                               </tr>
@@ -466,7 +468,7 @@ export default function RequirementView() {
                               const kb = [c.kb_tag1, c.kb_tag2, c.kb_tag3].filter(Boolean).join(', ')
                               return (
                                 <tr key={item.id} className={`border-b border-black/5 dark:border-white/5 ${i % 2 === 1 ? 'bg-black/[0.01] dark:bg-white/[0.01]' : ''}`}>
-                                  <td className="px-3 py-2 text-center text-black/50 dark:text-slate-500 text-xs font-medium">{i + 1}</td>
+                                  <td className="px-3 py-2 text-center text-black/70 dark:text-slate-300 text-xs font-medium">{i + 1}</td>
                                   <td className="px-3 py-2 dark:text-slate-200 whitespace-nowrap">{c.body_part}</td>
                                   <td className="px-3 py-2 dark:text-slate-200 whitespace-nowrap">{c.product_type}</td>
                                   <td className="px-3 py-2 dark:text-slate-200 whitespace-nowrap">{c.sub_product_type}</td>
@@ -542,7 +544,7 @@ export default function RequirementView() {
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
-      <dt className="text-xs font-medium text-black/60 dark:text-slate-400 mb-0.5">{label}</dt>
+      <dt className="text-xs font-medium text-black/60 dark:text-slate-300 mb-0.5">{label}</dt>
       <dd className="text-sm dark:text-slate-200">{value || '—'}</dd>
     </div>
   )

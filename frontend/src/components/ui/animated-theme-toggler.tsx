@@ -106,7 +106,7 @@ export function AnimatedThemeToggler({
         .dark .att-btn,[data-theme="dark"] .att-btn{--at-ink:rgba(255,255,255,0.82)}
       `}</style>
       <motion.button
-        className="att-btn"
+        className="att-btn focus-visible:ring-2 focus-visible:ring-mustard focus-visible:ring-offset-2 rounded-full"
         onClick={toggle}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.86 }}
@@ -121,12 +121,12 @@ export function AnimatedThemeToggler({
           justifyContent: "center",
           color: "var(--at-ink)",
           borderRadius: 8,
-          outline: "none",
           WebkitTapHighlightColor: "transparent",
         }}
         aria-label="Toggle theme"
       >
         <motion.svg
+          aria-hidden="true"
           width="20"
           height="20"
           viewBox="0 0 24 24"
