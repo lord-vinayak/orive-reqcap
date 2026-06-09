@@ -62,6 +62,7 @@ export default function AdminUsers() {
             <select id="new-user-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full">
               <option value="poc_sales">POC-Sales</option>
               <option value="poc_formulation">POC-Formulation</option>
+              <option value="poc_ops">POC-Ops</option>
               <option value="admin">Admin</option>
             </select>
           </div>
@@ -105,6 +106,7 @@ export default function AdminUsers() {
                     {u.role === 'admin' ? 'Admin'
                       : u.role === 'poc_sales' ? 'POC-Sales'
                       : u.role === 'poc_formulation' ? 'POC-Formulation'
+                      : u.role === 'poc_ops' ? 'POC-Ops'
                       : u.role}
                   </span>
                 </td>

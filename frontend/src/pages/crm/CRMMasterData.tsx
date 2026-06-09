@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useId } from 'react'
+import React, { useEffect, useRef, useState, useId } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
@@ -6,7 +6,7 @@ import type { Manufacturer, Vendor, InternalTeamMember, VendorType, ProjectPayme
 import { useAuthStore } from '@/store/authStore'
 import { Modal } from '@/components/crm/Modal'
 
-type Tab = 'manufacturers' | 'packaging' | 'printing' | 'testing' | 'designer' | 'ecommerce' | 'logistics' | 'formulation' | 'sales'
+type Tab = 'manufacturers' | 'packaging' | 'printing' | 'testing' | 'designer' | 'ecommerce' | 'logistics' | 'formulation' | 'sales' | 'ops'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'manufacturers', label: 'Manufacturers' },
@@ -18,27 +18,38 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'logistics', label: 'Logistics' },
   { id: 'formulation', label: 'Formulation Team' },
   { id: 'sales', label: 'Sales Team' },
+  { id: 'ops', label: 'Ops Team' },
 ]
 
 const VENDOR_TABS: VendorType[] = ['packaging', 'printing', 'testing', 'designer', 'ecommerce', 'logistics']
-const INTERNAL_TABS = ['formulation', 'sales'] as const
+const INTERNAL_TABS = ['formulation', 'sales', 'ops'] as const
 
 export default function CRMMasterData() {
   const { user } = useAuthStore()
   const isAdmin = user?.role === 'admin'
   const [activeTab, setActiveTab] = useState<Tab>('manufacturers')
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   const tabValues = TABS.map((t) => t.id)
 
   const handleTabKeyDown = (e: React.KeyboardEvent, currentIndex: number) => {
+    let next = -1
     if (e.key === 'ArrowRight') {
       e.preventDefault()
-      const next = (currentIndex + 1) % tabValues.length
-      setActiveTab(tabValues[next])
+      next = (currentIndex + 1) % tabValues.length
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault()
-      const prev = (currentIndex - 1 + tabValues.length) % tabValues.length
-      setActiveTab(tabValues[prev])
+      next = (currentIndex - 1 + tabValues.length) % tabValues.length
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      next = 0
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      next = tabValues.length - 1
+    }
+    if (next >= 0) {
+      setActiveTab(tabValues[next])
+      tabRefs.current[next]?.focus()
     }
   }
 
@@ -51,8 +62,10 @@ export default function CRMMasterData() {
           {TABS.map((tab, index) => (
             <button
               key={tab.id}
+              ref={(el) => { tabRefs.current[index] = el }}
               onClick={() => setActiveTab(tab.id)}
               onKeyDown={(e) => handleTabKeyDown(e, index)}
+              tabIndex={activeTab === tab.id ? 0 : -1}
               className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors focus-visible:ring-2 focus-visible:ring-mustard -mb-px ${
                 activeTab === tab.id
                   ? 'border-mustard text-mustard'
@@ -74,7 +87,7 @@ export default function CRMMasterData() {
             <VendorTab vendorType={activeTab as VendorType} isAdmin={isAdmin} />
           )}
           {INTERNAL_TABS.includes(activeTab as typeof INTERNAL_TABS[number]) && (
-            <InternalTeamTab team={activeTab as 'formulation' | 'sales'} isAdmin={isAdmin} />
+            <InternalTeamTab team={activeTab as 'formulation' | 'sales' | 'ops'} isAdmin={isAdmin} />
           )}
         </div>
       </div>
@@ -543,11 +556,11 @@ function VendorForm({
 
 // ── Internal Team Tab ─────────────────────────────────────────────────────────
 
-const EMPTY_MEMBER = (team: 'formulation' | 'sales'): Partial<InternalTeamMember> => ({
+const EMPTY_MEMBER = (team: 'formulation' | 'sales' | 'ops'): Partial<InternalTeamMember> => ({
   team, name: '', email: '', phone_no: '',
 })
 
-function InternalTeamTab({ team, isAdmin }: { team: 'formulation' | 'sales'; isAdmin: boolean }) {
+function InternalTeamTab({ team, isAdmin }: { team: 'formulation' | 'sales' | 'ops'; isAdmin: boolean }) {
   const [members, setMembers] = useState<InternalTeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -580,7 +593,7 @@ function InternalTeamTab({ team, isAdmin }: { team: 'formulation' | 'sales'; isA
 
       {showModal && (
         <Modal
-          title={editing ? 'Edit Team Member' : `Add ${team === 'formulation' ? 'Formulation' : 'Sales'} Team Member`}
+          title={editing ? 'Edit Team Member' : `Add ${team === 'formulation' ? 'Formulation' : team === 'sales' ? 'Sales' : 'Ops'} Team Member`}
           onClose={() => { setShowModal(false); setEditing(null) }}
           size="sm"
         >

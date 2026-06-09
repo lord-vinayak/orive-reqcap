@@ -2,7 +2,7 @@ export interface User {
   id: string
   email: string
   name: string
-  role: 'admin' | 'poc_sales' | 'poc_formulation'
+  role: 'admin' | 'poc_sales' | 'poc_formulation' | 'poc_ops'
   is_active: boolean
   created_at: string
 }

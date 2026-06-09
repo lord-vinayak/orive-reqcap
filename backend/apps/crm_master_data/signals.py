@@ -4,6 +4,7 @@ from django.dispatch import receiver
 ROLE_TO_TEAM = {
     'poc_sales': 'sales',
     'poc_formulation': 'formulation',
+    'poc_ops': 'ops',
 }
 
 

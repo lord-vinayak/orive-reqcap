@@ -28,6 +28,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('admin', 'Admin'),
         ('poc_sales', 'POC-Sales'),
         ('poc_formulation', 'POC-Formulation'),
+        ('poc_ops', 'POC-Ops'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -57,4 +58,4 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     @property
     def is_poc(self):
-        return self.role in ('poc_sales', 'poc_formulation')
+        return self.role in ('poc_sales', 'poc_formulation', 'poc_ops')

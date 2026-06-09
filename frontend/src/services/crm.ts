@@ -226,7 +226,7 @@ export const crmApi = {
     api.get<DropdownOption[]>('/crm/vendors/dropdown/', { params: { vendor_type: vendorType } }),
 
   // Internal Team
-  listTeamMembers: (team?: 'formulation' | 'sales') =>
+  listTeamMembers: (team?: 'formulation' | 'sales' | 'ops') =>
     api.get<PaginatedResponse<InternalTeamMember>>('/crm/team-members/', {
       params: team ? { team } : {},
     }),

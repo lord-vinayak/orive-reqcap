@@ -310,7 +310,7 @@ export interface Vendor {
 
 export interface InternalTeamMember {
   id: string
-  team: 'formulation' | 'sales'
+  team: 'formulation' | 'sales' | 'ops'
   name: string
   email: string
   phone_no: string
