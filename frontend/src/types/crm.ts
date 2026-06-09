@@ -64,6 +64,8 @@ export interface TaskItem {
   project_no: string | null
   client_name: string | null
   client_phone: string | null
+  client_lead_status: string | null
+  client_lead_sub_status: string | null
   assigned_to_id: string | null
   assigned_to_name: string | null
   assigned_to_user_id: string | null
@@ -216,6 +218,9 @@ export interface CRMProjectList {
   client: string
   client_name: string
   client_company: string
+  client_phone: string
+  client_lead_status: string
+  client_lead_sub_status: string
   no_of_products: number | null
   moq: number | null
   phase: ProjectPhase

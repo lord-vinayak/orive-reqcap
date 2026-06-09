@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
@@ -18,6 +18,19 @@ export default function Layout({
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [menuOpen]);
 
   useEffect(() => {
     document.title = title ? `${title} – ${BASE_TITLE}` : BASE_TITLE;
@@ -96,20 +109,35 @@ export default function Layout({
                 </Link>
               </>
             )}
-            <span className="text-sm text-black/60 dark:text-slate-400 px-2">
-              {user?.name}
-            </span>
-
             {/* Dark mode toggle */}
             <AnimatedThemeToggler />
 
-            <button
-              onClick={handleLogout}
-              className="btn-secondary text-sm"
-              aria-label="Log out"
-            >
-              Logout
-            </button>
+            {/* User menu */}
+            <div ref={menuRef} className="relative">
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                className="text-sm text-black/60 dark:text-slate-400 px-2 cursor-pointer hover:text-black dark:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
+                aria-label={`User menu for ${user?.name}`}
+              >
+                {user?.name}
+              </button>
+              {menuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-1 w-40 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded shadow-lg z-50 py-1"
+                >
+                  <button
+                    role="menuitem"
+                    onClick={() => { setMenuOpen(false); handleLogout(); }}
+                    className="w-full text-left px-4 py-2 text-sm text-black dark:text-white hover:bg-mustard/10 focus:bg-mustard/10 focus:outline-none"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </nav>
         </div>
       </header>

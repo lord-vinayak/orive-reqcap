@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { clientService, userService } from '@/services'
 import type { User } from '@/types'
-import type { ClientStatus } from '@/constants/clientStatus'
-import { CLIENT_STATUS_OPTIONS } from '@/constants/clientStatus'
+import { LEAD_STATUS_OPTIONS, LEAD_SUB_STATUS_OPTIONS, type LeadStatus } from '@/constants/clientStatus'
 
 interface FormState {
   phone_no: string
@@ -15,7 +14,8 @@ interface FormState {
   gst_details: string
   physical_address: string
   poc: string
-  status: ClientStatus
+  lead_status: LeadStatus
+  lead_sub_status: string
 }
 
 export default function CRMClientCreate() {
@@ -41,7 +41,8 @@ export default function CRMClientCreate() {
     gst_details: '',
     physical_address: '',
     poc: '',
-    status: 'unanswered',
+    lead_status: 'initial_conversation',
+    lead_sub_status: '',
   })
 
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
@@ -96,7 +97,8 @@ export default function CRMClientCreate() {
         city: form.city.trim(),
         gst_details: form.gst_details.trim(),
         physical_address: form.physical_address.trim(),
-        status: form.status,
+        lead_status: form.lead_status,
+        lead_sub_status: form.lead_sub_status,
         poc: form.poc || null,
       }
 
@@ -267,22 +269,41 @@ export default function CRMClientCreate() {
               </select>
             </div>
 
-            {/* Client Stage */}
+            {/* Lead Status */}
             <div className="space-y-1">
               <label htmlFor={statusId} className="text-sm font-semibold text-black dark:text-white">
-                Client Stage
+                Lead Status
               </label>
               <select
                 id={statusId}
-                value={form.status}
-                onChange={set('status')}
+                value={form.lead_status}
+                onChange={(e) => setForm((f) => ({ ...f, lead_status: e.target.value as LeadStatus, lead_sub_status: '' }))}
                 className="w-full border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
               >
-                {CLIENT_STATUS_OPTIONS.map((o) => (
+                {LEAD_STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
             </div>
+
+            {(LEAD_SUB_STATUS_OPTIONS[form.lead_status]?.length ?? 0) > 0 && (
+              <div className="space-y-1">
+                <label htmlFor={`${statusId}-sub`} className="text-sm font-semibold text-black dark:text-white">
+                  Sub-status
+                </label>
+                <select
+                  id={`${statusId}-sub`}
+                  value={form.lead_sub_status}
+                  onChange={(e) => setForm((f) => ({ ...f, lead_sub_status: e.target.value }))}
+                  className="w-full border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+                >
+                  <option value="">— None —</option>
+                  {LEAD_SUB_STATUS_OPTIONS[form.lead_status]!.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             
           </div>
 

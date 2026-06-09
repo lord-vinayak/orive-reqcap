@@ -10,6 +10,8 @@ import NewTaskModal from '@/components/crm/NewTaskModal'
 import type { TaskItem, TaskStatus, TaskPriority, InternalTeamMember } from '@/types/crm'
 import { TASK_STATUS_LABELS } from '@/types/crm'
 import type { Client } from '@/types'
+import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import type { LeadStatus } from '@/constants/clientStatus'
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: 'not_started', label: 'Not Started' },
@@ -412,6 +414,7 @@ export default function TaskTracker() {
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Task</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Client</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white whitespace-nowrap">Lead Status</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Priority</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Owner</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
@@ -422,7 +425,7 @@ export default function TaskTracker() {
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
                 {filteredTasks.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center text-sm text-black/40 dark:text-slate-500">
+                    <td colSpan={11} className="px-4 py-12 text-center text-sm text-black/40 dark:text-slate-500">
                       No tasks match the selected filters.{' '}
                       <button onClick={resetFilters} className="underline hover:text-mustard transition-colors">
                         Reset filters
@@ -487,6 +490,25 @@ export default function TaskTracker() {
                         >
                           {task.client_name}
                         </Link>
+                      ) : (
+                        <span className="text-black/30 dark:text-slate-600">—</span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {task.client_phone && task.client_lead_status ? (
+                        <LeadStatusBadge
+                          client={{
+                            phone_no: task.client_phone,
+                            lead_status: task.client_lead_status as LeadStatus,
+                            lead_sub_status: task.client_lead_sub_status ?? '',
+                          }}
+                          onUpdated={(patch) => setTasks((prev) => prev.map((t) =>
+                            t.client_phone === task.client_phone
+                              ? { ...t, client_lead_status: patch.lead_status, client_lead_sub_status: patch.lead_sub_status }
+                              : t
+                          ))}
+                        />
                       ) : (
                         <span className="text-black/30 dark:text-slate-600">—</span>
                       )}

@@ -16,8 +16,8 @@ from .serializers import ClientSerializer
 # Shared status helpers
 # ---------------------------------------------------------------------------
 
-# Map Excel-friendly display labels → DB keys (case-insensitive lookup)
-_STATUS_LABEL_TO_KEY = {label.lower(): key for key, label in Client.STATUS_CHOICES}
+_LEAD_STATUS_LABEL_TO_KEY = {label.lower(): key for key, label in Client.LEAD_STATUS_CHOICES}
+_LEAD_SUB_STATUS_LABEL_TO_KEY = {label.lower(): key for key, label in Client.LEAD_SUB_STATUS_CHOICES}
 
 TEMPLATE_COLUMNS = [
     'full_name',
@@ -30,12 +30,16 @@ TEMPLATE_COLUMNS = [
     'how_many_units_per_product',
     'physical_address',
     'gst_details',
-    'status',
+    'lead_status',
+    'sub_status',
 ]
 
-STATUS_HINT = (
-    'Allowed values: Call Back | Catalogue Shared | Costing Shared | Interested | '
-    'Language Barrier | Not Interested | Not Responding after Multiple Attempts | Unanswered'
+LEAD_STATUS_HINT = (
+    'Allowed: Initial Conversation | Product Requirement Captured | Proposal | Costing | '
+    'Sample | Order | Production | Testing | Filling | Order Dispatch | Order Closed | On Hold | Lead Closed'
+)
+SUB_STATUS_HINT = (
+    'Optional. Depends on Lead Status. E.g. for Sample: Formula Created, Sample Made, Approved …'
 )
 
 PHONE_RE = re.compile(r'\d{10}$')
@@ -51,16 +55,24 @@ def _parse_phone(raw) -> str | None:
     return None
 
 
-def _parse_status(raw) -> str:
-    """Convert a display label (or key) to a DB key; fall back to 'unanswered'."""
+def _parse_lead_status(raw) -> str:
     if not raw:
-        return 'unanswered'
+        return 'initial_conversation'
     raw_lower = str(raw).strip().lower()
-    # Try direct key match first
-    if raw_lower in dict(Client.STATUS_CHOICES):
+    if raw_lower in dict(Client.LEAD_STATUS_CHOICES):
         return raw_lower
-    # Try display-label match
-    return _STATUS_LABEL_TO_KEY.get(raw_lower, 'unanswered')
+    return _LEAD_STATUS_LABEL_TO_KEY.get(raw_lower, 'initial_conversation')
+
+
+def _parse_sub_status(raw, lead_status: str) -> str:
+    if not raw:
+        return ''
+    raw_lower = str(raw).strip().lower()
+    valid = Client.VALID_SUB_STATUSES.get(lead_status, [])
+    if raw_lower in valid:
+        return raw_lower
+    matched = _LEAD_SUB_STATUS_LABEL_TO_KEY.get(raw_lower, '')
+    return matched if matched in valid else ''
 
 
 # ---------------------------------------------------------------------------
@@ -104,24 +116,23 @@ class ClientViewSet(viewsets.ModelViewSet):
             cell.font = header_font
             cell.fill = header_fill
 
-        # Column widths:  name  phone email company city  noprod price  units  addr   gst    status
-        widths = [        25,   20,   30,   25,     15,   14,    28,    22,    35,    20,    45    ]
+        # Column widths: name  phone email company city  noprod price  units  addr   gst    lead_status  sub_status
+        widths = [       25,   20,   30,   25,     15,   14,    28,    22,    35,    20,    45,          45        ]
         for col_idx, width in enumerate(widths, start=1):
             ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
         # Hints in row 2
-        status_col = TEMPLATE_COLUMNS.index('status') + 1
-        ws.cell(row=2, column=status_col, value=STATUS_HINT)
-        ws.cell(row=2, column=status_col).font = openpyxl.styles.Font(italic=True, color='888888')
+        hint_font = openpyxl.styles.Font(italic=True, color='888888')
+        ls_col = TEMPLATE_COLUMNS.index('lead_status') + 1
+        ws.cell(row=2, column=ls_col, value=LEAD_STATUS_HINT).font = hint_font
+        ss_col = TEMPLATE_COLUMNS.index('sub_status') + 1
+        ws.cell(row=2, column=ss_col, value=SUB_STATUS_HINT).font = hint_font
         noprod_col = TEMPLATE_COLUMNS.index('no_of_products') + 1
-        ws.cell(row=2, column=noprod_col, value='Integer, e.g. 5')
-        ws.cell(row=2, column=noprod_col).font = openpyxl.styles.Font(italic=True, color='888888')
+        ws.cell(row=2, column=noprod_col, value='Integer, e.g. 5').font = hint_font
         units_col = TEMPLATE_COLUMNS.index('how_many_units_per_product') + 1
-        ws.cell(row=2, column=units_col, value='Integer, e.g. 1000')
-        ws.cell(row=2, column=units_col).font = openpyxl.styles.Font(italic=True, color='888888')
+        ws.cell(row=2, column=units_col, value='Integer, e.g. 1000').font = hint_font
         price_col = TEMPLATE_COLUMNS.index('planned_selling_price_range') + 1
-        ws.cell(row=2, column=price_col, value='Free text, e.g. ₹100–₹500')
-        ws.cell(row=2, column=price_col).font = openpyxl.styles.Font(italic=True, color='888888')
+        ws.cell(row=2, column=price_col, value='Free text, e.g. ₹100–₹500').font = hint_font
 
         # One example row
         ws.cell(row=3, column=1, value='John Doe')
@@ -134,7 +145,8 @@ class ClientViewSet(viewsets.ModelViewSet):
         ws.cell(row=3, column=8, value=1000)
         ws.cell(row=3, column=9, value='123 MG Road, Mumbai 400001')
         ws.cell(row=3, column=10, value='27AAPFU0939F1ZV')
-        ws.cell(row=3, column=11, value='Unanswered')
+        ws.cell(row=3, column=11, value='Initial Conversation')
+        ws.cell(row=3, column=12, value='')
 
         buf = io.BytesIO()
         wb.save(buf)
@@ -186,7 +198,8 @@ class ClientViewSet(viewsets.ModelViewSet):
         idx_units   = col('how_many_units_per_product')
         idx_address = col('physical_address')
         idx_gst     = col('gst_details')
-        idx_status  = col('status')
+        idx_lead_status = col('lead_status')
+        idx_sub_status  = col('sub_status')
 
         if idx_name is None or idx_phone is None:
             return Response(
@@ -257,7 +270,11 @@ class ClientViewSet(viewsets.ModelViewSet):
                 how_many_units_per_product=_int_or_none(row_data, idx_units),
                 physical_address=cell(row_data, idx_address) or '',
                 gst_details=cell(row_data, idx_gst) or '',
-                status=_parse_status(cell(row_data, idx_status)),
+                lead_status=_parse_lead_status(cell(row_data, idx_lead_status)),
+                lead_sub_status=_parse_sub_status(
+                    cell(row_data, idx_sub_status),
+                    _parse_lead_status(cell(row_data, idx_lead_status)),
+                ),
                 poc=request.user,
             )
 

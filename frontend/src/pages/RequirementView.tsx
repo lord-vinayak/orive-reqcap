@@ -9,7 +9,7 @@ import type { FileRecord, Note, Proposal, Requirement, SentEmail } from '@/types
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-import { CLIENT_STATUS_LABEL, CLIENT_STATUS_COLOR } from '@/constants/clientStatus'
+import { LeadStatusBadge } from '@/components/LeadStatusBadge'
 import { PRODUCT_COUNT_LABEL } from '@/utils/dropdownOptions'
 
 const REQ_STATUS_COLORS: Record<string, string> = {
@@ -170,13 +170,13 @@ export default function RequirementView() {
                 />
               </dd>
             </div>
-            {client?.status && (
+            {client && (
               <div>
-                <dt className="text-xs font-medium text-black/60 dark:text-slate-400 mb-1">Client Status</dt>
+                <dt className="text-xs font-medium text-black/60 dark:text-slate-400 mb-1">Lead Status</dt>
                 <dd>
-                  <Badge
-                    text={CLIENT_STATUS_LABEL[client.status as keyof typeof CLIENT_STATUS_LABEL] || client.status}
-                    cls={CLIENT_STATUS_COLOR[client.status as keyof typeof CLIENT_STATUS_COLOR] || 'bg-black/5 text-black/60 border-black/10'}
+                  <LeadStatusBadge
+                    client={client}
+                    onUpdated={(patch) => setRequirement((prev) => prev ? { ...prev, client_data: { ...prev.client_data!, ...patch } } : prev)}
                   />
                 </dd>
               </div>

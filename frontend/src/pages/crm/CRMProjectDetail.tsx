@@ -10,6 +10,8 @@ import { PaymentSidePanel } from '@/components/crm/PaymentSidePanel'
 import { SamplePhaseView } from '@/components/crm/SamplePhaseView'
 import { OrderPhaseView } from '@/components/crm/OrderPhaseView'
 import { useTaskSocket } from '@/hooks/useTaskSocket'
+import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import type { LeadStatus } from '@/constants/clientStatus'
 
 // Flip is_complete for the target stage then re-walk the list recomputing
 // is_locked = !previous.is_complete — mirrors the backend _stage_info chain.
@@ -228,6 +230,12 @@ export default function CRMProjectDetail() {
               </Link>
               {project.client_company && ` · ${project.client_company}`}
             </p>
+            <div className="mt-1.5">
+              <LeadStatusBadge
+                client={{ phone_no: project.client_phone, lead_status: project.client_lead_status as LeadStatus, lead_sub_status: project.client_lead_sub_status }}
+                onUpdated={(patch) => setProject((prev) => prev ? { ...prev, ...patch } : prev)}
+              />
+            </div>
           </div>
           <div className="flex items-start gap-3">
             <button

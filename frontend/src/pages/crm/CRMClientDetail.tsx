@@ -6,7 +6,8 @@ import { crmApi } from '@/services/crm'
 import type { CRMProjectList } from '@/types/crm'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { StatusBadge } from '@/components/crm/StatusBadge'
-import { CLIENT_STATUS_LABEL, CLIENT_STATUS_COLOR } from '@/constants/clientStatus'
+import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import type { LeadStatus } from '@/constants/clientStatus'
 
 interface Client {
   phone_no: string
@@ -16,7 +17,8 @@ interface Client {
   city: string
   gst_details: string
   physical_address: string
-  status: string
+  lead_status: LeadStatus
+  lead_sub_status: string
   poc: string | null
 }
 
@@ -114,7 +116,13 @@ export default function CRMClientDetail() {
             <DetailField label="Email" value={client.email} />
             <DetailField label="City" value={client.city} />
             <DetailField label="GST Details" value={client.gst_details} />
-            <DetailField label="Status" value={CLIENT_STATUS_LABEL[client.status as keyof typeof CLIENT_STATUS_LABEL] || client.status} />
+            <div>
+              <p className="text-xs text-black/40 dark:text-slate-500 mb-1">Lead Status</p>
+              <LeadStatusBadge
+                client={client}
+                onUpdated={(patch) => setClient((prev) => prev ? { ...prev, ...patch } : prev)}
+              />
+            </div>
             {client.physical_address && (
               <div className="col-span-full">
                 <DetailField label="Address" value={client.physical_address} />

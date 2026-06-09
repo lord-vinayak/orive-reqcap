@@ -20,7 +20,8 @@ export interface Client {
   how_many_units_per_product: number | null
   poc: string | null
   poc_name?: string
-  status: 'call_back' | 'catalogue_shared' | 'costing_shared' | 'interested' | 'language_barrier' | 'not_interested' | 'not_responding' | 'unanswered'
+  lead_status: import('@/constants/clientStatus').LeadStatus
+  lead_sub_status: string
   created_at: string
   updated_at: string
 }

@@ -5,7 +5,7 @@ from .models import (
     StandaloneTask, TaskComment, ResampleNote,
     TASK_STATUS_CHOICES,
 )
-from .stage_definitions import ALL_INITIAL_STAGE_KEYS, STAGE_DISPLAY_MAP
+from .stage_definitions import STAGE_DISPLAY_MAP
 
 
 class StageCompletionSerializer(serializers.ModelSerializer):
@@ -76,6 +76,8 @@ class TaskItemSerializer(serializers.ModelSerializer):
     project_no = serializers.CharField(source='project.project_no', read_only=True)
     client_name = serializers.CharField(source='project.client.name', read_only=True)
     client_phone = serializers.CharField(source='project.client.phone_no', read_only=True)
+    client_lead_status = serializers.CharField(source='project.client.lead_status', read_only=True)
+    client_lead_sub_status = serializers.CharField(source='project.client.lead_sub_status', read_only=True)
     assigned_to_id = serializers.UUIDField(source='assigned_to.id', read_only=True)
     assigned_to_name = serializers.CharField(source='assigned_to.name', read_only=True)
     assigned_to_user_id = serializers.SerializerMethodField()
@@ -89,6 +91,7 @@ class TaskItemSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'task_type', 'stage_key', 'stage_display', 'title',
             'project_id', 'project_no', 'client_name', 'client_phone',
+            'client_lead_status', 'client_lead_sub_status',
             'assigned_to_id', 'assigned_to_name', 'assigned_to_user_id', 'assigned_by_user_id', 'assigned_at',
             'priority', 'planned_closure_date', 'actual_closure_date',
             'task_status', 'task_status_display',
@@ -141,6 +144,8 @@ class StandaloneTaskSerializer(serializers.ModelSerializer):
     project_no = serializers.CharField(source='project.project_no', read_only=True)
     client_name = serializers.CharField(source='client.name', read_only=True)
     client_phone = serializers.CharField(source='client.phone_no', read_only=True)
+    client_lead_status = serializers.CharField(source='client.lead_status', read_only=True)
+    client_lead_sub_status = serializers.CharField(source='client.lead_sub_status', read_only=True)
     assigned_to_id = serializers.UUIDField(source='assigned_to.id', read_only=True)
     assigned_to_name = serializers.CharField(source='assigned_to.name', read_only=True)
     assigned_to_user_id = serializers.SerializerMethodField()
@@ -159,6 +164,7 @@ class StandaloneTaskSerializer(serializers.ModelSerializer):
             'id', 'task_type', 'title',
             'project_id', 'project_no',
             'client_name', 'client_phone',
+            'client_lead_status', 'client_lead_sub_status',
             'assigned_to_id', 'assigned_to_name', 'assigned_to_user_id', 'assigned_by_user_id', 'assigned_at',
             'priority', 'planned_closure_date', 'actual_closure_date',
             'task_status', 'task_status_display',
@@ -345,6 +351,9 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for list/dashboard views."""
     client_name = serializers.CharField(source='client.name', read_only=True)
     client_company = serializers.CharField(source='client.company_name', read_only=True)
+    client_phone = serializers.CharField(source='client.phone_no', read_only=True)
+    client_lead_status = serializers.CharField(source='client.lead_status', read_only=True)
+    client_lead_sub_status = serializers.CharField(source='client.lead_sub_status', read_only=True)
     sales_poc_name = serializers.CharField(source='sales_poc.name', read_only=True)
     formulation_poc_name = serializers.CharField(source='formulation_poc.name', read_only=True)
     manufacturers = ManufacturerMiniSerializer(many=True, read_only=True)
@@ -360,7 +369,8 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
     class Meta:
         model = CRMProject
         fields = [
-            'id', 'project_no', 'client', 'client_name', 'client_company',
+            'id', 'project_no', 'client', 'client_name', 'client_company', 'client_phone',
+            'client_lead_status', 'client_lead_sub_status',
             'no_of_products', 'moq', 'phase', 'project_stage',
             'manufacturers', 'designers', 'packaging_vendors',
             'printers', 'batch_testing_vendors', 'derma_testing_vendors',
@@ -429,10 +439,6 @@ class CRMProjectWriteSerializer(serializers.ModelSerializer):
         project = CRMProject.objects.create(created_by=user, **validated_data)
         for field, values in m2m_data.items():
             getattr(project, field).set(values)
-        StageCompletion.objects.bulk_create([
-            StageCompletion(project=project, stage_key=k)
-            for k in ALL_INITIAL_STAGE_KEYS
-        ])
         return project
 
     def update(self, instance, validated_data):

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { clientService, requirementService, userService } from '@/services'
 import type { Client, Requirement, User } from '@/types'
-import { CLIENT_STATUS_LABEL, CLIENT_STATUS_COLOR } from '@/constants/clientStatus'
+import { LeadStatusBadge } from '@/components/LeadStatusBadge'
 
 export default function RequirementSearch() {
   const navigate = useNavigate()
@@ -176,11 +176,10 @@ export default function RequirementSearch() {
                     <td>{c.phone_no}</td>
                     <td>{c.poc_name || '—'}</td>
                     <td>
-                      {c.status ? (
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${CLIENT_STATUS_COLOR[c.status as keyof typeof CLIENT_STATUS_COLOR] || 'bg-black/5 text-black/60 border-black/10'}`}>
-                          {CLIENT_STATUS_LABEL[c.status as keyof typeof CLIENT_STATUS_LABEL] || c.status}
-                        </span>
-                      ) : '—'}
+                      <LeadStatusBadge
+                        client={c}
+                        onUpdated={(patch) => setClients((prev) => prev.map((x) => x.phone_no === c.phone_no ? { ...x, ...patch } : x))}
+                      />
                     </td>
                     <td>
                       <button

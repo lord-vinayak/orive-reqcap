@@ -40,6 +40,8 @@ export const clientService = {
   create: async (data: Partial<Client>) => (await api.post<Client>('/clients/', data)).data,
   update: async (phone: string, data: Partial<Client>) =>
     (await api.put<Client>(`/clients/${phone}/`, data)).data,
+  patch: async (phone: string, data: Partial<Client>) =>
+    (await api.patch<Client>(`/clients/${phone}/`, data)).data,
 
   /** Upload an Excel file; returns per-row created/skipped breakdown. */
   bulkUpload: async (file: File): Promise<BulkUploadResult> => {

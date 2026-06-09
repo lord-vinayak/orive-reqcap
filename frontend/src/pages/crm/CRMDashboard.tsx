@@ -5,6 +5,8 @@ import { crmApi } from '@/services/crm'
 import type { DashboardStats, CRMProjectList } from '@/types/crm'
 import { StatusBadge } from '@/components/crm/StatusBadge'
 import { ProgressBar } from '@/components/crm/ProgressBar'
+import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import type { LeadStatus } from '@/constants/clientStatus'
 
 export default function CRMDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -116,6 +118,7 @@ export default function CRMDashboard() {
                       <tr className="bg-black/5 dark:bg-white/5 text-left">
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Client</th>
+                        <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Lead Status</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Stage</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Progress</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
@@ -141,6 +144,12 @@ export default function CRMDashboard() {
                             {p.client_company && (
                               <div className="text-xs text-black/50 dark:text-slate-500">{p.client_company}</div>
                             )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <LeadStatusBadge
+                              client={{ phone_no: p.client_phone, lead_status: p.client_lead_status as LeadStatus, lead_sub_status: p.client_lead_sub_status }}
+                              onUpdated={(patch) => setProjects((prev) => prev.map((x) => x.id === p.id ? { ...x, ...patch } : x))}
+                            />
                           </td>
                           <td className="px-4 py-3 text-black/70 dark:text-slate-300 capitalize">
                             {p.project_stage.replace(/_/g, ' ')}

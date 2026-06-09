@@ -2,7 +2,8 @@ import { useEffect, useState, useId } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { api } from '@/services/api'
-import { CLIENT_STATUS_LABEL, CLIENT_STATUS_COLOR } from '@/constants/clientStatus'
+import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import type { LeadStatus } from '@/constants/clientStatus'
 
 interface Client {
   phone_no: string
@@ -10,7 +11,8 @@ interface Client {
   company_name: string
   email: string
   city: string
-  status: string
+  lead_status: LeadStatus
+  lead_sub_status: string
   poc: string | null
 }
 
@@ -109,9 +111,10 @@ export default function CRMClientList() {
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.phone_no}</td>
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.city || '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${CLIENT_STATUS_COLOR[c.status as keyof typeof CLIENT_STATUS_COLOR] || 'bg-black/5 text-black/60 border-black/10'}`}>
-                        {CLIENT_STATUS_LABEL[c.status as keyof typeof CLIENT_STATUS_LABEL] || c.status}
-                      </span>
+                      <LeadStatusBadge
+                        client={c}
+                        onUpdated={(patch) => setClients((prev) => prev.map((x) => x.phone_no === c.phone_no ? { ...x, ...patch } : x))}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <Link

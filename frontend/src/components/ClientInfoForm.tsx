@@ -3,7 +3,7 @@ import type { Client, RequirementProduct } from "@/types";
 import { PRODUCT_COUNTS } from "@/utils/dropdownOptions";
 import { useAuthStore } from "@/store/authStore";
 import AudioCaptureButton from "./AudioCaptureButton";
-import { CLIENT_STATUS_OPTIONS } from "@/constants/clientStatus";
+import { LEAD_STATUS_OPTIONS, LEAD_SUB_STATUS_OPTIONS, type LeadStatus } from "@/constants/clientStatus";
 
 interface Props {
   client: Partial<Client>;
@@ -148,22 +148,35 @@ export default function ClientInfoForm({
         </div>
 
         <div>
-          <label htmlFor="ci_status" className="block mb-1">
-            Client Status
-          </label>
+          <label htmlFor="ci_lead_status" className="block mb-1">Lead Status</label>
           <select
-            id="ci_status"
-            value={client.status || "unanswered"}
-            onChange={(e) => patch({ status: e.target.value as Client["status"] })}
+            id="ci_lead_status"
+            value={client.lead_status || "initial_conversation"}
+            onChange={(e) => patch({ lead_status: e.target.value as LeadStatus, lead_sub_status: '' })}
             className="w-full"
           >
-            {CLIENT_STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
+            {LEAD_STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
         </div>
+
+        {(LEAD_SUB_STATUS_OPTIONS[client.lead_status as LeadStatus]?.length ?? 0) > 0 && (
+          <div>
+            <label htmlFor="ci_lead_sub_status" className="block mb-1">Sub-status</label>
+            <select
+              id="ci_lead_sub_status"
+              value={client.lead_sub_status || ""}
+              onChange={(e) => patch({ lead_sub_status: e.target.value })}
+              className="w-full"
+            >
+              <option value="">— None —</option>
+              {LEAD_SUB_STATUS_OPTIONS[client.lead_status as LeadStatus]!.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label htmlFor="ci_noprod" className="block mb-1">

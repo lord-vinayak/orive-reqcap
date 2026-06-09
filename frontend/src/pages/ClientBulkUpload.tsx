@@ -81,7 +81,8 @@ export default function ClientBulkUpload() {
                 ['email',        'Optional', 'Stored as-is; invalid emails are flagged with a warning'],
                 ['company_name', 'Optional', ''],
                 ['city',         'Optional', ''],
-                ['status',       'Optional', 'Call Back · Catalogue Shared · Costing Shared · Interested · Language Barrier · Not Interested · Not Responding after Multiple Attempts · Unanswered  (defaults to Unanswered)'],
+                ['lead_status',  'Optional', 'Initial Conversation · Product Requirement Captured · Proposal · Costing · Sample · Order · Production · Testing · Filling · Order Dispatch · Order Closed · On Hold · Lead Closed  (defaults to Initial Conversation)'],
+                ['sub_status',   'Optional', 'Sub-status matching the lead_status column, e.g. "Formula Created" when lead_status is "Sample"'],
               ].map(([col, req, note]) => (
                 <tr key={col}>
                   <td className="py-1.5 pr-4 font-mono text-black dark:text-white">{col}</td>

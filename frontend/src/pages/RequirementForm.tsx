@@ -413,7 +413,8 @@ export default function RequirementForm() {
         planned_selling_price_range: client.planned_selling_price_range || '',
         how_many_units_per_product: client.how_many_units_per_product ?? null,
         poc: currentUser?.id || null,
-        status: client.status,
+        lead_status: client.lead_status,
+        lead_sub_status: client.lead_sub_status,
       };
       try {
         await clientService.update(client.phone_no, clientPayload);
