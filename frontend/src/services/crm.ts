@@ -268,6 +268,11 @@ export const crmApi = {
       params: { project: projectId },
     }),
 
+  listProjectPayments_range: (dateFrom: string, dateTo: string) =>
+    api.get<PaginatedResponse<ProjectPayment>>('/crm/project-payments/', {
+      params: { date_from: dateFrom, date_to: dateTo },
+    }),
+
   listVendorPayments: (kind: 'vendor' | 'manufacturer', entityId: string) =>
     api.get<PaginatedResponse<ProjectPayment>>('/crm/project-payments/', {
       params: kind === 'manufacturer' ? { manufacturer: entityId } : { vendor: entityId },

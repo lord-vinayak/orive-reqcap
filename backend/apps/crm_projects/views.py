@@ -821,12 +821,18 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
         project_id = self.request.query_params.get('project')
         vendor_id = self.request.query_params.get('vendor')
         manufacturer_id = self.request.query_params.get('manufacturer')
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
         if project_id:
             qs = qs.filter(project_id=project_id)
         if vendor_id:
             qs = qs.filter(vendor_id=vendor_id)
         if manufacturer_id:
             qs = qs.filter(manufacturer_id=manufacturer_id)
+        if date_from:
+            qs = qs.filter(payment_date__gte=date_from)
+        if date_to:
+            qs = qs.filter(payment_date__lte=date_to)
         return qs
 
     def _handle_invoice(self, instance, request):

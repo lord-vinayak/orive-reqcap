@@ -19,6 +19,7 @@ import CRMProjectList from '@/pages/crm/CRMProjectList'
 import CRMProjectDetail from '@/pages/crm/CRMProjectDetail'
 import CRMMasterData from '@/pages/crm/CRMMasterData'
 import CRMProjectCreate from '@/pages/crm/CRMProjectCreate'
+import CRMFinancials from '@/pages/crm/CRMFinancials'
 import ClientBulkUpload from '@/pages/ClientBulkUpload'
 import TaskTracker from '@/pages/crm/TaskTracker'
 
@@ -50,6 +51,7 @@ export default function App() {
       <Route path="/crm/projects/new" element={<ProtectedRoute><CRMProjectCreate /></ProtectedRoute>} />
       <Route path="/crm/projects/:id" element={<ProtectedRoute><CRMProjectDetail /></ProtectedRoute>} />
       <Route path="/crm/master-data" element={<ProtectedRoute><CRMMasterData /></ProtectedRoute>} />
+      <Route path="/crm/financials" element={<ProtectedRoute><CRMFinancials /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><TaskTracker /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/home" replace />} />

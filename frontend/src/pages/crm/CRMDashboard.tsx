@@ -33,13 +33,22 @@ export default function CRMDashboard() {
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-black dark:text-white">CRM Dashboard</h1>
-          <Link
-            to="/crm/projects/new"
-            className="btn-primary text-sm"
-            aria-label="Create a new CRM project"
-          >
-            + New Project
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/crm/financials"
+              className="btn-secondary text-sm"
+              aria-label="View Net P&L financial summary"
+            >
+              Net P&L
+            </Link>
+            <Link
+              to="/crm/projects/new"
+              className="btn-primary text-sm"
+              aria-label="Create a new CRM project"
+            >
+              + New Project
+            </Link>
+          </div>
         </div>
 
         {error && (

@@ -6,7 +6,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 const BASE_TITLE = "Skinovation Sciences CRM";
 
 // Routes where a Back link is suppressed.
-const NO_BACK_ROUTES = ["/home", "/login", "/", "/crm/dashboard", "/crm/clients", "/crm/projects", "/crm/master-data", "/tasks"];
+const NO_BACK_ROUTES = ["/home", "/login", "/", "/crm/dashboard", "/crm/clients", "/crm/projects", "/crm/master-data", "/crm/financials", "/tasks"];
 
 export default function Layout({
   children,
@@ -28,8 +28,18 @@ export default function Layout({
         setMenuOpen(false);
       }
     };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+        menuRef.current?.querySelector('button')?.focus();
+      }
+    };
     document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onKeyDown);
+    };
   }, [menuOpen]);
 
   useEffect(() => {
@@ -117,7 +127,7 @@ export default function Layout({
               <button
                 onClick={() => setMenuOpen((o) => !o)}
                 className="text-sm text-black/60 dark:text-slate-400 px-2 cursor-pointer hover:text-black dark:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard rounded"
-                aria-haspopup="true"
+                aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 aria-label={`User menu for ${user?.name}`}
               >
@@ -131,7 +141,7 @@ export default function Layout({
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); handleLogout(); }}
-                    className="w-full text-left px-4 py-2 text-sm text-black dark:text-white hover:bg-mustard/10 focus:bg-mustard/10 focus:outline-none"
+                    className="w-full text-left px-4 py-2 text-sm text-black dark:text-white hover:bg-mustard/10 focus:bg-mustard/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mustard focus:outline-none"
                   >
                     Logout
                   </button>
