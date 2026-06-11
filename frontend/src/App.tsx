@@ -21,6 +21,7 @@ import CRMMasterData from '@/pages/crm/CRMMasterData'
 import CRMProjectCreate from '@/pages/crm/CRMProjectCreate'
 import CRMFinancials from '@/pages/crm/CRMFinancials'
 import ClientBulkUpload from '@/pages/ClientBulkUpload'
+import RequirementsAdd from '@/pages/RequirementsAdd'
 import TaskTracker from '@/pages/crm/TaskTracker'
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
 
       <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
       <Route path="/requirements" element={<ProtectedRoute><RequirementsLanding /></ProtectedRoute>} />
+      <Route path="/requirements/add" element={<ProtectedRoute><RequirementsAdd /></ProtectedRoute>} />
       <Route path="/requirements/search" element={<ProtectedRoute><RequirementSearch /></ProtectedRoute>} />
       <Route path="/requirements/import" element={<ProtectedRoute><ClientBulkUpload /></ProtectedRoute>} />
       <Route path="/requirements/new" element={<ProtectedRoute><RequirementForm /></ProtectedRoute>} />

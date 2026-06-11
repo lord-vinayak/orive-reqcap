@@ -2,6 +2,7 @@ import io
 import re
 
 import openpyxl
+from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
 from django.http import HttpResponse
 from rest_framework import viewsets, status
@@ -11,6 +12,7 @@ from rest_framework.response import Response
 
 from .models import Client
 from .serializers import ClientSerializer
+from . import welcome_email_template as welcome_tpl
 
 # ---------------------------------------------------------------------------
 # Shared status helpers
@@ -285,3 +287,84 @@ class ClientViewSet(viewsets.ModelViewSet):
 
         wb.close()
         return Response({'created': created, 'skipped': skipped}, status=200)
+
+    # ------------------------------------------------------------------
+    # POST /api/clients/send-welcome-email/
+    # ------------------------------------------------------------------
+    @action(detail=False, methods=['post'], url_path='send-welcome-email')
+    def send_welcome_email(self, request):
+        phone_nos = request.data.get('phone_nos', [])
+        if not isinstance(phone_nos, list) or not phone_nos:
+            return Response({'detail': 'phone_nos must be a non-empty list.'}, status=400)
+
+        sent = []
+        skipped = []
+
+        for phone in phone_nos:
+            try:
+                client = Client.objects.get(phone_no=str(phone).strip())
+            except Client.DoesNotExist:
+                skipped.append({'phone_no': phone, 'reason': 'Client not found'})
+                continue
+
+            if not client.email:
+                skipped.append({'phone_no': phone, 'reason': 'No email address on file'})
+                continue
+
+            company_line = f' and {client.company_name}' if client.company_name else ''
+            ctx = {
+                'client_name': client.name,
+                'company_name': client.company_name or '',
+                'company_line': company_line,
+                'sent_by_name': request.user.name or request.user.email,
+            }
+
+            subject = welcome_tpl.SUBJECT
+            html_body = welcome_tpl.HTML_BODY.format(**ctx)
+            text_body = welcome_tpl.TEXT_BODY.format(**ctx)
+
+            try:
+                msg = EmailMultiAlternatives(
+                    subject=subject,
+                    body=text_body,
+                    to=[client.email],
+                )
+                msg.attach_alternative(html_body, 'text/html')
+                msg.send()
+                sent.append(phone)
+            except Exception as exc:
+                skipped.append({'phone_no': phone, 'reason': f'Send failed: {exc}'})
+
+        return Response({'sent': sent, 'skipped': skipped}, status=200)
+
+    # ------------------------------------------------------------------
+    # PATCH /api/clients/bulk-update-status/
+    # ------------------------------------------------------------------
+    @action(detail=False, methods=['patch'], url_path='bulk-update-status')
+    def bulk_update_status(self, request):
+        phone_nos = request.data.get('phone_nos', [])
+        new_status = request.data.get('lead_status', '')
+        new_sub_status = request.data.get('lead_sub_status', '')
+
+        if not isinstance(phone_nos, list) or not phone_nos:
+            return Response({'detail': 'phone_nos must be a non-empty list.'}, status=400)
+
+        valid_statuses = dict(Client.LEAD_STATUS_CHOICES)
+        if new_status not in valid_statuses:
+            return Response(
+                {'detail': f'Invalid lead_status "{new_status}". Valid values: {list(valid_statuses.keys())}'},
+                status=400,
+            )
+
+        # Validate sub_status if provided
+        if new_sub_status:
+            valid_sub = Client.VALID_SUB_STATUSES.get(new_status, [])
+            if new_sub_status not in valid_sub:
+                return Response(
+                    {'detail': f'Invalid lead_sub_status "{new_sub_status}" for status "{new_status}".'},
+                    status=400,
+                )
+
+        fields = {'lead_status': new_status, 'lead_sub_status': new_sub_status}
+        updated = Client.objects.filter(phone_no__in=phone_nos).update(**fields)
+        return Response({'updated': updated}, status=200)

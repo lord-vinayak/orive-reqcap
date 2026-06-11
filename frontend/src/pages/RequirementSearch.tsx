@@ -25,6 +25,10 @@ export default function RequirementSearch() {
   const [loadingReqs, setLoadingReqs] = useState(false)
   const [reqError, setReqError] = useState('')
 
+  // Recent requirements shown when no filter is active
+  const [recentClients, setRecentClients] = useState<Client[]>([])
+  const [loadingRecent, setLoadingRecent] = useState(true)
+
   // Load users list once for POC dropdown
   useEffect(() => {
     setLoadingUsers(true)
@@ -33,13 +37,34 @@ export default function RequirementSearch() {
       .finally(() => setLoadingUsers(false))
   }, [])
 
+  // Load the 50 most-recently-updated requirements on mount (shown before any filter is applied)
+  useEffect(() => {
+    setLoadingRecent(true)
+    requirementService.list({ page_size: 50 })
+      .then((res) => {
+        const reqs: Requirement[] = Array.isArray(res) ? res : (res as any).results ?? []
+        // Collect unique clients from those requirements (preserve ordering)
+        const seen = new Set<string>()
+        const uniqueClients: Client[] = []
+        for (const r of reqs) {
+          if (r.client_data && !seen.has(r.client_data.phone_no)) {
+            seen.add(r.client_data.phone_no)
+            uniqueClients.push(r.client_data)
+          }
+        }
+        setRecentClients(uniqueClients)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingRecent(false))
+  }, [])
+
   // Live-search clients whenever filters change (debounced slightly)
   useEffect(() => {
     const params: { q?: string; poc?: string } = {}
     if (textFilter.trim()) params.q = textFilter.trim()
     if (pocFilter) params.poc = pocFilter
 
-    // Only fetch if at least one filter is set; otherwise show nothing
+    // Only fetch if at least one filter is set; otherwise show recent
     if (!params.q && !params.poc) {
       setClients([])
       setExpandedPhone(null)
@@ -85,6 +110,8 @@ export default function RequirementSearch() {
   }
 
   const hasFilters = Boolean(textFilter.trim() || pocFilter)
+  // When no filter is active, show the recent clients list
+  const displayClients = hasFilters ? clients : recentClients
 
   return (
     <Layout title="Edit Requirement">
@@ -102,7 +129,6 @@ export default function RequirementSearch() {
             value={pocFilter}
             onChange={(e) => setPocFilter(e.target.value)}
             className="text-sm"
-            aria-label="Filter clients by Point of Contact"
             disabled={loadingUsers}
           >
             <option value="">All POCs</option>
@@ -125,7 +151,6 @@ export default function RequirementSearch() {
             onChange={(e) => setTextFilter(e.target.value)}
             placeholder="Type client name or phone number…"
             className="text-sm"
-            aria-label="Search clients by name or phone number"
           />
         </div>
 
@@ -141,24 +166,36 @@ export default function RequirementSearch() {
         )}
       </div>
 
-      {/* ---- Client list ---- */}
-      {!hasFilters && (
+      {/* ---- Status messages ---- */}
+      {!hasFilters && loadingRecent && (
+        <p className="text-sm text-black/60 dark:text-slate-300" role="status" aria-live="polite">
+          Loading recent requirements…
+        </p>
+      )}
+
+      {!hasFilters && !loadingRecent && recentClients.length === 0 && (
         <p className="text-sm text-black/60 dark:text-slate-300">
-          Select a POC or type a client name / phone number to search.
+          No requirements found. Use the filter above to search.
+        </p>
+      )}
+
+      {!hasFilters && !loadingRecent && recentClients.length > 0 && (
+        <p className="text-xs text-black/50 dark:text-slate-400 mb-3">
+          Showing {recentClients.length} recently updated requirements.
         </p>
       )}
 
       {hasFilters && loadingClients && (
-        <p className="text-sm text-black/60 dark:text-slate-300">Searching…</p>
+        <p className="text-sm text-black/60 dark:text-slate-300" role="status" aria-live="polite">Searching…</p>
       )}
 
       {hasFilters && !loadingClients && clients.length === 0 && (
         <p className="text-sm text-black/60 dark:text-slate-300">No clients found matching those filters.</p>
       )}
 
-      {clients.length > 0 && (
+      {displayClients.length > 0 && (
         <div className="card p-0 overflow-hidden">
-          <table className="table-clean" aria-label="Matching clients">
+          <table className="table-clean" aria-label={hasFilters ? 'Matching clients' : 'Recently updated clients'}>
             <thead>
               <tr>
                 <th scope="col">Name</th>
@@ -169,7 +206,7 @@ export default function RequirementSearch() {
               </tr>
             </thead>
             <tbody>
-              {clients.map((c) => (
+              {displayClients.map((c) => (
                 <React.Fragment key={c.phone_no}>
                   <tr className={expandedPhone === c.phone_no ? 'bg-mustard-50/40 dark:bg-slate-700/40' : ''}>
                     <td className="font-medium">{c.name}</td>
@@ -178,7 +215,10 @@ export default function RequirementSearch() {
                     <td>
                       <LeadStatusBadge
                         client={c}
-                        onUpdated={(patch) => setClients((prev) => prev.map((x) => x.phone_no === c.phone_no ? { ...x, ...patch } : x))}
+                        onUpdated={(patch) => {
+                          setClients((prev) => prev.map((x) => x.phone_no === c.phone_no ? { ...x, ...patch } : x))
+                          setRecentClients((prev) => prev.map((x) => x.phone_no === c.phone_no ? { ...x, ...patch } : x))
+                        }}
                       />
                     </td>
                     <td>

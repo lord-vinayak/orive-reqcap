@@ -33,8 +33,13 @@ export interface BulkUploadResult {
   skipped: BulkUploadSkipRow[]
 }
 
+export interface WelcomeEmailResult {
+  sent: string[]
+  skipped: { phone_no: string; reason: string }[]
+}
+
 export const clientService = {
-  list: async (params: { q?: string; poc?: string } = {}) =>
+  list: async (params: { q?: string; poc?: string; page_size?: number } = {}) =>
     (await api.get<{ results: Client[] } | Client[]>('/clients/', { params })).data,
   get: async (phone: string) => (await api.get<Client>(`/clients/${phone}/`)).data,
   create: async (data: Partial<Client>) => (await api.post<Client>('/clients/', data)).data,
@@ -52,6 +57,14 @@ export const clientService = {
     })).data
   },
 
+  /** Send a welcome email to the given clients (by phone_no). */
+  sendWelcomeEmail: async (phoneNos: string[]): Promise<WelcomeEmailResult> =>
+    (await api.post<WelcomeEmailResult>('/clients/send-welcome-email/', { phone_nos: phoneNos })).data,
+
+  /** Bulk-update lead_status (and optionally lead_sub_status) for the given clients. */
+  bulkUpdateLeadStatus: async (phoneNos: string[], leadStatus: string, leadSubStatus = ''): Promise<{ updated: number }> =>
+    (await api.patch<{ updated: number }>('/clients/bulk-update-status/', { phone_nos: phoneNos, lead_status: leadStatus, lead_sub_status: leadSubStatus })).data,
+
   /** Download the blank upload template .xlsx */
   downloadTemplate: () =>
     api.get('/clients/upload-template/', { responseType: 'blob' }).then((r) => {
@@ -65,6 +78,8 @@ export const clientService = {
 }
 
 export const requirementService = {
+  list: async (params: Record<string, string | number> = {}) =>
+    (await api.get<{ results: Requirement[] } | Requirement[]>('/requirements/', { params })).data,
   listForClient: async (phone: string) =>
     (await api.get<{ results: Requirement[] } | Requirement[]>('/requirements/', { params: { client_phone: phone } })).data,
   get: async (id: string) => (await api.get<Requirement>(`/requirements/${id}/`)).data,

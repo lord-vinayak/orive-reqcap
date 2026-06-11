@@ -19,11 +19,12 @@ class RequirementProductSerializer(serializers.ModelSerializer):
 
 class RequirementListSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.name', read_only=True)
+    client_data = ClientSerializer(source='client', read_only=True)
 
     class Meta:
         model = Requirement
         fields = [
-            'id', 'client', 'title', 'status', 'no_of_products',
+            'id', 'client', 'client_data', 'title', 'status', 'no_of_products',
             'created_by', 'created_by_name', 'created_at', 'updated_at',
         ]
 
