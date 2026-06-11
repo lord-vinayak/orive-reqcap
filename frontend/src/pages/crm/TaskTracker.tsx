@@ -193,6 +193,12 @@ export default function TaskTracker() {
     }
   }
 
+  const isDelayed = (task: TaskItem) => {
+    if (task.task_status === 'closed') return false
+    if (!task.planned_closure_date) return false
+    return task.planned_closure_date < new Date().toISOString().slice(0, 10)
+  }
+
   const fmtDate = (iso: string | null) => {
     if (!iso) return '—'
     return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -412,7 +418,6 @@ export default function TaskTracker() {
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white whitespace-nowrap">Date Assigned</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white whitespace-nowrap">Planned Close</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Task</th>
-                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Client</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white whitespace-nowrap">Lead Status</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Priority</th>
@@ -425,7 +430,7 @@ export default function TaskTracker() {
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
                 {filteredTasks.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-4 py-12 text-center text-sm text-black/60 dark:text-slate-300">
+                    <td colSpan={10} className="px-4 py-12 text-center text-sm text-black/60 dark:text-slate-300">
                       No tasks match the selected filters.{' '}
                       <button onClick={resetFilters} className="underline hover:text-mustard transition-colors">
                         Reset filters
@@ -440,23 +445,30 @@ export default function TaskTracker() {
                     </td>
 
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {canEditPlannedDate(task) ? (
-                        <input
-                          type="date"
-                          defaultValue={task.planned_closure_date ?? ''}
-                          onBlur={(e) => {
-                            const val = e.target.value
-                            const prev = task.planned_closure_date ?? ''
-                            if (val !== prev) handlePlannedDateChange(task, val)
-                          }}
-                          aria-label={`Planned closure date for ${task.title}`}
-                          className="text-xs px-1.5 py-0.5 rounded border border-black/15 dark:border-white/15 bg-transparent text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-mustard cursor-pointer"
-                        />
-                      ) : (
-                        <span className="text-sm text-black/60 dark:text-slate-300 tabular-nums">
-                          {fmtDate(task.planned_closure_date)}
-                        </span>
-                      )}
+                      <div className="flex flex-col gap-1">
+                        {canEditPlannedDate(task) ? (
+                          <input
+                            type="date"
+                            defaultValue={task.planned_closure_date ?? ''}
+                            onBlur={(e) => {
+                              const val = e.target.value
+                              const prev = task.planned_closure_date ?? ''
+                              if (val !== prev) handlePlannedDateChange(task, val)
+                            }}
+                            aria-label={`Planned closure date for ${task.title}`}
+                            className="text-xs px-1.5 py-0.5 rounded border border-black/15 dark:border-white/15 bg-transparent text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-mustard cursor-pointer"
+                          />
+                        ) : (
+                          <span className="text-sm text-black/60 dark:text-slate-300 tabular-nums">
+                            {fmtDate(task.planned_closure_date)}
+                          </span>
+                        )}
+                        {isDelayed(task) && (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 w-fit">
+                            <span aria-hidden="true">⚠</span> Delayed
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="px-4 py-3 max-w-[200px]">
@@ -466,19 +478,6 @@ export default function TaskTracker() {
                           Updated {fmtRelative(task.last_updated_at)}
                           {task.last_updated_by_name ? ` by ${task.last_updated_by_name}` : ''}
                         </div>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {task.project_id ? (
-                        <Link
-                          to={`/crm/projects/${task.project_id}`}
-                          className="font-medium text-mustard hover:underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
-                        >
-                          {task.project_no}
-                        </Link>
-                      ) : (
-                        <span className="text-black/50 dark:text-slate-400">—</span>
                       )}
                     </td>
 

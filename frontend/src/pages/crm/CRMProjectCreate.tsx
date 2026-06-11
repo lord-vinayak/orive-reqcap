@@ -4,16 +4,13 @@ import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
 import { clientService, userService } from '@/services'
 import type { Client, User } from '@/types'
-import type { DropdownOption } from '@/types/crm'
 
 interface FormState {
   client: string
   no_of_products: string
   moq: string
-  manufacturer: string
   sales_poc: string
   formulation_poc: string
-  sample_booked_date: string
 }
 
 export default function CRMProjectCreate() {
@@ -26,38 +23,32 @@ export default function CRMProjectCreate() {
   const clientSearchId = useId()
   const productsId = useId()
   const moqId = useId()
-  const manufacturerId = useId()
-
   const salesPocId = useId()
   const formPocId = useId()
-  const sampleDateId = useId()
 
   const [form, setForm] = useState<FormState>({
     client: prefilledClient,
     no_of_products: '',
     moq: '',
-    manufacturer: '',
     sales_poc: '',
     formulation_poc: '',
-    sample_booked_date: '',
   })
 
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [autofillNote, setAutofillNote] = useState('')
 
   // Reference data
   const [clients, setClients] = useState<Client[]>([])
   const [clientSearch, setClientSearch] = useState('')
   const [clientLoading, setClientLoading] = useState(false)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
-  const [manufacturers, setManufacturers] = useState<DropdownOption[]>([])
   const [salesUsers, setSalesUsers] = useState<User[]>([])
   const [formulationUsers, setFormulationUsers] = useState<User[]>([])
 
   // Load dropdowns on mount
   useEffect(() => {
-    crmApi.manufacturerDropdown().then((r) => setManufacturers(r.data))
     userService.list().then((data) => {
       const users = Array.isArray(data) ? data : (data as any).results ?? []
       setSalesUsers(users.filter((u: User) => u.role === 'poc_sales' && u.is_active))
@@ -65,11 +56,28 @@ export default function CRMProjectCreate() {
     })
   }, [])
 
-  // Prefill client if passed from query param
+  // Prefill client (and derived fields) if passed from query param
   useEffect(() => {
     if (prefilledClient) {
       clientService.get(prefilledClient)
-        .then((c) => { setSelectedClient(c); setClientSearch(c.name) })
+        .then((c) => {
+          setSelectedClient(c)
+          setClientSearch(c.name)
+          const filled: string[] = []
+          setForm((f) => {
+            const next = { ...f, client: c.phone_no }
+            if (!f.no_of_products && c.no_of_products != null) {
+              next.no_of_products = String(c.no_of_products)
+              filled.push('No. of Products')
+            }
+            if (!f.moq && c.how_many_units_per_product != null) {
+              next.moq = String(c.how_many_units_per_product)
+              filled.push('MOQ')
+            }
+            return next
+          })
+          if (filled.length) setAutofillNote(`Pre-filled from client data: ${filled.join(' and ')}.`)
+        })
         .catch(() => {})
     }
   }, [prefilledClient])
@@ -90,7 +98,20 @@ export default function CRMProjectCreate() {
 
   const selectClient = (c: Client) => {
     setSelectedClient(c)
-    setForm((f) => ({ ...f, client: c.phone_no }))
+    const filled: string[] = []
+    setForm((f) => {
+      const next = { ...f, client: c.phone_no }
+      if (c.no_of_products != null) {
+        next.no_of_products = String(c.no_of_products)
+        filled.push('No. of Products')
+      }
+      if (c.how_many_units_per_product != null) {
+        next.moq = String(c.how_many_units_per_product)
+        filled.push('MOQ')
+      }
+      return next
+    })
+    if (filled.length) setAutofillNote(`Pre-filled from client data: ${filled.join(' and ')}.`)
     setClientSearch(c.name)
     setClients([])
   }
@@ -117,10 +138,8 @@ export default function CRMProjectCreate() {
       }
       if (form.no_of_products) payload.no_of_products = Number(form.no_of_products)
       if (form.moq) payload.moq = Number(form.moq)
-      if (form.manufacturer) (payload as any).manufacturers = [form.manufacturer]
       if (form.sales_poc) payload.sales_poc = form.sales_poc
       if (form.formulation_poc) payload.formulation_poc = form.formulation_poc
-      if (form.sample_booked_date) payload.sample_booked_date = form.sample_booked_date
 
       const res = await crmApi.createProject(payload as any)
       navigate(`/crm/projects/${res.data.id}`)
@@ -151,6 +170,10 @@ export default function CRMProjectCreate() {
       <div className="max-w-2xl">
         <h1 className="text-2xl font-bold text-black dark:text-white mb-6">Create New Project</h1>
 
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+          {autofillNote}
+        </div>
+
         <form onSubmit={handleSubmit} noValidate className="space-y-6" aria-label="New CRM project form">
 
           {/* ── Client selector ── */}
@@ -170,7 +193,12 @@ export default function CRMProjectCreate() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setSelectedClient(null); setForm((f) => ({ ...f, client: '' })); setClientSearch('') }}
+                  onClick={() => {
+                    setSelectedClient(null)
+                    setForm((f) => ({ ...f, client: '', no_of_products: '', moq: '' }))
+                    setClientSearch('')
+                    setAutofillNote('')
+                  }}
                   className="text-xs text-black/60 hover:text-black dark:hover:text-white underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
                   aria-label="Change selected client"
                 >
@@ -235,6 +263,7 @@ export default function CRMProjectCreate() {
             <Field
               id={productsId}
               label="No. of Products"
+              hint={autofillNote && form.no_of_products ? 'Pre-filled from client data' : undefined}
               error={errors.no_of_products}
             >
               <input
@@ -242,18 +271,18 @@ export default function CRMProjectCreate() {
                 type="number"
                 min={1}
                 value={form.no_of_products}
-                onChange={set('no_of_products')}
+                onChange={(e) => { set('no_of_products')(e); setAutofillNote('') }}
                 placeholder="e.g. 5"
                 className={inputClass(!!errors.no_of_products)}
                 aria-invalid={!!errors.no_of_products}
-                aria-describedby={errors.no_of_products ? `${productsId}-error` : undefined}
+                aria-describedby={errors.no_of_products ? `${productsId}-error` : autofillNote && form.no_of_products ? `${productsId}-hint` : undefined}
               />
             </Field>
 
             <Field
               id={moqId}
               label="MOQ"
-              hint="Minimum Order Quantity"
+              hint={autofillNote && form.moq ? 'Pre-filled from client data' : 'Minimum Order Quantity'}
               error={errors.moq}
             >
               <input
@@ -261,7 +290,7 @@ export default function CRMProjectCreate() {
                 type="number"
                 min={1}
                 value={form.moq}
-                onChange={set('moq')}
+                onChange={(e) => { set('moq')(e); setAutofillNote('') }}
                 placeholder="e.g. 1000"
                 className={inputClass(!!errors.moq)}
                 aria-invalid={!!errors.moq}
@@ -269,29 +298,6 @@ export default function CRMProjectCreate() {
               />
             </Field>
           </div>
-
-          {/* ── Manufacturer ── */}
-          <Field id={manufacturerId} label="Manufacturer">
-            <select
-              id={manufacturerId}
-              value={form.manufacturer}
-              onChange={set('manufacturer')}
-              className={inputClass(false)}
-              aria-label="Select manufacturer (optional)"
-            >
-              <option value="">— Select manufacturer (optional) —</option>
-              {manufacturers.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.company_name}{m.city ? ` (${m.city})` : ''}
-                </option>
-              ))}
-            </select>
-            {manufacturers.length === 0 && (
-              <p className="text-xs text-black/60 dark:text-slate-300 mt-1">
-                No manufacturers in Master Data yet.
-              </p>
-            )}
-          </Field>
 
           {/* ── POC Dropdowns ── */}
           <div className="grid grid-cols-2 gap-4">
@@ -301,7 +307,6 @@ export default function CRMProjectCreate() {
                 value={form.sales_poc}
                 onChange={set('sales_poc')}
                 className={inputClass(false)}
-                aria-label="Select Sales Point of Contact (optional)"
               >
                 <option value="">— None —</option>
                 {salesUsers.map((u) => (
@@ -319,7 +324,6 @@ export default function CRMProjectCreate() {
                 value={form.formulation_poc}
                 onChange={set('formulation_poc')}
                 className={inputClass(false)}
-                aria-label="Select Formulation Point of Contact (optional)"
               >
                 <option value="">— None —</option>
                 {formulationUsers.map((u) => (
@@ -331,22 +335,6 @@ export default function CRMProjectCreate() {
               )}
             </Field>
           </div>
-
-          {/* ── Sample Booked Date ── */}
-          <Field
-            id={sampleDateId}
-            label="Sample Booked Date (Day 0)"
-            hint="Sets the timeline baseline. Can be added later."
-          >
-            <input
-              id={sampleDateId}
-              type="date"
-              value={form.sample_booked_date}
-              onChange={set('sample_booked_date')}
-              className={inputClass(false)}
-              aria-describedby={`${sampleDateId}-hint`}
-            />
-          </Field>
 
           {/* ── Submit error ── */}
           {submitError && (
