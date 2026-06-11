@@ -8,6 +8,7 @@ import { LEAD_STATUS_OPTIONS, LEAD_STATUS_LABEL, LEAD_STATUS_COLOR, getSubStatus
 import type { LeadStatus } from '@/constants/clientStatus'
 import { BulkEmailModal } from '@/components/BulkEmailModal'
 import { BulkStatusModal } from '@/components/BulkStatusModal'
+import { PaginationBar } from '@/components/PaginationBar'
 
 type Tab = 'import' | 'browse'
 
@@ -222,6 +223,8 @@ function ImportTab() {
 
 // ── Browse Records tab ────────────────────────────────────────────────────────
 
+const BROWSE_PAGE_SIZE = 50
+
 function BrowseTab() {
   const searchId = useId()
   const dateFromId = useId()
@@ -230,11 +233,15 @@ function BrowseTab() {
   const statusFilterId = useId()
   const selectAllId = useId()
 
-  const [allClients, setAllClients] = useState<Client[]>([])
+  // Server-side data
+  const [clients, setClients] = useState<Client[]>([])
+  const [totalCount, setTotalCount] = useState<number | null>(null)
+  const [totalPages, setTotalPages] = useState(1)
+  const [page, setPage] = useState(1)
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Filters (client-side)
+  // Filters — changes trigger a fresh fetch from page 1
   const [search, setSearch] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -242,7 +249,8 @@ function BrowseTab() {
   const [statusFilter, setStatusFilter] = useState<LeadStatus | ''>('')
 
   // Selection
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  // phone_no → Client; persists across page navigation, cleared only on filter change
+  const [selectedMap, setSelectedMap] = useState<Map<string, Client>>(new Map())
 
   // Modals
   const [emailModal, setEmailModal] = useState(false)
@@ -252,62 +260,86 @@ function BrowseTab() {
   // Live announce
   const [announcement, setAnnouncement] = useState('')
 
+  // Load users once for the POC filter dropdown
   useEffect(() => {
-    Promise.all([
-      clientService.list({ page_size: 500 }),
-      userService.list(),
-    ]).then(([clientRes, userRes]) => {
-      const clients: Client[] = Array.isArray(clientRes) ? clientRes : (clientRes as any).results ?? []
-      const usersArr: User[] = Array.isArray(userRes) ? userRes : (userRes as any).results ?? []
-      setAllClients(clients)
+    userService.list().then((res) => {
+      const usersArr: User[] = Array.isArray(res) ? res : (res as any).results ?? []
       setUsers(usersArr)
-    }).finally(() => setLoading(false))
+    })
   }, [])
 
-  // Client-side filtering
-  const filtered = allClients.filter((c) => {
-    if (search.trim()) {
-      const q = search.trim().toLowerCase()
-      if (!c.name.toLowerCase().includes(q) && !c.phone_no.includes(q)) return false
+  // Build API params from current filter state
+  const buildParams = (pg: number) => {
+    const params: Record<string, string | number> = { page_size: BROWSE_PAGE_SIZE, page: pg }
+    if (search.trim()) params.q = search.trim()
+    if (pocFilter) params.poc = pocFilter
+    if (statusFilter) params.lead_status = statusFilter
+    if (dateFrom) params.created_after = dateFrom
+    if (dateTo) params.created_before = dateTo
+    return params
+  }
+
+  // Page navigation — does NOT clear selection
+  const fetchPage = async (pg: number) => {
+    setLoading(true)
+    try {
+      const res = await clientService.list(buildParams(pg) as any)
+      const raw = Array.isArray(res) ? res : (res as any)
+      const list: Client[] = Array.isArray(raw) ? raw : raw.results ?? []
+      const count: number = Array.isArray(res) ? list.length : ((res as any).count ?? list.length)
+      setClients(list)
+      setTotalCount(count)
+      setTotalPages(Math.max(1, Math.ceil(count / BROWSE_PAGE_SIZE)))
+      setPage(pg)
+    } catch {
+      setClients([])
+      setTotalCount(null)
+      setTotalPages(1)
+    } finally {
+      setLoading(false)
     }
-    if (pocFilter && c.poc !== pocFilter) return false
-    if (statusFilter && c.lead_status !== statusFilter) return false
-    if (dateFrom && c.created_at) {
-      if (c.created_at.slice(0, 10) < dateFrom) return false
-    }
-    if (dateTo && c.created_at) {
-      if (c.created_at.slice(0, 10) > dateTo) return false
-    }
-    return true
-  })
+  }
+
+  // Filter changes → clear selection and reset to page 1
+  useEffect(() => {
+    setSelectedMap(new Map())
+    const timer = setTimeout(() => fetchPage(1), search.trim() ? 300 : 0)
+    return () => clearTimeout(timer)
+  }, [search, pocFilter, statusFilter, dateFrom, dateTo])
 
   const isFiltered = !!(search || pocFilter || statusFilter || dateFrom || dateTo)
   const resetFilters = () => {
     setSearch(''); setPocFilter(''); setStatusFilter(''); setDateFrom(''); setDateTo('')
   }
 
-  const toggleSelect = (phone: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(phone)) next.delete(phone); else next.add(phone)
+  const toggleSelect = (client: Client) => {
+    setSelectedMap((prev) => {
+      const next = new Map(prev)
+      if (next.has(client.phone_no)) next.delete(client.phone_no)
+      else next.set(client.phone_no, client)
       setAnnouncement(`${next.size} client${next.size !== 1 ? 's' : ''} selected`)
       return next
     })
   }
 
   const toggleAll = () => {
-    if (selected.size === filtered.length && filtered.length > 0) {
-      setSelected(new Set())
-      setAnnouncement('All clients deselected')
-    } else {
-      const next = new Set(filtered.map((c) => c.phone_no))
-      setSelected(next)
-      setAnnouncement(`All ${next.size} clients selected`)
-    }
+    const allOnPageSelected = clients.every((c) => selectedMap.has(c.phone_no))
+    setSelectedMap((prev) => {
+      const next = new Map(prev)
+      if (allOnPageSelected) {
+        clients.forEach((c) => next.delete(c.phone_no))
+        setAnnouncement('Current page deselected')
+      } else {
+        clients.forEach((c) => next.set(c.phone_no, c))
+        setAnnouncement(`${next.size} client${next.size !== 1 ? 's' : ''} selected`)
+      }
+      return next
+    })
   }
 
-  const selectedClients = allClients.filter((c) => selected.has(c.phone_no))
-  const allFilteredSelected = filtered.length > 0 && filtered.every((c) => selected.has(c.phone_no))
+  const selectedClients = Array.from(selectedMap.values())
+  const allPageSelected = clients.length > 0 && clients.every((c) => selectedMap.has(c.phone_no))
+  const filtered = clients // kept as alias — filtering is now server-side
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -315,15 +347,15 @@ function BrowseTab() {
   const handleEmailDone = (result: WelcomeEmailResult) => {
     setEmailModal(false)
     setEmailResult(result)
-    setSelected(new Set())
+    setSelectedMap(new Map())
   }
 
   const handleStatusDone = (newStatus: LeadStatus, newSubStatus: string) => {
-    setAllClients((prev) =>
-      prev.map((c) => selected.has(c.phone_no) ? { ...c, lead_status: newStatus, lead_sub_status: newSubStatus } : c)
+    setClients((prev) =>
+      prev.map((c) => selectedMap.has(c.phone_no) ? { ...c, lead_status: newStatus, lead_sub_status: newSubStatus } : c)
     )
     setStatusModal(false)
-    setSelected(new Set())
+    setSelectedMap(new Map())
     setAnnouncement('Lead status updated successfully')
   }
 
@@ -427,27 +459,27 @@ function BrowseTab() {
       </div>
 
       {/* ── Selection toolbar ── */}
-      {selected.size > 0 && (
+      {selectedMap.size > 0 && (
         <div
           role="toolbar"
           aria-label="Selection actions"
           className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-mustard/10 border border-mustard/30"
         >
           <span className="text-sm font-medium text-black dark:text-white">
-            {selected.size} selected
+            {selectedMap.size} selected
           </span>
           <div className="flex gap-2 ml-auto">
             <button
               onClick={() => setEmailModal(true)}
               className="btn-secondary text-sm"
-              aria-label={`Send welcome email to ${selected.size} selected clients`}
+              aria-label={`Send welcome email to ${selectedMap.size} selected clients`}
             >
               ✉ Send Email
             </button>
             <button
               onClick={() => setStatusModal(true)}
               className="btn-secondary text-sm"
-              aria-label={`Change lead status for ${selected.size} selected clients`}
+              aria-label={`Change lead status for ${selectedMap.size} selected clients`}
             >
               ↕ Change Status
             </button>
@@ -491,11 +523,11 @@ function BrowseTab() {
       {!loading && (
         <>
           <p className="text-xs text-black/50 dark:text-slate-400">
-            {filtered.length} client{filtered.length !== 1 ? 's' : ''}
-            {isFiltered ? ' matching filters' : ' total'}
+            {totalCount !== null ? `${totalCount} client${totalCount !== 1 ? 's' : ''}` : `${clients.length} client${clients.length !== 1 ? 's' : ''}`}
+            {isFiltered ? ' matching filters' : ''}{totalPages > 1 ? ` · Page ${page} of ${totalPages}` : ''}
           </p>
 
-          {filtered.length === 0 ? (
+          {clients.length === 0 ? (
             <p className="text-sm text-black/60 dark:text-slate-300 py-6 text-center">
               No clients match the selected filters.
             </p>
@@ -508,9 +540,9 @@ function BrowseTab() {
                       <input
                         id={selectAllId}
                         type="checkbox"
-                        checked={allFilteredSelected}
+                        checked={allPageSelected}
                         onChange={toggleAll}
-                        aria-label={allFilteredSelected ? 'Deselect all clients' : 'Select all clients'}
+                        aria-label={allPageSelected ? 'Deselect all on this page' : 'Select all on this page'}
                         className="w-4 h-4 accent-mustard cursor-pointer"
                       />
                     </th>
@@ -527,13 +559,13 @@ function BrowseTab() {
                   {filtered.map((c) => (
                     <tr
                       key={c.phone_no}
-                      className={`hover:bg-black/1 dark:hover:bg-white/1 transition-colors ${selected.has(c.phone_no) ? 'bg-mustard/5 dark:bg-mustard/10' : ''}`}
+                      className={`hover:bg-black/1 dark:hover:bg-white/1 transition-colors ${selectedMap.has(c.phone_no) ? 'bg-mustard/5 dark:bg-mustard/10' : ''}`}
                     >
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
-                          checked={selected.has(c.phone_no)}
-                          onChange={() => toggleSelect(c.phone_no)}
+                          checked={selectedMap.has(c.phone_no)}
+                          onChange={() => toggleSelect(c)}
                           aria-label={`Select ${c.name}`}
                           className="w-4 h-4 accent-mustard cursor-pointer"
                         />
@@ -560,6 +592,15 @@ function BrowseTab() {
             </div>
           )}
         </>
+      )}
+
+      {!loading && (
+        <PaginationBar
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={fetchPage}
+          disabled={loading}
+        />
       )}
 
       {/* ── Modals ── */}

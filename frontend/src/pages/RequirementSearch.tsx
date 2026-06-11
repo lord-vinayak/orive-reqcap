@@ -4,6 +4,7 @@ import Layout from '@/components/Layout'
 import { clientService, requirementService, userService } from '@/services'
 import type { Client, Requirement, User } from '@/types'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import { PaginationBar } from '@/components/PaginationBar'
 
 export default function RequirementSearch() {
   const navigate = useNavigate()
@@ -27,7 +28,35 @@ export default function RequirementSearch() {
 
   // Recent requirements shown when no filter is active
   const [recentClients, setRecentClients] = useState<Client[]>([])
+  const [recentPage, setRecentPage] = useState(1)
+  const [recentTotalPages, setRecentTotalPages] = useState(1)
   const [loadingRecent, setLoadingRecent] = useState(true)
+
+  const PAGE_SIZE = 20
+
+  const fetchRecentPage = (pg: number) => {
+    setLoadingRecent(true)
+    requirementService.list({ page_size: PAGE_SIZE, page: pg })
+      .then((res) => {
+        const raw = Array.isArray(res) ? res : (res as any)
+        const reqs: Requirement[] = Array.isArray(raw) ? raw : raw.results ?? []
+        const count: number = Array.isArray(res) ? reqs.length : ((res as any).count ?? reqs.length)
+        // Extract unique clients from this page's requirements
+        const seen = new Set<string>()
+        const unique: Client[] = []
+        for (const r of reqs) {
+          if (r.client_data && !seen.has(r.client_data.phone_no)) {
+            seen.add(r.client_data.phone_no)
+            unique.push(r.client_data)
+          }
+        }
+        setRecentClients(unique)
+        setRecentTotalPages(Math.max(1, Math.ceil(count / PAGE_SIZE)))
+        setRecentPage(pg)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingRecent(false))
+  }
 
   // Load users list once for POC dropdown
   useEffect(() => {
@@ -37,26 +66,8 @@ export default function RequirementSearch() {
       .finally(() => setLoadingUsers(false))
   }, [])
 
-  // Load the 50 most-recently-updated requirements on mount (shown before any filter is applied)
-  useEffect(() => {
-    setLoadingRecent(true)
-    requirementService.list({ page_size: 50 })
-      .then((res) => {
-        const reqs: Requirement[] = Array.isArray(res) ? res : (res as any).results ?? []
-        // Collect unique clients from those requirements (preserve ordering)
-        const seen = new Set<string>()
-        const uniqueClients: Client[] = []
-        for (const r of reqs) {
-          if (r.client_data && !seen.has(r.client_data.phone_no)) {
-            seen.add(r.client_data.phone_no)
-            uniqueClients.push(r.client_data)
-          }
-        }
-        setRecentClients(uniqueClients)
-      })
-      .catch(() => {})
-      .finally(() => setLoadingRecent(false))
-  }, [])
+  // Load page 1 of recent requirements on mount
+  useEffect(() => { fetchRecentPage(1) }, [])
 
   // Live-search clients whenever filters change (debounced slightly)
   useEffect(() => {
@@ -181,7 +192,7 @@ export default function RequirementSearch() {
 
       {!hasFilters && !loadingRecent && recentClients.length > 0 && (
         <p className="text-xs text-black/50 dark:text-slate-400 mb-3">
-          Showing {recentClients.length} recently updated requirements.
+          Page {recentPage} of {recentTotalPages} — {recentClients.length} shown
         </p>
       )}
 
@@ -302,6 +313,15 @@ export default function RequirementSearch() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {!hasFilters && recentTotalPages > 1 && (
+        <PaginationBar
+          currentPage={recentPage}
+          totalPages={recentTotalPages}
+          onPageChange={fetchRecentPage}
+          disabled={loadingRecent}
+        />
       )}
     </Layout>
   )

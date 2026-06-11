@@ -39,8 +39,8 @@ export interface WelcomeEmailResult {
 }
 
 export const clientService = {
-  list: async (params: { q?: string; poc?: string; page_size?: number } = {}) =>
-    (await api.get<{ results: Client[] } | Client[]>('/clients/', { params })).data,
+  list: async (params: { q?: string; poc?: string; lead_status?: string; created_after?: string; created_before?: string; page_size?: number; page?: number } = {}) =>
+    (await api.get<{ count: number; next: string | null; previous: string | null; results: Client[] } | Client[]>('/clients/', { params })).data,
   get: async (phone: string) => (await api.get<Client>(`/clients/${phone}/`)).data,
   create: async (data: Partial<Client>) => (await api.post<Client>('/clients/', data)).data,
   update: async (phone: string, data: Partial<Client>) =>
@@ -79,7 +79,7 @@ export const clientService = {
 
 export const requirementService = {
   list: async (params: Record<string, string | number> = {}) =>
-    (await api.get<{ results: Requirement[] } | Requirement[]>('/requirements/', { params })).data,
+    (await api.get<{ count: number; next: string | null; results: Requirement[] } | Requirement[]>('/requirements/', { params })).data,
   listForClient: async (phone: string) =>
     (await api.get<{ results: Requirement[] } | Requirement[]>('/requirements/', { params: { client_phone: phone } })).data,
   get: async (id: string) => (await api.get<Requirement>(`/requirements/${id}/`)).data,

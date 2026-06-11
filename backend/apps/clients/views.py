@@ -98,6 +98,18 @@ class ClientViewSet(viewsets.ModelViewSet):
         if poc_id:
             qs = qs.filter(poc__id=poc_id)
 
+        lead_status = params.get('lead_status')
+        if lead_status:
+            qs = qs.filter(lead_status=lead_status)
+
+        created_after = params.get('created_after')
+        if created_after:
+            qs = qs.filter(created_at__date__gte=created_after)
+
+        created_before = params.get('created_before')
+        if created_before:
+            qs = qs.filter(created_at__date__lte=created_before)
+
         return qs
 
     # ------------------------------------------------------------------
