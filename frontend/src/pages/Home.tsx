@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { FilePlus2, FileSearch, FolderKanban, LayoutDashboard, ClipboardList } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
 
 interface NavCardProps {
   icon: React.ReactNode;
@@ -31,11 +32,15 @@ function NavCard({ icon, title, description, onClick, ariaLabel }: NavCardProps)
 
 export default function Home() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const firstName = user?.name?.split(" ")[0] ?? "";
 
   return (
     <Layout title="Home">
       <div className="max-w-4xl mx-auto pt-8">
-        <h1 className="text-3xl font-semibold text-black dark:text-slate-100 mb-2">Welcome</h1>
+        <h1 className="text-3xl font-semibold text-black dark:text-slate-100 mb-2">
+          Welcome{firstName ? `, ${firstName}` : ""}
+        </h1>
         <p className="text-black/60 dark:text-slate-300 mb-10">
           Choose what you'd like to do today.
         </p>

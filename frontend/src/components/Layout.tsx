@@ -89,7 +89,7 @@ export default function Layout({
                 Skinovation Sciences
               </div>
               <div className="text-xs text-black/60 dark:text-slate-300 leading-tight">
-                We help our clients succeed
+                Making Bharat the Skincare Factory of the world
               </div>
             </div>
           </Link>
@@ -98,29 +98,25 @@ export default function Layout({
             <Link to="/home" className="btn-secondary text-sm" aria-label="Go to Home page">
               Home
             </Link>
-            {/* CRM navigation */}
-            <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to CRM Dashboard">
-              CRM
-            </Link>
             <Link to="/crm/clients" className="btn-secondary text-sm" aria-label="Go to CRM Clients">
               Clients
             </Link>
-            <Link to="/crm/projects" className="btn-secondary text-sm" aria-label="Go to CRM Projects">
-              Projects
-            </Link>
-            <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data">
-              Master Data
+            <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to CRM Dashboard">
+              CRM
             </Link>
             <Link to="/tasks" className="btn-secondary text-sm" aria-label="Go to Task Tracker">
               Tasks
             </Link>
             {user?.role === "admin" && (
               <>
-                <Link to="/admin/users" className="btn-secondary text-sm">
-                  Users
+                <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data">
+                  Master Data
                 </Link>
-                <Link to="/admin/catalog" className="btn-secondary text-sm">
+                <Link to="/admin/catalog" className="btn-secondary text-sm" aria-label="Go to Catalog">
                   Catalog
+                </Link>
+                <Link to="/admin/users" className="btn-secondary text-sm" aria-label="Go to Users">
+                  Users
                 </Link>
               </>
             )}

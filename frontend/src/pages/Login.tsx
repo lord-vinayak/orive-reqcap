@@ -83,8 +83,8 @@ export default function Login() {
           <div className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl text-black mx-auto mb-4">
             <img src="/logo.png" alt="Skinovation Sciences" />
           </div>
-          <h1 className="text-2xl font-semibold text-black dark:text-slate-100">Skinovation Sciences CRM</h1>
-          <p className="text-sm text-black/60 dark:text-slate-300 mt-1">We help our clients succeed</p>
+          <h1 className="text-2xl font-semibold text-black dark:text-slate-100">Welcome to Skinovation Sciences Data Management System (SDMS) </h1>
+          <p className="text-sm text-black/60 dark:text-slate-300 mt-1">Making Bharat the Skincare Factory of the world</p>
         </div>
 
         <div className="card">
@@ -143,7 +143,7 @@ export default function Login() {
         </div>
 
         <p className="text-xs text-black/60 dark:text-slate-300 text-center mt-6">
-          Don't have an account? Please contact your admin.
+          Don't have an account? Please contact admin.
         </p>
       </div>
       </div>
