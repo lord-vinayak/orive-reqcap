@@ -51,7 +51,7 @@ export default function App() {
       <Route path="/crm/projects/new" element={<ProtectedRoute><CRMProjectCreate /></ProtectedRoute>} />
       <Route path="/crm/projects/:id" element={<ProtectedRoute><CRMProjectDetail /></ProtectedRoute>} />
       <Route path="/crm/master-data" element={<ProtectedRoute><CRMMasterData /></ProtectedRoute>} />
-      <Route path="/crm/financials" element={<ProtectedRoute><CRMFinancials /></ProtectedRoute>} />
+      <Route path="/crm/financials" element={<ProtectedRoute adminOnly><CRMFinancials /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><TaskTracker /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/home" replace />} />

@@ -161,7 +161,7 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
       )}
 
       {txnEntity && (
-        <VendorTransactionModal entity={txnEntity} onClose={() => setTxnEntity(null)} />
+        <VendorTransactionModal entity={txnEntity} onClose={() => setTxnEntity(null)} isAdmin={isAdmin} />
       )}
 
       {items.length === 0 ? (
@@ -406,7 +406,7 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
       )}
 
       {txnEntity && (
-        <VendorTransactionModal entity={txnEntity} onClose={() => setTxnEntity(null)} />
+        <VendorTransactionModal entity={txnEntity} onClose={() => setTxnEntity(null)} isAdmin={isAdmin} />
       )}
 
       {items.length === 0 ? (
@@ -707,9 +707,10 @@ const fmtAmount = (n: string | number) =>
 interface VendorTransactionModalProps {
   entity: { id: string; vendor_id: string; company_name: string; kind: 'manufacturer' | 'vendor' }
   onClose: () => void
+  isAdmin: boolean
 }
 
-function VendorTransactionModal({ entity, onClose }: VendorTransactionModalProps) {
+function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionModalProps) {
   const [payments, setPayments] = useState<ProjectPayment[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -747,26 +748,28 @@ function VendorTransactionModal({ entity, onClose }: VendorTransactionModalProps
               <span className="text-black/70 dark:text-slate-300 text-xs">Total Received</span>
               <p className="font-semibold text-green-600 dark:text-green-400">₹{fmtAmount(totalReceived)}</p>
             </div>
-            <div>
-              <span className="text-black/70 dark:text-slate-300 text-xs">Net</span>
-              <p className={`font-semibold ${totalReceived - totalPaid >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {totalReceived - totalPaid >= 0 ? '+' : ''}₹{fmtAmount(totalReceived - totalPaid)}
-              </p>
-            </div>
+            {isAdmin && (
+              <div>
+                <span className="text-black/70 dark:text-slate-300 text-xs">Net P&amp;L</span>
+                <p className={`font-semibold ${totalReceived - totalPaid >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {totalReceived - totalPaid >= 0 ? '+' : ''}₹{fmtAmount(totalReceived - totalPaid)}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-black/5 dark:bg-white/5 text-left">
-                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Date</th>
-                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Type</th>
-                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Sub Type</th>
-                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300 text-right">Amount (₹)</th>
-                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Project</th>
-                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Comments</th>
-                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">By</th>
-                  <th className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Invoice</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Date</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Type</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Sub Type</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300 text-right">Amount (₹)</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Project</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Comments</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">By</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Invoice</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">

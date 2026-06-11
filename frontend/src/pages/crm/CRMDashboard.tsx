@@ -7,8 +7,11 @@ import { StatusBadge } from '@/components/crm/StatusBadge'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
 import type { LeadStatus } from '@/constants/clientStatus'
+import { useAuthStore } from '@/store/authStore'
 
 export default function CRMDashboard() {
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.role === 'admin'
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [projects, setProjects] = useState<CRMProjectList[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,13 +37,15 @@ export default function CRMDashboard() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-black dark:text-white">CRM Dashboard</h1>
           <div className="flex items-center gap-2">
-            <Link
-              to="/crm/financials"
-              className="btn-secondary text-sm"
-              aria-label="View Net P&L financial summary"
-            >
-              Net P&L
-            </Link>
+            {isAdmin && (
+              <Link
+                to="/crm/financials"
+                className="btn-secondary text-sm"
+                aria-label="View Net P&L financial summary"
+              >
+                Net P&L
+              </Link>
+            )}
             <Link
               to="/crm/projects/new"
               className="btn-primary text-sm"
