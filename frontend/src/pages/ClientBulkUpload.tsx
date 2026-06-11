@@ -484,7 +484,7 @@ function BrowseTab() {
               ↕ Change Status
             </button>
             <button
-              onClick={() => { setSelected(new Set()); setAnnouncement('Selection cleared') }}
+              onClick={() => { setSelectedMap(new Map()); setAnnouncement('Selection cleared') }}
               className="text-sm text-black/60 dark:text-slate-300 hover:text-black dark:hover:text-white underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
               aria-label="Clear selection"
             >
