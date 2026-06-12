@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import { ScrollToTop } from '@/components/ScrollToTop'
 import Login from '@/pages/Login'
 import Home from '@/pages/Home'
 import RequirementsLanding from '@/pages/RequirementsLanding'
@@ -26,7 +27,9 @@ import TaskTracker from '@/pages/crm/TaskTracker'
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="/login" element={<Login />} />
 
@@ -57,6 +60,7 @@ export default function App() {
       <Route path="/tasks" element={<ProtectedRoute><TaskTracker /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/home" replace />} />
-    </Routes>
+      </Routes>
+    </>
   )
 }

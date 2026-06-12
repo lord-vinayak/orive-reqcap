@@ -27,6 +27,34 @@ const RECEIVED_SUB_TYPES: { value: string; label: string }[] = [
   { value: 'others', label: 'Others' },
 ]
 
+const SUB_TYPES_BY_DIRECTION: Record<string, { value: string; label: string }[]> = {
+  paid: PAID_SUB_TYPES,
+  payable: PAID_SUB_TYPES,
+  received: RECEIVED_SUB_TYPES,
+  receivable: RECEIVED_SUB_TYPES,
+}
+
+const DEFAULT_SUB_TYPE: Record<string, string> = {
+  paid: 'manufacturing',
+  payable: 'manufacturing',
+  received: 'sample',
+  receivable: 'sample',
+}
+
+const DIRECTION_BADGE: Record<string, string> = {
+  paid: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  received: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  payable: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  receivable: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+}
+
+const DIRECTION_AMOUNT: Record<string, string> = {
+  paid: 'text-red-600 dark:text-red-400',
+  received: 'text-green-600 dark:text-green-400',
+  payable: 'text-amber-600 dark:text-amber-400',
+  receivable: 'text-blue-600 dark:text-blue-400',
+}
+
 const fmt = (val: string | number) =>
   Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -43,10 +71,10 @@ interface PaymentFormState {
   invoice_file: File | null
 }
 
-const emptyForm = (): PaymentFormState => ({
+const emptyForm = (direction: PaymentDirection = 'paid'): PaymentFormState => ({
   payment_date: new Date().toISOString().slice(0, 10),
-  direction: 'paid',
-  sub_type: 'manufacturing',
+  direction,
+  sub_type: DEFAULT_SUB_TYPE[direction],
   amount: '',
   vendor_id_selected: '',
   vendor_kind: '',
@@ -186,22 +214,24 @@ interface PaymentFormProps {
   saving: boolean
   error: string
   isNew: boolean
+  isSettling?: boolean
   fileInputRef: React.RefObject<HTMLInputElement>
   existingInvoice?: string
 }
 
-function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, error, isNew, fileInputRef, existingInvoice }: PaymentFormProps) {
-  const subTypes = form.direction === 'paid' ? PAID_SUB_TYPES : RECEIVED_SUB_TYPES
+function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, error, isNew, isSettling, fileInputRef, existingInvoice }: PaymentFormProps) {
+  const subTypes = SUB_TYPES_BY_DIRECTION[form.direction] ?? PAID_SUB_TYPES
 
   const handleDirectionChange = (dir: PaymentDirection) => {
-    const defaultSub = dir === 'paid' ? 'manufacturing' : 'sample'
-    onChange({ direction: dir, sub_type: defaultSub, vendor_id_selected: '', vendor_kind: '' })
+    onChange({ direction: dir, sub_type: DEFAULT_SUB_TYPE[dir], vendor_id_selected: '', vendor_kind: '' })
   }
+
+  const title = isSettling ? 'Settle Entry' : isNew ? 'New Payment Entry' : 'Edit Entry'
 
   return (
     <div className="bg-black/3 dark:bg-white/3 rounded-lg p-4 space-y-3 text-sm">
       <p className="font-medium text-black dark:text-white text-xs uppercase tracking-wide">
-        {isNew ? 'New Payment Entry' : 'Edit Entry'}
+        {title}
       </p>
 
       {/* Row 1: Date */}
@@ -216,44 +246,66 @@ function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, 
         />
       </div>
 
-      {/* Row 2: Payment Type toggle | Sub Type dropdown */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Payment Type</label>
+      {/* Payment Type: 2×2 grid (Actual row / Pending row) */}
+      <div>
+        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Payment Type</label>
+        <div className="space-y-1">
           <div className="flex rounded border border-black/20 dark:border-white/20 overflow-hidden">
             {(['paid', 'received'] as PaymentDirection[]).map((dir) => (
               <button
                 key={dir}
                 type="button"
                 onClick={() => handleDirectionChange(dir)}
-                disabled={saving}
-                className={`flex-1 py-1.5 text-sm font-medium transition-colors ${
+                disabled={saving || isSettling}
+                className={`flex-1 py-1.5 text-xs font-medium transition-colors ${
                   form.direction === dir
                     ? 'bg-mustard text-black'
-                    : 'bg-white dark:bg-slate-700 text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'
+                    : 'bg-white dark:bg-slate-700 text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed'
                 }`}
               >
                 {dir === 'paid' ? 'Paid' : 'Received'}
               </button>
             ))}
           </div>
-        </div>
-        <div>
-          <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Sub Type</label>
-          <select
-            value={form.sub_type}
-            onChange={(e) => onChange({ sub_type: e.target.value as PaymentSubType })}
-            className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
-            disabled={saving}
-          >
-            {subTypes.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+          <div className="flex rounded border border-black/20 dark:border-white/20 overflow-hidden">
+            {(['payable', 'receivable'] as PaymentDirection[]).map((dir) => (
+              <button
+                key={dir}
+                type="button"
+                onClick={() => handleDirectionChange(dir)}
+                disabled={saving || isSettling}
+                className={`flex-1 py-1.5 text-xs font-medium transition-colors ${
+                  form.direction === dir
+                    ? 'bg-mustard text-black'
+                    : 'bg-white dark:bg-slate-700 text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed'
+                }`}
+              >
+                {dir === 'payable' ? 'Payable' : 'Receivable'}
+              </button>
             ))}
-          </select>
+          </div>
+          <p className="text-xs text-black/40 dark:text-slate-500">
+            {(form.direction === 'paid' || form.direction === 'received') ? 'Actual transaction' : 'Pending / expected'}
+          </p>
         </div>
       </div>
 
-      {/* Row 3: Amount */}
+      {/* Sub Type */}
+      <div>
+        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Sub Type</label>
+        <select
+          value={form.sub_type}
+          onChange={(e) => onChange({ sub_type: e.target.value as PaymentSubType })}
+          className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+          disabled={saving}
+        >
+          {subTypes.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Amount */}
       <div>
         <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Amount (₹)</label>
         <input
@@ -268,8 +320,8 @@ function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, 
         />
       </div>
 
-      {/* Vendor search (Paid only) */}
-      {form.direction === 'paid' && (
+      {/* Vendor search (Paid and Payable) */}
+      {(form.direction === 'paid' || form.direction === 'payable') && (
         <div>
           <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">
             Vendor / Manufacturer <span className="text-black/30 dark:text-slate-500">(optional)</span>
@@ -351,6 +403,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
   const [vendorOptions, setVendorOptions] = useState<PaymentVendorOption[]>([])
 
   const [editingId, setEditingId] = useState<string | 'new' | null>(null)
+  const [settlingId, setSettlingId] = useState<string | null>(null)
   const [form, setForm] = useState<PaymentFormState>(emptyForm())
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
@@ -385,7 +438,25 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
 
   const cancelForm = () => {
     setEditingId(null)
+    setSettlingId(null)
     setFormError('')
+  }
+
+  const startSettle = (p: ProjectPayment) => {
+    const settledDirection: PaymentDirection = p.direction === 'payable' ? 'paid' : 'received'
+    setForm({
+      payment_date: new Date().toISOString().slice(0, 10),
+      direction: settledDirection,
+      sub_type: p.sub_type,
+      amount: p.amount,
+      vendor_id_selected: p.vendor ?? p.manufacturer ?? '',
+      vendor_kind: p.vendor ? 'vendor' : p.manufacturer ? 'manufacturer' : '',
+      comments: p.comments,
+      invoice_file: null,
+    })
+    setFormError('')
+    setSettlingId(p.id)
+    setEditingId('new')
   }
 
   const patchForm = (fields: Partial<PaymentFormState>) =>
@@ -417,7 +488,10 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
     setSaving(true)
     setFormError('')
     try {
-      if (editingId === 'new') {
+      if (settlingId) {
+        await crmApi.settleProjectPayment(settlingId, buildFormData())
+        setSettlingId(null)
+      } else if (editingId === 'new') {
         await crmApi.createProjectPayment(buildFormData())
       } else {
         await crmApi.updateProjectPayment(editingId!, buildFormData())
@@ -485,6 +559,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
               saving={saving}
               error={formError}
               isNew={editingId === 'new'}
+              isSettling={!!settlingId}
               fileInputRef={fileInputRef}
             />
           )}
@@ -503,13 +578,14 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 space-y-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                          p.direction === 'paid'
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        }`}>
-                          {p.direction === 'paid' ? 'Paid' : 'Received'}
+                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${DIRECTION_BADGE[p.direction]}`}>
+                          {p.direction.charAt(0).toUpperCase() + p.direction.slice(1)}
                         </span>
+                        {p.is_settled && (
+                          <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            ✓ Settled
+                          </span>
+                        )}
                         <span className="font-medium text-black dark:text-white">{p.sub_type_display}</span>
                         <span className="text-xs text-black/40 dark:text-slate-500">
                           {new Date(p.payment_date).toLocaleDateString('en-IN')}
@@ -523,11 +599,29 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
                       )}
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      {editingId !== p.id && (
+                      {!p.is_settled && (p.direction === 'payable' || p.direction === 'receivable') && editingId !== p.id && (
+                        <button
+                          type="button"
+                          onClick={() => startSettle(p)}
+                          className="text-xs text-mustard hover:underline font-medium"
+                        >
+                          Settle →
+                        </button>
+                      )}
+                      {!p.is_settled && editingId !== p.id && (p.direction === 'paid' || p.direction === 'received') && (
                         <button
                           type="button"
                           onClick={() => startEdit(p)}
                           className="text-xs text-mustard hover:underline"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {!p.is_settled && editingId !== p.id && (p.direction === 'payable' || p.direction === 'receivable') && (
+                        <button
+                          type="button"
+                          onClick={() => startEdit(p)}
+                          className="text-xs text-black/40 dark:text-slate-500 hover:underline"
                         >
                           Edit
                         </button>
@@ -545,9 +639,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
                     </div>
                   </div>
 
-                  <p className={`text-base font-semibold ${
-                    p.direction === 'paid' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-                  }`}>
+                  <p className={`text-base font-semibold ${DIRECTION_AMOUNT[p.direction]}`}>
                     ₹{fmt(p.amount)}
                   </p>
 
@@ -580,6 +672,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
                         saving={saving}
                         error={formError}
                         isNew={false}
+                        isSettling={false}
                         fileInputRef={fileInputRef}
                         existingInvoice={p.invoice_filename}
                       />

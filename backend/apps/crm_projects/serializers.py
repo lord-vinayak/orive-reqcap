@@ -305,6 +305,8 @@ SUB_TYPE_LABELS = {
 class ProjectPaymentSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.name', read_only=True)
     sub_type_display = serializers.SerializerMethodField()
+    is_settled = serializers.SerializerMethodField()
+    settlement = serializers.PrimaryKeyRelatedField(read_only=True)
     vendor_name = serializers.CharField(source='vendor.company_name', read_only=True, default=None)
     vendor_vid = serializers.CharField(source='vendor.vendor_id', read_only=True, default=None)
     manufacturer_name = serializers.CharField(source='manufacturer.company_name', read_only=True, default=None)
@@ -319,6 +321,7 @@ class ProjectPaymentSerializer(serializers.ModelSerializer):
             'payment_date', 'direction', 'sub_type', 'sub_type_display', 'amount',
             'vendor', 'vendor_name', 'vendor_vid',
             'manufacturer', 'manufacturer_name', 'manufacturer_vid',
+            'settlement', 'is_settled',
             'comments', 'invoice_drive_id', 'invoice_drive_url', 'invoice_filename',
             'created_by', 'created_by_name', 'created_at', 'updated_at',
         ]
@@ -327,10 +330,19 @@ class ProjectPaymentSerializer(serializers.ModelSerializer):
             'invoice_drive_id', 'invoice_drive_url', 'invoice_filename',
             'sub_type_display', 'vendor_name', 'vendor_vid',
             'manufacturer_name', 'manufacturer_vid', 'project_no', 'project_client_name',
+            'settlement', 'is_settled',
         ]
 
     def get_sub_type_display(self, obj):
         return SUB_TYPE_LABELS.get(obj.sub_type, obj.sub_type)
+
+    def get_is_settled(self, obj):
+        return obj.is_settled
+
+    def validate(self, attrs):
+        if self.instance and self.instance.is_settled:
+            raise serializers.ValidationError('Settled entries cannot be edited.')
+        return attrs
 
 
 class VendorMiniSerializer(serializers.Serializer):

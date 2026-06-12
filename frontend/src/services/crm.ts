@@ -290,4 +290,9 @@ export const crmApi = {
 
   deleteProjectPayment: (id: string) =>
     api.delete(`/crm/project-payments/${id}/`),
+
+  settleProjectPayment: (id: string, formData: FormData) =>
+    api.post<ProjectPayment>(`/crm/project-payments/${id}/settle/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 }

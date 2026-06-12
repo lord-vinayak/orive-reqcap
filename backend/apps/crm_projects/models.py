@@ -395,7 +395,10 @@ class ProjectMilestone(models.Model):
 
 class ProjectPayment(models.Model):
     """Cash-flow entry per project: Paid-out or Received, with vendor link for paid entries."""
-    DIRECTION_CHOICES = [('paid', 'Paid'), ('received', 'Received')]
+    DIRECTION_CHOICES = [
+        ('paid', 'Paid'), ('received', 'Received'),
+        ('payable', 'Payable'), ('receivable', 'Receivable'),
+    ]
     PAID_SUB_TYPES = [
         ('manufacturing', 'Manufacturing'), ('logistics', 'Logistics'),
         ('derma_testing', 'Derma Testing'), ('batch_testing', 'Batch Testing'),
@@ -422,6 +425,10 @@ class ProjectPayment(models.Model):
         'crm_master_data.Manufacturer', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='cash_flow_payments',
     )
+    settlement = models.OneToOneField(
+        'self', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='settles_payable',
+    )
     comments = models.TextField(blank=True, default='')
     invoice_drive_id = models.CharField(max_length=255, blank=True, default='')
     invoice_drive_url = models.URLField(blank=True, default='')
@@ -440,6 +447,10 @@ class ProjectPayment(models.Model):
             models.Index(fields=['vendor', '-payment_date']),
             models.Index(fields=['manufacturer', '-payment_date']),
         ]
+
+    @property
+    def is_settled(self):
+        return self.settlement_id is not None
 
     def __str__(self):
         return f'{self.project_id} | {self.direction}/{self.sub_type} | {self.payment_date}'

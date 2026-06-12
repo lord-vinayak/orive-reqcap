@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from django.db import transaction
 from django.utils import timezone
 from django.db.models import Q
 from rest_framework import viewsets, permissions, filters, status
@@ -816,7 +817,7 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = ProjectPayment.objects.select_related(
-            'created_by', 'project__client', 'vendor', 'manufacturer'
+            'created_by', 'project__client', 'vendor', 'manufacturer', 'settlement'
         )
         project_id = self.request.query_params.get('project')
         vendor_id = self.request.query_params.get('vendor')
@@ -867,6 +868,31 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
         if request.user.role != 'admin':
             return Response({'detail': 'Only admin can delete payments.'}, status=403)
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'])
+    def settle(self, request, pk=None):
+        payable = self.get_object()
+        if payable.direction not in ('payable', 'receivable'):
+            return Response({'detail': 'Only payable/receivable entries can be settled.'}, status=400)
+        if payable.is_settled:
+            return Response({'detail': 'Already settled.'}, status=400)
+
+        new_direction = 'paid' if payable.direction == 'payable' else 'received'
+        data = request.data.copy()
+        data['direction'] = new_direction
+        data['project'] = str(payable.project_id)
+
+        serializer = ProjectPaymentSerializer(data=data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            new_payment = serializer.save(created_by=request.user)
+            payable.settlement = new_payment
+            payable.save(update_fields=['settlement'])
+        self._handle_invoice(new_payment, request)
+        return Response(
+            ProjectPaymentSerializer(new_payment, context={'request': request}).data,
+            status=201,
+        )
 
 
 class StandaloneTaskViewSet(viewsets.ModelViewSet):

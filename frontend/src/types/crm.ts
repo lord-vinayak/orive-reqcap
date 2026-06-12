@@ -347,7 +347,7 @@ export interface VendorProjectPayment {
 
 // ─── Project Payments ────────────────────────────────────────────────────────
 
-export type PaymentDirection = 'paid' | 'received'
+export type PaymentDirection = 'paid' | 'received' | 'payable' | 'receivable'
 
 export type PaidSubType = 'manufacturing' | 'logistics' | 'derma_testing' | 'batch_testing' | 'packaging' | 'printing' | 'samples' | 'others'
 export type ReceivedSubType = 'sample' | 'production' | 'design' | 'packaging' | 'printing' | 'logistics' | 'testing' | 'others'
@@ -378,6 +378,8 @@ export interface ProjectPayment {
   manufacturer: string | null
   manufacturer_name: string | null
   manufacturer_vid: string | null
+  settlement: string | null
+  is_settled: boolean
   comments: string
   invoice_drive_id: string
   invoice_drive_url: string

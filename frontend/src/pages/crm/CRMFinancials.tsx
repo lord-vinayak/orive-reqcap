@@ -44,19 +44,22 @@ export default function CRMFinancials() {
 
   // ── Aggregations ────────────────────────────────────────────────────────────
 
-  const { totalCredits, totalDebits, netPL } = useMemo(() => {
-    let credits = 0, debits = 0
+  const { totalCredits, totalDebits, totalPayable, totalReceivable, netPL } = useMemo(() => {
+    let credits = 0, debits = 0, payable = 0, receivable = 0
     for (const p of payments) {
       const amt = parseFloat(p.amount) || 0
       if (p.direction === 'received') credits += amt
-      else debits += amt
+      else if (p.direction === 'paid') debits += amt
+      else if (p.direction === 'payable' && !p.is_settled) payable += amt
+      else if (p.direction === 'receivable' && !p.is_settled) receivable += amt
     }
-    return { totalCredits: credits, totalDebits: debits, netPL: credits - debits }
+    return { totalCredits: credits, totalDebits: debits, totalPayable: payable, totalReceivable: receivable, netPL: credits - debits }
   }, [payments])
 
   const categoryRows = useMemo(() => {
     const map: Record<string, { credits: number; debits: number }> = {}
     for (const p of payments) {
+      if (p.direction !== 'paid' && p.direction !== 'received') continue
       const key = p.sub_type_display || SUB_TYPE_LABEL[p.sub_type] || p.sub_type
       if (!map[key]) map[key] = { credits: 0, debits: 0 }
       const amt = parseFloat(p.amount) || 0
@@ -71,6 +74,7 @@ export default function CRMFinancials() {
   const projectRows = useMemo(() => {
     const map: Record<string, { no: string; client: string; credits: number; debits: number }> = {}
     for (const p of payments) {
+      if (p.direction !== 'paid' && p.direction !== 'received') continue
       if (!map[p.project]) map[p.project] = { no: p.project_no, client: p.project_client_name, credits: 0, debits: 0 }
       const amt = parseFloat(p.amount) || 0
       if (p.direction === 'received') map[p.project].credits += amt
@@ -84,6 +88,7 @@ export default function CRMFinancials() {
   const vendorRows = useMemo(() => {
     const map: Record<string, { label: string; credits: number; debits: number }> = {}
     for (const p of payments) {
+      if (p.direction !== 'paid' && p.direction !== 'received') continue
       const key = p.manufacturer ?? p.vendor ?? '__none__'
       const label = p.manufacturer_name ?? p.vendor_name ?? '(No vendor)'
       if (!map[key]) map[key] = { label, credits: 0, debits: 0 }
@@ -130,6 +135,25 @@ export default function CRMFinancials() {
                 <SummaryCard label="Net P&L" amount={netPL} color={netPL >= 0 ? 'green' : 'red'} bold />
               </div>
             </section>
+
+            {/* ── Pending summary ── */}
+            {(totalPayable > 0 || totalReceivable > 0) && (
+              <section aria-labelledby="pending-heading">
+                <h2 id="pending-heading" className="text-sm font-semibold text-black/60 dark:text-slate-400 uppercase tracking-wide mb-3">
+                  Pending
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 p-4">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mb-1">Payable</p>
+                    <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{fmt(totalPayable)}</p>
+                  </div>
+                  <div className="rounded-lg border border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-900/10 p-4">
+                    <p className="text-xs text-blue-700 dark:text-blue-400 mb-1">Receivable</p>
+                    <p className="text-xl font-bold text-blue-700 dark:text-blue-400">{fmt(totalReceivable)}</p>
+                  </div>
+                </div>
+              </section>
+            )}
 
             {/* ── Category breakdown ── */}
             <section aria-labelledby="category-heading">
@@ -206,7 +230,7 @@ export default function CRMFinancials() {
               </div>
 
               {payments.length === 0 ? <Empty /> : tableView === 'all' ? (
-                <AllRowsTable payments={payments} />
+                <AllRowsTable payments={payments.filter(p => p.direction === 'paid' || p.direction === 'received')} />
               ) : tableView === 'by_project' ? (
                 <BreakdownTable
                   rows={projectRows.map((r) => ({ label: `${r.no} · ${r.client}`, credits: r.credits, debits: r.debits, net: r.net }))}
@@ -320,7 +344,7 @@ function AllRowsTable({ payments }: { payments: ProjectPayment[] }) {
                 </span>
               </td>
               <td className={`px-4 py-2 text-right font-medium ${
-                p.direction === 'received' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                p.direction === 'received' ? 'text-green-600 dark:text-green-400' : 'text-red-700 dark:text-red-400'
               }`}>
                 {fmt(parseFloat(p.amount) || 0)}
               </td>
