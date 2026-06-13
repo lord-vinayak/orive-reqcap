@@ -478,7 +478,7 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
                 ignore_conflicts=True,
             )
             project.resample_cycle = next_cycle
-            project.project_stage = get_loop_key('formula_made', next_cycle)
+            project.project_stage = get_loop_key('formula_pending', next_cycle)
             project.save(update_fields=['resample_cycle', 'project_stage', 'updated_at'])
 
             # Record the resample reason

@@ -12,19 +12,23 @@ MAX_RESAMPLE_CYCLES = 3
 # ── Sample Phase ──────────────────────────────────────────────────────────────
 
 SAMPLE_PRE_LOOP = [
-    {'key': 'sample_invoice_shared',   'display': 'Sample Invoice Shared'},
-    {'key': 'sample_booked',            'display': 'Sample Booked'},
-    {'key': 'sample_payment_received',  'display': 'Sample Payment Received'},
+    {'key': 'invoice_pending',       'display': 'Invoice Pending'},
+    {'key': 'sample_invoice_shared', 'display': 'Invoice Shared'},
+    {'key': 'sample_booked',         'display': 'Sample Booked'},
 ]
 
 # Base keys for the resample loop — suffixed at runtime for cycles 2+.
 # `sample_approved` is a Yes/No gate rendered differently in the UI.
 RESAMPLE_LOOP_BASE = [
+    {'key': 'formula_pending',          'display': 'Formula Pending'},
     {'key': 'formula_made',             'display': 'Formula Made'},
     {'key': 'formula_reviewed',         'display': 'Formula Reviewed'},
-    {'key': 'sample_made',              'display': 'Sample Made'},
-    {'key': 'sample_shipped',           'display': 'Sample Shipped'},
-    {'key': 'sample_feedback_captured', 'display': 'Sample Feedback Captured'},
+    {'key': 'sample_in_pipeline',       'display': 'Sample in Pipeline'},
+    {'key': 'sample_created',           'display': 'Sample Created'},
+    {'key': 'shipment_created',         'display': 'Shipment Created'},
+    {'key': 'shipment_picked',          'display': 'Shipment Picked'},
+    {'key': 'shipment_delivered',       'display': 'Shipment Delivered'},
+    {'key': 'sample_feedback_captured', 'display': 'User Testing'},
     {'key': 'sample_approved',          'display': 'Sample Approved', 'is_approval_gate': True},
 ]
 
@@ -160,7 +164,7 @@ ALL_ORDER_STAGE_KEYS = [
     for s in section['stages']
 ]
 
-SAMPLE_TOTAL_STAGES = len(SAMPLE_PRE_LOOP) + len(RESAMPLE_LOOP_BASE) + len(SAMPLE_POST_APPROVAL)  # 11
+SAMPLE_TOTAL_STAGES = len(SAMPLE_PRE_LOOP) + len(RESAMPLE_LOOP_BASE) + len(SAMPLE_POST_APPROVAL)
 ORDER_TOTAL_STAGES = len(ALL_ORDER_STAGE_KEYS)  # 46
 
 # Flat map of stage_key → human display name (all cycles included).
