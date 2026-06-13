@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
 import type { DashboardStats, CRMProjectList } from '@/types/crm'
@@ -9,6 +10,14 @@ import { LeadStatusBadge } from '@/components/LeadStatusBadge'
 import type { LeadStatus } from '@/constants/clientStatus'
 import { useAuthStore } from '@/store/authStore'
 
+type SegmentKey = 'sample' | 'order_active' | 'completed'
+
+const SEGMENT_LABELS: Record<SegmentKey, string> = {
+  sample:       'Sample Stage',
+  order_active: 'Order in Progress',
+  completed:    'Completed Orders',
+}
+
 export default function CRMDashboard() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.role === 'admin'
@@ -16,6 +25,7 @@ export default function CRMDashboard() {
   const [projects, setProjects] = useState<CRMProjectList[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [activeSegment, setActiveSegment] = useState<SegmentKey | null>(null)
 
   useEffect(() => {
     Promise.all([crmApi.getDashboardStats(), crmApi.getHealthTable()])
@@ -27,15 +37,19 @@ export default function CRMDashboard() {
       .finally(() => setLoading(false))
   }, [])
 
-  const stageEntries = stats
-    ? Object.entries(stats.stage_distribution).filter(([, count]) => count > 0)
-    : []
+  const filteredProjects = useMemo(() => {
+    if (!activeSegment) return projects
+    if (activeSegment === 'sample')       return projects.filter(p => p.phase === 'sample')
+    if (activeSegment === 'order_active') return projects.filter(p => p.phase === 'order' && p.progress_percentage < 100)
+    if (activeSegment === 'completed')    return projects.filter(p => p.phase === 'order' && p.progress_percentage === 100)
+    return projects
+  }, [projects, activeSegment])
 
   return (
     <Layout title="CRM Dashboard">
       <div className="space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-black dark:text-white">CRM Dashboard</h1>
+          <h1 className="text-2xl font-bold text-black dark:text-white">Dashboard</h1>
           <div className="flex items-center gap-2">
             {isAdmin && (
               <Link
@@ -70,60 +84,61 @@ export default function CRMDashboard() {
           <>
             {/* ── Summary cards ── */}
             <section aria-labelledby="summary-heading">
-              <h2 id="summary-heading" className="sr-only">Summary statistics</h2>
+              <h2 id="summary-heading" className="sr-only">Statistics</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard label="Total Projects" value={stats.total_projects} />
                 <StatCard label="Delayed Projects" value={stats.delayed_projects} accent="red" />
-                <StatCard label="In Proposal" value={stats.pipeline.proposal} />
-                <StatCard label="In Packaging" value={stats.pipeline.packaging} />
+                <StatCard label="Formula Pending" value={stats.pipeline.formula_pending} />
+                <StatCard label="Sample in Pipeline" value={stats.pipeline.sample_in_pipeline} />
               </div>
             </section>
 
-            {/* ── Pipeline visibility ── */}
+            {/* ── Pipeline pie chart ── */}
             <section aria-labelledby="pipeline-heading">
-              <h2 id="pipeline-heading" className="text-lg font-semibold text-black dark:text-white mb-3">
+              <h2 id="pipeline-heading" className="text-lg font-semibold text-black dark:text-white mb-4">
                 Pipeline
               </h2>
-              <div className="grid grid-cols-3 gap-4">
-                <PipelineCard label="Proposal Stage" count={stats.pipeline.proposal} stageKey="proposal" />
-                <PipelineCard label="Sample In Pipeline" count={stats.pipeline.sample_in_pipeline} stageKey="sample" />
-                <PipelineCard label="Packaging Stage" count={stats.pipeline.packaging} stageKey="packaging" />
+              <div className="bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg p-5">
+                <PhasePieChart
+                  data={[
+                    { key: 'sample',       name: 'Sample Stage',      value: stats.phase_breakdown.sample,       color: PHASE_COLORS.sample },
+                    { key: 'order_active', name: 'Order in Progress', value: stats.phase_breakdown.order_active, color: PHASE_COLORS.order_active },
+                    { key: 'completed',    name: 'Completed Orders',  value: stats.phase_breakdown.completed,    color: PHASE_COLORS.completed },
+                  ]}
+                  activeSegment={activeSegment}
+                  onSegmentClick={(key) => setActiveSegment(prev => prev === key ? null : key)}
+                />
               </div>
             </section>
 
-            {/* ── Stage distribution ── */}
-            <section aria-labelledby="distribution-heading">
-              <h2 id="distribution-heading" className="text-lg font-semibold text-black dark:text-white mb-3">
-                Stage Distribution
-              </h2>
-              {stageEntries.length === 0 ? (
-                <p className="text-black/60 dark:text-slate-300 text-sm">No projects yet.</p>
-              ) : (
-                <div className="space-y-2" role="list" aria-label="Project count per stage">
-                  {stageEntries.map(([stage, count]) => (
-                    <div key={stage} role="listitem" className="flex items-center gap-3">
-                      <span className="w-40 text-sm text-black/70 dark:text-slate-300 truncate">{stage}</span>
-                      <div className="flex-1 bg-black/10 dark:bg-white/10 rounded-full h-3" aria-hidden="true">
-                        <div
-                          className="bg-mustard h-3 rounded-full transition-all"
-                          style={{ width: `${Math.min((count / stats.total_projects) * 100, 100)}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-black dark:text-white w-6 text-right">
-                        {count}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
 
             {/* ── Project health table ── */}
             <section aria-labelledby="health-heading">
-              <h2 id="health-heading" className="text-lg font-semibold text-black dark:text-white mb-3">
-                Project Health
-              </h2>
-              {projects.length === 0 ? (
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                <h2 id="health-heading" className="text-lg font-semibold text-black dark:text-white">
+                  Projects
+                </h2>
+                {activeSegment && (
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white"
+                      style={{ backgroundColor: PHASE_COLORS[activeSegment] }}
+                    >
+                      {SEGMENT_LABELS[activeSegment]}
+                      <span className="text-white/70">· {filteredProjects.length}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveSegment(null)}
+                      className="text-xs text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                      aria-label="Clear filter"
+                    >
+                      Clear ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+              {filteredProjects.length === 0 ? (
                 <p className="text-black/60 dark:text-slate-300 text-sm">No projects to display.</p>
               ) : (
                 <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
@@ -136,11 +151,10 @@ export default function CRMDashboard() {
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Stage</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Progress</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
-                        <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Next Milestone</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                      {projects.map((p) => (
+                      {filteredProjects.map((p) => (
                         <tr key={p.id} className="hover:bg-black/2 dark:hover:bg-white/2">
                           <td className="px-4 py-3">
                             <Link
@@ -166,18 +180,15 @@ export default function CRMDashboard() {
                             />
                           </td>
                           <td className="px-4 py-3 text-black/70 dark:text-slate-300 capitalize">
-                            {p.project_stage.replace(/_/g, ' ')}
+                            {p.phase === 'order'
+                              ? 'Order Phase'
+                              : p.project_stage.replace(/_/g, ' ')}
                           </td>
                           <td className="px-4 py-3 w-40">
                             <ProgressBar value={p.progress_percentage} size="sm" />
                           </td>
                           <td className="px-4 py-3">
                             <StatusBadge hasDelays={p.has_delays} />
-                          </td>
-                          <td className="px-4 py-3 text-black/60 dark:text-slate-300 text-xs">
-                            {p.next_milestone
-                              ? `${p.next_milestone.display} · ${p.next_milestone.planned_date}`
-                              : '—'}
                           </td>
                         </tr>
                       ))}
@@ -208,15 +219,93 @@ function StatCard({ label, value, accent }: { label: string; value: number; acce
   )
 }
 
-function PipelineCard({ label, count, stageKey }: { label: string; count: number; stageKey: string }) {
+const PHASE_COLORS = {
+  sample:       '#f97316',  // orange
+  order_active: '#22c55e',  // green
+  completed:    '#9ca3af',  // grey
+}
+
+function PhasePieChart({ data, activeSegment, onSegmentClick }: {
+  data: Array<{ key: SegmentKey; name: string; value: number; color: string }>
+  activeSegment: SegmentKey | null
+  onSegmentClick: (key: SegmentKey) => void
+}) {
+  const total = data.reduce((s, d) => s + d.value, 0)
+  const nonEmpty = data.filter(d => d.value > 0)
+  const isEmpty = nonEmpty.length === 0
+  const displayData = isEmpty ? [{ key: 'sample' as SegmentKey, name: 'No projects', value: 1, color: '#e5e7eb' }] : data
+
+  const activeIndex = activeSegment ? data.findIndex(d => d.key === activeSegment) : -1
+
   return (
-    <Link
-      to={`/crm/projects?stage=${stageKey}`}
-      className="block bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg p-4 hover:border-mustard focus-visible:ring-2 focus-visible:ring-mustard transition-colors"
-      aria-label={`${label}: ${count} projects`}
-    >
-      <div className="text-2xl font-bold text-black dark:text-white">{count}</div>
-      <div className="text-sm text-black/60 dark:text-slate-300 mt-1">{label}</div>
-    </Link>
+    <div className="relative">
+      <ResponsiveContainer width="100%" height={240}>
+        <PieChart>
+          <Pie
+            data={displayData}
+            cx="50%"
+            cy="50%"
+            innerRadius={68}
+            outerRadius={100}
+            paddingAngle={nonEmpty.length > 1 ? 2 : 0}
+            dataKey="value"
+            labelLine={false}
+            isAnimationActive
+            onClick={isEmpty ? undefined : (_, index) => onSegmentClick(data[index].key)}
+            style={{ cursor: isEmpty ? 'default' : 'pointer' }}
+          >
+            {displayData.map((entry, i) => (
+              <Cell
+                key={entry.name}
+                fill={entry.color}
+                stroke={activeIndex === i ? entry.color : 'none'}
+                strokeWidth={activeIndex === i ? 2 : 0}
+                fillOpacity={activeIndex >= 0 && activeIndex !== i ? 0.35 : 1}
+                style={{ outline: 'none' }}
+              />
+            ))}
+          </Pie>
+          {!isEmpty && (
+            <Tooltip
+              formatter={(value: number, name: string) => [
+                `${value} project${value !== 1 ? 's' : ''} (${Math.round((value / total) * 100)}%)`,
+                name,
+              ]}
+              contentStyle={{
+                borderRadius: '0.5rem',
+                border: '1px solid rgba(0,0,0,0.1)',
+                fontSize: '0.8125rem',
+              }}
+            />
+          )}
+          <Legend
+            iconType="circle"
+            iconSize={10}
+            formatter={(value, entry: any) => (
+              <span
+                style={{
+                  fontSize: '0.8125rem',
+                  opacity: activeIndex >= 0 && data.findIndex(d => d.name === value) !== activeIndex ? 0.4 : 1,
+                  cursor: isEmpty ? 'default' : 'pointer',
+                }}
+                onClick={() => {
+                  if (isEmpty) return
+                  const seg = data.find(d => d.name === value)
+                  if (seg) onSegmentClick(seg.key)
+                }}
+              >
+                {value}
+              </span>
+            )}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+
+      {/* Center label overlay */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ paddingBottom: 36 }}>
+        <span className="text-3xl font-bold text-black dark:text-white leading-none">{total}</span>
+        <span className="text-xs text-black/50 dark:text-slate-400 mt-1">projects</span>
+      </div>
+    </div>
   )
 }

@@ -397,9 +397,13 @@ export interface DashboardStats {
   total_projects: number
   delayed_projects: number
   pipeline: {
-    proposal: number
+    formula_pending: number
     sample_in_pipeline: number
-    packaging: number
+  }
+  phase_breakdown: {
+    sample: number
+    order_active: number
+    completed: number
   }
 }
 

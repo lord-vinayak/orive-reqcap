@@ -4,7 +4,7 @@ from django.db import transaction
 
 logger = logging.getLogger(__name__)
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, Count
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -27,6 +27,7 @@ from .stage_definitions import (
     ORDER_PHASE_SECTIONS, SAMPLE_TOTAL_STAGES, ORDER_TOTAL_STAGES,
     MAX_RESAMPLE_CYCLES, BATCH_RESET_KEYS, STAGE_DISPLAY_MAP,
     get_loop_key, get_loop_stage_keys_for_cycle, ALL_INITIAL_STAGE_KEYS,
+    ALL_ORDER_STAGE_KEYS,
 )
 from .consumers import broadcast_task_update
 
@@ -668,25 +669,46 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         delayed_projects = CRMProject.objects.filter(
             milestones__status='delayed'
         ).distinct().count()
+
+        # Phase breakdown for pie chart
+        order_total = len(ALL_ORDER_STAGE_KEYS)
+        completed_orders = qs.filter(phase='order').annotate(
+            order_done=Count(
+                'stage_completions',
+                filter=Q(
+                    stage_completions__stage_key__in=ALL_ORDER_STAGE_KEYS,
+                    stage_completions__is_complete=True,
+                )
+            )
+        ).filter(order_done=order_total).count()
+        sample_count = qs.filter(phase='sample').count()
+        order_active = qs.filter(phase='order').count() - completed_orders
+
         pipeline = {
-            'sample_in_progress': qs.filter(phase='sample').count(),
-            'order_in_progress': qs.filter(phase='order').count(),
-            'sample_approved': qs.filter(
-                phase='sample', order_booked=False,
-                resample_cycle__gte=1,
-            ).filter(
-                stage_completions__stage_key='sample_approved',
-                stage_completions__is_complete=True,
+            'formula_pending': qs.filter(
+                phase='sample',
+                stage_completions__stage_key='formula_pending',
+                stage_completions__is_complete=False,
+            ).distinct().count(),
+            'sample_in_pipeline': qs.filter(
+                phase='sample',
+                stage_completions__stage_key='sample_in_pipeline',
+                stage_completions__is_complete=False,
             ).distinct().count(),
         }
         return Response({
             'stage_distribution': {
-                'Sample Phase': qs.filter(phase='sample').count(),
+                'Sample Phase': sample_count,
                 'Order Phase': qs.filter(phase='order').count(),
             },
             'total_projects': qs.count(),
             'delayed_projects': delayed_projects,
             'pipeline': pipeline,
+            'phase_breakdown': {
+                'sample': sample_count,
+                'order_active': order_active,
+                'completed': completed_orders,
+            },
         })
 
     @action(detail=False, methods=['get'])
