@@ -14,12 +14,13 @@ interface Props {
   saving: boolean
   teamMembers?: InternalTeamMember[]
   onAssign?: (key: string, memberId: string, comment?: string) => Promise<void>
+  onUpload?: (stageKey: string, file: File) => Promise<void>
 }
 
 export function SamplePhaseView({
   stageStatus, projectId: _projectId, activeStageKey, setActiveStageKey,
   onCompleteStage, onApproveSample, onSetOrderGate, saving,
-  teamMembers = [], onAssign,
+  teamMembers = [], onAssign, onUpload,
 }: Props) {
   const { sample_phase, order_advance_received, order_booked, sample_phase_complete, resample_cycle, max_cycles, resample_notes } = stageStatus
 
@@ -35,6 +36,7 @@ export function SamplePhaseView({
         saving={saving}
         teamMembers={teamMembers}
         onAssign={onAssign}
+        onUpload={onUpload}
       />
 
       {/* Resample cycles */}
@@ -80,7 +82,7 @@ export function SamplePhaseView({
                   >
                     <StageCheckbox
                       stage={stage} onToggle={onCompleteStage} saving={saving}
-                      teamMembers={teamMembers} onAssign={onAssign}
+                      teamMembers={teamMembers} onAssign={onAssign} onUpload={onUpload}
                     />
                   </div>
                 )
@@ -119,6 +121,7 @@ export function SamplePhaseView({
           saving={saving}
           teamMembers={teamMembers}
           onAssign={onAssign}
+          onUpload={onUpload}
         />
       )}
 
@@ -138,7 +141,7 @@ export function SamplePhaseView({
 // ── Stage section wrapper ─────────────────────────────────────────────────────
 
 function StageSection({
-  title, stages, activeKey, setActiveKey, onToggle, saving, teamMembers, onAssign,
+  title, stages, activeKey, setActiveKey, onToggle, saving, teamMembers, onAssign, onUpload,
 }: {
   title: string
   stages: StageStatusResponse['sample_phase']['pre_loop']
@@ -148,6 +151,7 @@ function StageSection({
   saving: boolean
   teamMembers?: InternalTeamMember[]
   onAssign?: (key: string, memberId: string, comment?: string) => Promise<void>
+  onUpload?: (stageKey: string, file: File) => Promise<void>
 }) {
   return (
     <div>
@@ -162,7 +166,7 @@ function StageSection({
           >
             <StageCheckbox
               stage={stage} onToggle={onToggle} saving={saving}
-              teamMembers={teamMembers} onAssign={onAssign}
+              teamMembers={teamMembers} onAssign={onAssign} onUpload={onUpload}
             />
           </div>
         ))}

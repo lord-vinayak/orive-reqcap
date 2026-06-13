@@ -31,6 +31,11 @@ export default function CRMFinancials() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [tableView, setTableView] = useState<TableView>('all')
+  const [txSearch, setTxSearch] = useState('')
+  const [txDirection, setTxDirection] = useState<'all' | 'received' | 'paid'>('all')
+  const [txCategory, setTxCategory] = useState('')
+  const [projectSearch, setProjectSearch] = useState('')
+  const [vendorSearch, setVendorSearch] = useState('')
 
   useEffect(() => {
     if (!dateFrom || !dateTo) return
@@ -55,6 +60,9 @@ export default function CRMFinancials() {
     }
     return { totalCredits: credits, totalDebits: debits, totalPayable: payable, totalReceivable: receivable, netPL: credits - debits }
   }, [payments])
+
+  // Profit/Loss as a % of total credits (revenue). null when there are no credits.
+  const plPercent = totalCredits > 0 ? (netPL / totalCredits) * 100 : null
 
   const categoryRows = useMemo(() => {
     const map: Record<string, { credits: number; debits: number }> = {}
@@ -101,6 +109,52 @@ export default function CRMFinancials() {
       .sort((a, b) => Math.abs(b.credits + b.debits) - Math.abs(a.credits + a.debits))
   }, [payments])
 
+  const allTxCategories = useMemo(() => {
+    const seen = new Set<string>()
+    for (const p of payments) {
+      if (p.direction !== 'paid' && p.direction !== 'received') continue
+      seen.add(p.sub_type_display || SUB_TYPE_LABEL[p.sub_type] || p.sub_type)
+    }
+    return [...seen].sort()
+  }, [payments])
+
+  const filteredTxPayments = useMemo(() => {
+    const q = txSearch.toLowerCase().trim()
+    return payments.filter((p) => {
+      if (p.direction !== 'paid' && p.direction !== 'received') return false
+      if (txDirection !== 'all' && p.direction !== txDirection) return false
+      if (txCategory) {
+        const cat = p.sub_type_display || SUB_TYPE_LABEL[p.sub_type] || p.sub_type
+        if (cat !== txCategory) return false
+      }
+      if (q) {
+        const haystack = [
+          p.project_no, p.project_client_name,
+          p.manufacturer_name ?? '', p.vendor_name ?? '',
+          p.sub_type_display || SUB_TYPE_LABEL[p.sub_type] || p.sub_type,
+        ].join(' ').toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
+      return true
+    })
+  }, [payments, txSearch, txDirection, txCategory])
+
+  const filteredProjectRows = useMemo(() => {
+    const q = projectSearch.toLowerCase().trim()
+    if (!q) return projectRows
+    return projectRows.filter((r) =>
+      `${r.no} ${r.client}`.toLowerCase().includes(q)
+    )
+  }, [projectRows, projectSearch])
+
+  const filteredVendorRows = useMemo(() => {
+    const q = vendorSearch.toLowerCase().trim()
+    if (!q) return vendorRows
+    return vendorRows.filter((r) =>
+      r.label.toLowerCase().includes(q)
+    )
+  }, [vendorRows, vendorSearch])
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -132,7 +186,15 @@ export default function CRMFinancials() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <SummaryCard label="Total Credits" amount={totalCredits} color="green" />
                 <SummaryCard label="Total Debits" amount={totalDebits} color="red" />
-                <SummaryCard label="Net P&L" amount={netPL} color={netPL >= 0 ? 'green' : 'red'} bold />
+                <SummaryCard
+                  label="Net P&L"
+                  amount={netPL}
+                  color={netPL >= 0 ? 'green' : 'red'}
+                  bold
+                  subtext={plPercent === null
+                    ? undefined
+                    : `${plPercent >= 0 ? '+' : ''}${plPercent.toFixed(2)}% ${plPercent >= 0 ? 'profit' : 'loss'} margin`}
+                />
               </div>
             </section>
 
@@ -229,16 +291,97 @@ export default function CRMFinancials() {
                 </div>
               </div>
 
+              {/* Search / filter bar */}
+              {tableView === 'all' && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <input
+                    type="search"
+                    placeholder="Search project, client, vendor, category…"
+                    value={txSearch}
+                    onChange={(e) => setTxSearch(e.target.value)}
+                    aria-label="Search transactions"
+                    className="flex-1 min-w-48 border border-black/20 dark:border-white/20 rounded px-3 py-1.5 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+                  />
+                  <select
+                    value={txDirection}
+                    onChange={(e) => setTxDirection(e.target.value as typeof txDirection)}
+                    aria-label="Filter by direction"
+                    className="border border-black/20 dark:border-white/20 rounded px-3 py-1.5 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+                  >
+                    <option value="all">All directions</option>
+                    <option value="received">Credits only</option>
+                    <option value="paid">Debits only</option>
+                  </select>
+                  <select
+                    value={txCategory}
+                    onChange={(e) => setTxCategory(e.target.value)}
+                    aria-label="Filter by category"
+                    className="border border-black/20 dark:border-white/20 rounded px-3 py-1.5 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+                  >
+                    <option value="">All categories</option>
+                    {allTxCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  {(txSearch || txDirection !== 'all' || txCategory) && (
+                    <button
+                      onClick={() => { setTxSearch(''); setTxDirection('all'); setTxCategory('') }}
+                      className="px-3 py-1.5 text-sm rounded border border-black/20 dark:border-white/20 text-black/60 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard"
+                      aria-label="Clear filters"
+                    >
+                      Clear
+                    </button>
+                  )}
+                  {(txSearch || txDirection !== 'all' || txCategory) && (
+                    <span className="self-center text-xs text-black/50 dark:text-slate-400">
+                      {filteredTxPayments.length} result{filteredTxPayments.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              )}
+              {tableView === 'by_project' && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <input
+                    type="search"
+                    placeholder="Search project or client…"
+                    value={projectSearch}
+                    onChange={(e) => setProjectSearch(e.target.value)}
+                    aria-label="Search projects"
+                    className="flex-1 min-w-48 border border-black/20 dark:border-white/20 rounded px-3 py-1.5 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+                  />
+                  {projectSearch && (
+                    <span className="self-center text-xs text-black/50 dark:text-slate-400">
+                      {filteredProjectRows.length} result{filteredProjectRows.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              )}
+              {tableView === 'by_vendor' && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <input
+                    type="search"
+                    placeholder="Search vendor or manufacturer…"
+                    value={vendorSearch}
+                    onChange={(e) => setVendorSearch(e.target.value)}
+                    aria-label="Search vendors"
+                    className="flex-1 min-w-48 border border-black/20 dark:border-white/20 rounded px-3 py-1.5 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+                  />
+                  {vendorSearch && (
+                    <span className="self-center text-xs text-black/50 dark:text-slate-400">
+                      {filteredVendorRows.length} result{filteredVendorRows.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              )}
+
               {payments.length === 0 ? <Empty /> : tableView === 'all' ? (
-                <AllRowsTable payments={payments.filter(p => p.direction === 'paid' || p.direction === 'received')} />
+                <AllRowsTable payments={filteredTxPayments} />
               ) : tableView === 'by_project' ? (
                 <BreakdownTable
-                  rows={projectRows.map((r) => ({ label: `${r.no} · ${r.client}`, credits: r.credits, debits: r.debits, net: r.net }))}
+                  rows={filteredProjectRows.map((r) => ({ label: `${r.no} · ${r.client}`, credits: r.credits, debits: r.debits, net: r.net }))}
                   firstColLabel="Project"
                 />
               ) : (
                 <BreakdownTable
-                  rows={vendorRows.map((r) => ({ label: r.label, credits: r.credits, debits: r.debits, net: r.net }))}
+                  rows={filteredVendorRows.map((r) => ({ label: r.label, credits: r.credits, debits: r.debits, net: r.net }))}
                   firstColLabel="Vendor / Manufacturer"
                 />
               )}
@@ -268,7 +411,7 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
   )
 }
 
-function SummaryCard({ label, amount, color, bold }: { label: string; amount: number; color: 'green' | 'red'; bold?: boolean }) {
+function SummaryCard({ label, amount, color, bold, subtext }: { label: string; amount: number; color: 'green' | 'red'; bold?: boolean; subtext?: string }) {
   const colorClass = color === 'green' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
   return (
     <div className="bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg p-4">
@@ -276,6 +419,7 @@ function SummaryCard({ label, amount, color, bold }: { label: string; amount: nu
         {fmt(amount)}
       </div>
       <div className="text-sm text-black/60 dark:text-slate-300 mt-1">{label}</div>
+      {subtext && <div className={`text-sm font-medium mt-0.5 ${colorClass}`}>{subtext}</div>}
     </div>
   )
 }

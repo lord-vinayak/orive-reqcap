@@ -12,11 +12,12 @@ interface Props {
   saving: boolean
   teamMembers?: InternalTeamMember[]
   onAssign?: (key: string, memberId: string) => Promise<void>
+  onUpload?: (stageKey: string, file: File) => Promise<void>
 }
 
 export function OrderPhaseView({
   stageStatus, activeStageKey, setActiveStageKey, onCompleteStage, onCompleteSection,
-  onResetBatch, saving, teamMembers = [], onAssign,
+  onResetBatch, saving, teamMembers = [], onAssign, onUpload,
 }: Props) {
   const { order_phase } = stageStatus
 
@@ -50,6 +51,7 @@ export function OrderPhaseView({
           saving={saving}
           teamMembers={teamMembers}
           onAssign={onAssign}
+          onUpload={onUpload}
         />
       ))}
     </div>
@@ -59,7 +61,7 @@ export function OrderPhaseView({
 // ── Section accordion ─────────────────────────────────────────────────────────
 
 function SectionAccordion({
-  section, activeKey, setActiveKey, onToggle, onCompleteSection, onResetBatch, saving, teamMembers, onAssign,
+  section, activeKey, setActiveKey, onToggle, onCompleteSection, onResetBatch, saving, teamMembers, onAssign, onUpload,
 }: {
   section: SectionStatus
   activeKey: string | null
@@ -70,6 +72,7 @@ function SectionAccordion({
   saving: boolean
   teamMembers?: InternalTeamMember[]
   onAssign?: (key: string, memberId: string) => Promise<void>
+  onUpload?: (stageKey: string, file: File) => Promise<void>
 }) {
   const [open, setOpen] = useState(!section.is_locked && !section.is_section_complete)
   const [resetting, setResetting] = useState(false)
@@ -174,7 +177,7 @@ function SectionAccordion({
             >
               <StageCheckbox
                 stage={stage} onToggle={onToggle} saving={saving}
-                teamMembers={teamMembers} onAssign={onAssign}
+                teamMembers={teamMembers} onAssign={onAssign} onUpload={onUpload}
               />
             </div>
           ))}

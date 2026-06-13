@@ -162,6 +162,16 @@ export const crmApi = {
     drive_file_id: string; drive_url: string; filename: string; file_type: string
   }) => api.post<ProjectFile>('/crm/project-files/', data),
 
+  uploadStageFile: (projectId: string, stageKey: string, file: File) => {
+    const fd = new FormData()
+    fd.append('project', projectId)
+    fd.append('stage_key', stageKey)
+    fd.append('file', file)
+    return api.post<ProjectFile>('/crm/project-files/', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
   deleteFile: (id: string) =>
     api.delete(`/crm/project-files/${id}/`),
 

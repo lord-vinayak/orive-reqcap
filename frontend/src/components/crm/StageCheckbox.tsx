@@ -8,14 +8,17 @@ interface Props {
   saving?: boolean
   teamMembers?: InternalTeamMember[]
   onAssign?: (key: string, memberId: string, comment?: string) => Promise<void>
+  onUpload?: (stageKey: string, file: File) => Promise<void>
 }
 
-export function StageCheckbox({ stage, onToggle, saving, teamMembers = [], onAssign }: Props) {
+export function StageCheckbox({ stage, onToggle, saving, teamMembers = [], onAssign, onUpload }: Props) {
   const isDisabled = stage.is_locked || saving
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [popoverStyle, setPopoverStyle] = useState<CSSProperties>({})
   const [search, setSearch] = useState('')
   const [assigning, setAssigning] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   // Two-step assign: null = pick member, non-null = confirm + comment
   const [selectedMember, setSelectedMember] = useState<InternalTeamMember | null>(null)
   const [comment, setComment] = useState('')
@@ -144,6 +147,35 @@ export function StageCheckbox({ stage, onToggle, saving, teamMembers = [], onAss
           )}
         </div>
       </div>
+
+      {/* Attach button — only shown when not locked and onUpload is provided */}
+      {onUpload && !stage.is_locked && (
+        <div className="shrink-0">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              setUploading(true)
+              try { await onUpload(stage.key, file) } finally {
+                setUploading(false)
+                e.target.value = ''
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="text-xs px-2 py-0.5 rounded border border-black/15 dark:border-white/15 text-black/50 dark:text-slate-400 hover:border-mustard hover:text-mustard transition-colors focus-visible:ring-2 focus-visible:ring-mustard disabled:opacity-50"
+            aria-label={`Attach file to ${stage.display}`}
+          >
+            {uploading ? '…' : '📎'}
+          </button>
+        </div>
+      )}
 
       {/* Assign button — only shown when not locked and onAssign is provided */}
       {onAssign && !stage.is_locked && (

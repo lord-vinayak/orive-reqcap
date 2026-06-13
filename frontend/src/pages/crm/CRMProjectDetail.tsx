@@ -70,6 +70,7 @@ export default function CRMProjectDetail() {
   const [payments, setPayments] = useState<ProjectPayment[]>([])
   const [actionSaving, setActionSaving] = useState(false)
   const [teamMembers, setTeamMembers] = useState<InternalTeamMember[]>([])
+  const [uploadError, setUploadError] = useState('')
 
   const fetchProject = () => {
     if (!id) return
@@ -180,6 +181,18 @@ export default function CRMProjectDetail() {
     if (!id) return
     await crmApi.assignStage(id, stageKey, memberId, comment ? { comment } : undefined)
     await fetchStageStatus()
+  }
+
+  const handleUploadStageFile = async (stageKey: string, file: File) => {
+    if (!id) return
+    setUploadError('')
+    try {
+      await crmApi.uploadStageFile(id, stageKey, file)
+      await refresh()
+    } catch (err: unknown) {
+      const detail = (err as any)?.response?.data?.detail
+      setUploadError(detail || 'File upload failed. Check server logs for details.')
+    }
   }
 
   // ── Loading / error states ──────────────────────────────────────────────────
@@ -293,6 +306,22 @@ export default function CRMProjectDetail() {
           </section>
         )}
 
+        {/* ── Upload error ── */}
+        {uploadError && (
+          <div role="alert" className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
+            <span className="shrink-0">⚠️</span>
+            <span className="flex-1">{uploadError}</span>
+            <button
+              type="button"
+              onClick={() => setUploadError('')}
+              aria-label="Dismiss error"
+              className="shrink-0 text-red-400 hover:text-red-600 dark:hover:text-red-200"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* ── Progress bars ── */}
         {progress && (
           <section aria-labelledby="progress-heading" className="space-y-2">
@@ -377,6 +406,7 @@ export default function CRMProjectDetail() {
                 saving={actionSaving}
                 teamMembers={teamMembers}
                 onAssign={handleAssignStage}
+                onUpload={handleUploadStageFile}
               />
             )}
             {stageStatus && activePhase === 'order' && (
@@ -390,6 +420,7 @@ export default function CRMProjectDetail() {
                 saving={actionSaving}
                 teamMembers={teamMembers}
                 onAssign={handleAssignStage}
+                onUpload={handleUploadStageFile}
               />
             )}
           </div>

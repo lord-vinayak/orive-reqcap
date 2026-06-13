@@ -1,5 +1,8 @@
+import logging
 from datetime import date, timedelta
 from django.db import transaction
+
+logger = logging.getLogger(__name__)
 from django.utils import timezone
 from django.db.models import Q
 from rest_framework import viewsets, permissions, filters, status
@@ -729,6 +732,7 @@ class ProjectNoteViewSet(viewsets.ModelViewSet):
 class ProjectFileViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectFileSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
         qs = ProjectFile.objects.select_related('uploaded_by')
@@ -740,8 +744,50 @@ class ProjectFileViewSet(viewsets.ModelViewSet):
             qs = qs.filter(stage_key=stage_key)
         return qs
 
-    def perform_create(self, serializer):
-        serializer.save(uploaded_by=self.request.user)
+    def create(self, request, *args, **kwargs):
+        uploaded_file = request.FILES.get('file')
+        if not uploaded_file:
+            return Response({'detail': 'No file provided.'}, status=400)
+
+        project_id = request.data.get('project')
+        try:
+            project = CRMProject.objects.select_related('client').get(id=project_id)
+        except CRMProject.DoesNotExist:
+            return Response({'detail': 'Project not found.'}, status=404)
+
+        from apps.files.drive_service import upload_file
+        try:
+            result = upload_file(
+                file_bytes=uploaded_file.read(),
+                filename=uploaded_file.name,
+                mimetype=uploaded_file.content_type or 'application/octet-stream',
+                client_name=project.client.name,
+                subfolder='Stage Files',
+            )
+        except Exception:
+            logger.exception('Google Drive upload failed for project %s', project_id)
+            return Response({'detail': 'Failed to upload to Drive.'}, status=500)
+
+        mime = uploaded_file.content_type or ''
+        if mime.startswith('image/'):
+            file_type = 'image'
+        elif mime.startswith('video/'):
+            file_type = 'video'
+        else:
+            file_type = 'document'
+
+        serializer = self.get_serializer(data={
+            'project': project_id,
+            'stage_key': request.data.get('stage_key', ''),
+            'sub_stage_key': request.data.get('sub_stage_key', ''),
+            'drive_file_id': result['drive_file_id'],
+            'drive_url': result['drive_url'],
+            'filename': uploaded_file.name,
+            'file_type': file_type,
+        })
+        serializer.is_valid(raise_exception=True)
+        serializer.save(uploaded_by=request.user)
+        return Response(serializer.data, status=201)
 
     def destroy(self, request, *args, **kwargs):
         if request.user.role != 'admin':
