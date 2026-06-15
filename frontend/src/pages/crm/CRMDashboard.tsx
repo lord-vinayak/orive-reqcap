@@ -267,10 +267,13 @@ function PhasePieChart({ data, activeSegment, onSegmentClick }: {
           </Pie>
           {!isEmpty && (
             <Tooltip
-              formatter={(value: number, name: string) => [
-                `${value} project${value !== 1 ? 's' : ''} (${Math.round((value / total) * 100)}%)`,
-                name,
-              ]}
+              formatter={(value, name) => {
+                const v = typeof value === 'number' ? value : Number(value ?? 0)
+                return [
+                  `${v} project${v !== 1 ? 's' : ''} (${Math.round((v / total) * 100)}%)`,
+                  String(name ?? ''),
+                ]
+              }}
               contentStyle={{
                 borderRadius: '0.5rem',
                 border: '1px solid rgba(0,0,0,0.1)',
