@@ -51,7 +51,7 @@ const EMPTY_FILTERS: Filters = {
 
 const RATE_CATEGORIES = ['Basic', 'Premium', 'Luxury']
 
-export default function CatalogSuggestions({
+export default function   CatalogSuggestions({
   products,
   activeRowIndex,
   requirementId,

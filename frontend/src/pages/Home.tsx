@@ -49,14 +49,14 @@ export default function Home() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <NavCard
             icon={<FilePlus2 />}
-            title="Add Record"
+            title="Add Client Record"
             description="Capture a new client requirement or import clients from Excel."
             onClick={() => navigate("/requirements/add")}
             ariaLabel="Add a new record — capture requirement or import clients"
           />
           <NavCard
             icon={<FileSearch />}
-            title="Edit Record"
+            title="Update Client Record"
             description="Search and edit existing client requirements."
             onClick={() => navigate("/requirements/search")}
             ariaLabel="Edit an existing requirement record"

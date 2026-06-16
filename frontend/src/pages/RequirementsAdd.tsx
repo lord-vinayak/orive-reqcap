@@ -27,7 +27,7 @@ export default function RequirementsAdd() {
             </div>
             <div className="text-lg font-semibold text-black dark:text-slate-100 mb-1" aria-hidden="true">Capture New</div>
             <div className="text-sm text-black/60 dark:text-slate-300" aria-hidden="true">
-              Fill in a new client requirement form step by step.
+              Add Client Record – Manual.
             </div>
           </div>
 
@@ -44,7 +44,7 @@ export default function RequirementsAdd() {
             </div>
             <div className="text-lg font-semibold text-black dark:text-slate-100 mb-1" aria-hidden="true">Import from Excel</div>
             <div className="text-sm text-black/60 dark:text-slate-300" aria-hidden="true">
-              Bulk-import clients from a spreadsheet and browse all records.
+              Add Client Record – Bulk.
             </div>
           </div>
         </div>

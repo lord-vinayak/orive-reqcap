@@ -206,9 +206,12 @@ export default function ClientInfoForm({
           </label>
           <input
             id="ci_price_range"
+            type="number"
+            step="1"
+            min={0}
             value={client.planned_selling_price_range || ""}
             onChange={(e) => patch({ planned_selling_price_range: e.target.value })}
-            placeholder="e.g. ₹100–₹500"
+            placeholder="e.g. 500"
             className="w-full"
           />
         </div>
@@ -239,9 +242,12 @@ export default function ClientInfoForm({
           <div className="flex items-center gap-3 flex-wrap">
             <input
               id="ci_age"
+              type="number"
+              step="1"
+              min={0}
               value={targetAge}
               onChange={(e) => onTargetAgeChange(e.target.value)}
-              placeholder="e.g. 25–40"
+              placeholder="e.g. 30"
               className="flex-1 min-w-0"
               aria-describedby="age-audio-hint"
             />
@@ -305,7 +311,7 @@ export default function ClientInfoForm({
               <input
                 id="ci_gst"
                 value={client.gst_details || ""}
-                onChange={(e) => patch({ gst_details: e.target.value })}
+                onChange={(e) => patch({ gst_details: e.target.value.toUpperCase() })}
                 placeholder="e.g. 27AAPFU0939F1ZV"
                 className="w-full"
               />

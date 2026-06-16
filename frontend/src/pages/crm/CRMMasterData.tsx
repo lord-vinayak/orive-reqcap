@@ -286,7 +286,7 @@ function ManufacturerForm({
           <input value={form.state ?? ''} onChange={set('state')} className={inp()} />
         </MField>
         <MField label="GST No">
-          <input value={form.gst_no ?? ''} onChange={set('gst_no')} className={inp()} />
+          <input value={form.gst_no ?? ''} onChange={(e) => setForm((f) => ({ ...f, gst_no: e.target.value.toUpperCase() }))} className={inp()} />
         </MField>
         <MField label="PAN No">
           <input value={form.pan_no ?? ''} onChange={set('pan_no')} className={inp()} />
@@ -530,7 +530,7 @@ function VendorForm({
             <input value={form.bank_ifsc ?? ''} onChange={set('bank_ifsc')} className={inp()} />
           </MField>
           <MField label="GST No">
-            <input value={form.gst_no ?? ''} onChange={set('gst_no')} className={inp()} />
+            <input value={form.gst_no ?? ''} onChange={(e) => setForm((f) => ({ ...f, gst_no: e.target.value.toUpperCase() }))} className={inp()} />
           </MField>
           <MField label="PAN No">
             <input value={form.pan_no ?? ''} onChange={set('pan_no')} className={inp()} />

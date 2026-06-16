@@ -478,8 +478,6 @@ export default function RequirementForm() {
       setSavedAt(new Date());
       return req;
     } catch (err: any) {
-      // DRF field-level errors come as {field: [msg, ...]} — no top-level 'detail' key.
-      // Flatten them into a readable string so the user sees the real cause.
       const data = err.response?.data;
       let msg = "Save failed.";
       if (data) {

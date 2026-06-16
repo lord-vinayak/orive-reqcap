@@ -243,7 +243,7 @@ export default function CRMClientCreate() {
                 id={gstId}
                 type="text"
                 value={form.gst_details}
-                onChange={set('gst_details')}
+                onChange={(e) => { setForm((f) => ({ ...f, gst_details: e.target.value.toUpperCase() })); if (errors.gst_details) setErrors((p) => ({ ...p, gst_details: undefined })) }}
                 placeholder="GSTIN number"
                 className="w-full border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
               />

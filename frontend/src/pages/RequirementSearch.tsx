@@ -125,7 +125,7 @@ export default function RequirementSearch() {
   const displayClients = hasFilters ? clients : recentClients
 
   return (
-    <Layout title="Edit Requirement">
+    <Layout title="Edit Old Requirement">
       <h1 className="text-2xl font-semibold mb-6">Edit Old Requirement</h1>
 
       {/* ---- Filter bar ---- */}
@@ -171,6 +171,7 @@ export default function RequirementSearch() {
             type="button"
             onClick={() => { setPocFilter(''); setTextFilter(''); setClients([]); setExpandedPhone(null) }}
             className="btn-secondary text-sm self-end"
+            aria-label="Clear search filters"
           >
             Clear
           </button>
@@ -185,13 +186,13 @@ export default function RequirementSearch() {
       )}
 
       {!hasFilters && !loadingRecent && recentClients.length === 0 && (
-        <p className="text-sm text-black/60 dark:text-slate-300">
+        <p className="text-sm text-black/60 dark:text-slate-300" role="status" aria-live="polite">
           No requirements found. Use the filter above to search.
         </p>
       )}
 
       {!hasFilters && !loadingRecent && recentClients.length > 0 && (
-        <p className="text-xs text-black/50 dark:text-slate-400 mb-3">
+        <p className="text-xs text-black/60 dark:text-slate-400 mb-3">
           Page {recentPage} of {recentTotalPages} — {recentClients.length} shown
         </p>
       )}
@@ -201,7 +202,7 @@ export default function RequirementSearch() {
       )}
 
       {hasFilters && !loadingClients && clients.length === 0 && (
-        <p className="text-sm text-black/60 dark:text-slate-300">No clients found matching those filters.</p>
+        <p className="text-sm text-black/60 dark:text-slate-300" role="status" aria-live="polite">No clients found matching those filters.</p>
       )}
 
       {displayClients.length > 0 && (
@@ -247,7 +248,7 @@ export default function RequirementSearch() {
                   {/* Expanded requirements sub-rows */}
                   {expandedPhone === c.phone_no && (
                     <tr>
-                      <td colSpan={6} className="p-0">
+                      <td colSpan={5} className="p-0">
                         <div className="bg-black/[0.015] dark:bg-white/[0.03] px-6 py-4 border-t border-black/5 dark:border-white/5">
                           {/* Always show a Create button for this client */}
                           {!loadingReqs && (
@@ -267,10 +268,10 @@ export default function RequirementSearch() {
                             </div>
                           )}
                           {loadingReqs && (
-                            <p className="text-sm text-black/60 dark:text-slate-300">Loading requirements…</p>
+                            <p className="text-sm text-black/60 dark:text-slate-300" role="status" aria-live="polite">Loading requirements…</p>
                           )}
                           {reqError && !requirements.length && (
-                            <p className="text-sm text-black/60 dark:text-slate-300">{reqError}</p>
+                            <p className="text-sm text-black/60 dark:text-slate-300" role="alert">{reqError}</p>
                           )}
                           {!loadingReqs && requirements.length > 0 && (
                             <table className="table-clean" aria-label={`Requirements for ${c.name}`}>
@@ -289,7 +290,7 @@ export default function RequirementSearch() {
                                     <td>{r.title}</td>
                                     <td><span className="badge">{r.status}</span></td>
                                     <td>{r.no_of_products ?? '—'}</td>
-                                    <td>{new Date(r.updated_at).toLocaleString()}</td>
+                                    <td><time dateTime={r.updated_at}>{new Date(r.updated_at).toLocaleString()}</time></td>
                                     <td>
                                       <button
                                         onClick={() => navigate(`/requirements/${r.id}/view`)}
