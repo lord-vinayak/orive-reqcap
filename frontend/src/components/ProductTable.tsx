@@ -46,6 +46,10 @@ interface Props {
   onAddRowToCosting?: (index: number) => Promise<void> | void
   /** Index currently being added to the costing (for showing a spinner). */
   addingRowToCostingIndex?: number | null
+  /** Opens the notes modal — only provided when requirement is saved. */
+  onAddNote?: () => void
+  /** Opens the file upload modal — only provided when requirement is saved. */
+  onAddImage?: () => void
 }
 
 /**
@@ -58,6 +62,7 @@ export default function ProductTable({
   activeIndex, onActiveChange,
   showValidation = false,
   onAddRowToCosting, addingRowToCostingIndex = null,
+  onAddNote, onAddImage,
 }: Props) {
   // Unique datalist IDs so multiple ProductTables on a page don't collide.
   const uid = useId().replace(/:/g, '')
@@ -353,7 +358,7 @@ export default function ProductTable({
         </table>
       </div>
 
-      <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 bg-white dark:bg-slate-800">
+      <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 bg-white dark:bg-slate-800 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onAddRow}
@@ -361,6 +366,26 @@ export default function ProductTable({
         >
           + Add row
         </button>
+        {onAddNote && (
+          <button
+            type="button"
+            onClick={onAddNote}
+            className="btn-secondary text-sm"
+            aria-label="Add a note for this requirement"
+          >
+            + Add note
+          </button>
+        )}
+        {onAddImage && (
+          <button
+            type="button"
+            onClick={onAddImage}
+            className="btn-secondary text-sm"
+            aria-label="Upload a file for this requirement"
+          >
+            + Add file
+          </button>
+        )}
       </div>
     </section>
   )

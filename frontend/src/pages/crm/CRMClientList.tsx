@@ -64,7 +64,6 @@ export default function CRMClientList() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, phone, or POC…"
               className="flex-1 border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
-              aria-label="Search clients by name, phone number, or point of contact"
             />
             <button type="submit" className="btn-primary text-sm px-4">Search</button>
             {search && (
@@ -89,7 +88,7 @@ export default function CRMClientList() {
             Loading clients…
           </div>
         ) : clients.length === 0 ? (
-          <p className="text-black/60 dark:text-slate-400 text-sm">No clients found.</p>
+          <p role="status" aria-live="polite" className="text-black/60 dark:text-slate-400 text-sm">No clients found.</p>
         ) : (
           <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
             <table className="w-full text-sm" aria-label="Client list">
@@ -106,7 +105,14 @@ export default function CRMClientList() {
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
                 {clients.map((c) => (
                   <tr key={c.phone_no} className="hover:bg-black/2 dark:hover:bg-white/2">
-                    <td className="px-4 py-3 font-medium text-black dark:text-white">{c.name}</td>
+                    <td className="px-4 py-3 font-medium">
+                      <Link
+                        to={`/crm/clients/${c.phone_no}`}
+                        className="text-black dark:text-white hover:underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                      >
+                        {c.name}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.company_name || '—'}</td>
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.phone_no}</td>
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.city || '—'}</td>

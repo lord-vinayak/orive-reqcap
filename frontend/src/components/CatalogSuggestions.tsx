@@ -269,7 +269,8 @@ export default function   CatalogSuggestions({
 
   return (
     <>
-      {/* ======= Matching catalog items ======= */}
+      {/* ponytail: hidden per product request — set SHOW_CATALOG_SEARCH to true to re-enable */}
+      {(false as boolean) && (
       <section
         className="card p-0 overflow-hidden"
         aria-labelledby="catalog-suggestions-heading"
@@ -280,7 +281,7 @@ export default function   CatalogSuggestions({
           </h2>
           {checkedIds.size > 0 && (
             <span className="text-xs text-black/60 dark:text-slate-300" aria-live="polite">
-              {checkedIds.size} selected — use “Add to Client Costing” in the bottom bar
+              {checkedIds.size} selected — use “Add to Client Costing" in the bottom bar
             </span>
           )}
         </div>
@@ -501,7 +502,6 @@ export default function   CatalogSuggestions({
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                {/* Select-all checkbox */}
                 <th scope="col" className={`${thCls} w-10 text-center`}>
                   <input
                     type="checkbox"
@@ -594,6 +594,7 @@ export default function   CatalogSuggestions({
           )}
         </div>
       </section>
+      )}
 
       {/* ======= Items already in proposal ======= */}
       <section

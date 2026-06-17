@@ -208,8 +208,8 @@ export default function ProposalPage() {
       {tab === 'edit' && (
         <div id="panel-edit" role="tabpanel" aria-labelledby="tab-edit" tabIndex={0} className="flex flex-col gap-6">
 
-          {/* ── Top pane: Catalog search ── */}
-          <section className="card" aria-labelledby="catalog-search-heading">
+          {/* ponytail: hidden per product request — set to true to re-enable */}
+          {(false as boolean) && <section className="card" aria-labelledby="catalog-search-heading">
             <h2 id="catalog-search-heading" className="text-lg font-semibold mb-3">Search catalog</h2>
 
             {/* Filter bar — one row across full width */}
@@ -380,7 +380,7 @@ export default function ProposalPage() {
                 </tbody>
               </table>
             </div>
-          </section>
+          </section>}
 
           {/* ── Bottom pane: editable costing table — full width ── */}
           <section className="card" aria-labelledby="selected-heading">
@@ -401,12 +401,26 @@ export default function ProposalPage() {
             )}
           </section>
 
+          <div className="flex justify-end pt-2">
+            <button type="button" onClick={() => setTab('preview')} className="text-sm text-black/60 dark:text-slate-400 hover:text-black dark:hover:text-white">
+              Go to Preview →
+            </button>
+          </div>
+
         </div>
       )}
 
       {tab === 'preview' && (
         <div id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" tabIndex={0}>
           <ProposalPreview proposal={proposal} requirement={requirement} />
+          <div className="flex justify-between pt-4">
+            <button type="button" onClick={() => setTab('edit')} className="text-sm text-black/60 dark:text-slate-400 hover:text-black dark:hover:text-white">
+              ← Go to Edit
+            </button>
+            <button type="button" onClick={() => setTab('export')} className="text-sm text-black/60 dark:text-slate-400 hover:text-black dark:hover:text-white">
+              Go to Export →
+            </button>
+          </div>
         </div>
       )}
 
@@ -435,6 +449,11 @@ export default function ProposalPage() {
             </button>
           </div>
         </section>
+          <div className="pt-4">
+            <button type="button" onClick={() => setTab('preview')} className="text-sm text-black/60 dark:text-slate-400 hover:text-black dark:hover:text-white">
+              ← Go to Preview
+            </button>
+          </div>
         </div>
       )}
 
@@ -661,7 +680,7 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
   const client = requirement.client_data
   const TOTAL_COLS = 19
   return (
-    <section className="card max-w-6xl overflow-x-auto">
+    <section className="card overflow-x-auto">
       <p className="text-xs text-black/60 mb-3">Preview of the Excel that will be exported.</p>
       <div className="border border-black/15 min-w-[1100px]">
         <table className="w-full text-sm">

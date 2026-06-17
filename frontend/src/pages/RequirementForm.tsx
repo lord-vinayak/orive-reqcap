@@ -6,6 +6,7 @@ import ProductTable, { validateProductRow } from "@/components/ProductTable";
 import CatalogSuggestions from "@/components/CatalogSuggestions";
 import NotesSection from "@/components/NotesSection";
 import FileUploadSection from "@/components/FileUploadSection";
+import { Modal } from "@/components/crm/Modal";
 import ProposalDocumentsModal from "@/components/ProposalDocumentsModal";
 import {
   clientService, requirementService, notesService, proposalService, proposalDocService,
@@ -160,7 +161,9 @@ export default function RequirementForm() {
 
   // Proposal documents (PDF/Word) uploaded for this requirement
   const [proposalDocs, setProposalDocs] = useState<ProposalDocument[]>([]);
-  const [showProposalModal, setShowProposalModal] = useState(false);
+  const [showProposalModal, setShowProposalModal] = useState(false)
+  const [showNotesModal, setShowNotesModal] = useState(false)
+  const [showFilesModal, setShowFilesModal] = useState(false);
   const proposalFileInputRef = useRef<HTMLInputElement>(null);
   const [proposalUploading, setProposalUploading] = useState(false);
   const [proposalUploadError, setProposalUploadError] = useState('');
@@ -674,6 +677,8 @@ export default function RequirementForm() {
             showValidation={showValidation}
             onAddRowToCosting={handleAddRowToCosting}
             addingRowToCostingIndex={addingRowToCostingIndex}
+            onAddNote={requirement ? () => setShowNotesModal(true) : undefined}
+            onAddImage={requirement ? () => setShowFilesModal(true) : undefined}
           />
 
           <CatalogSuggestions
@@ -691,13 +696,25 @@ export default function RequirementForm() {
         </div>
       )}
 
+      {showNotesModal && requirement && (
+        <Modal title="Add Note" onClose={() => setShowNotesModal(false)} size="md">
+          <NotesSection requirementId={requirement.id} refreshKey={notesRefreshKey} />
+        </Modal>
+      )}
+
+      {showFilesModal && requirement && (
+        <Modal title="Upload File" onClose={() => setShowFilesModal(false)} size="md">
+          <FileUploadSection requirementId={requirement.id} />
+        </Modal>
+      )}
+
       {/* Sticky action bar */}
       <div className="flex items-center gap-2 pt-4 mt-6 sticky bottom-0 bg-white dark:bg-slate-900 py-3 border-t border-black/10 dark:border-white/10 flex-wrap">
         <button onClick={handleSave} disabled={manualSaving} className="btn-primary">
           {manualSaving ? "Saving…" : "Save requirements"}
         </button>
         <button onClick={handleCreateProposal} disabled={manualSaving} className="btn-secondary" aria-label="Open Client Costing editor">
-          Open Client Costing →
+          Update Client Costing →
         </button>
 
         {/* Proposal document upload / view — only when requirement exists */}
