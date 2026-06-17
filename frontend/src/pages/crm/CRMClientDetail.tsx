@@ -20,6 +20,7 @@ interface Client {
   lead_status: LeadStatus
   lead_sub_status: string
   poc: string | null
+  poc_name?: string
 }
 
 interface Requirement {
@@ -83,9 +84,12 @@ export default function CRMClientDetail() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-black dark:text-white">{client.name}</h1>
-            {client.company_name && (
-              <p className="text-black/60 dark:text-slate-300 text-sm mt-0.5">{client.company_name}</p>
-            )}
+            <div className="mt-1">
+              <LeadStatusBadge
+                client={client}
+                onUpdated={(patch) => setClient((prev) => prev ? { ...prev, ...patch } : prev)}
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <Link
@@ -114,15 +118,10 @@ export default function CRMClientDetail() {
           <dl className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
             <DetailField label="Phone No" value={client.phone_no} />
             <DetailField label="Email" value={client.email} />
+            <DetailField label="Company" value={client.company_name} />
             <DetailField label="City" value={client.city} />
+            <DetailField label="Point of Contact" value={client.poc_name ?? ''} />
             <DetailField label="GST Details" value={client.gst_details} />
-            <div>
-              <p className="text-xs text-black/70 dark:text-slate-300 mb-1">Lead Status</p>
-              <LeadStatusBadge
-                client={client}
-                onUpdated={(patch) => setClient((prev) => prev ? { ...prev, ...patch } : prev)}
-              />
-            </div>
             {client.physical_address && (
               <div className="col-span-full">
                 <DetailField label="Address" value={client.physical_address} />
@@ -135,7 +134,7 @@ export default function CRMClientDetail() {
         <section aria-labelledby="crm-projects-heading">
           <div className="flex items-center justify-between mb-3">
             <h2 id="crm-projects-heading" className="text-lg font-semibold text-black dark:text-white">
-              CRM Projects ({crmProjects.length})
+              Projects ({crmProjects.length})
             </h2>
           </div>
           {crmProjects.length === 0 ? (
@@ -166,7 +165,7 @@ export default function CRMClientDetail() {
         {/* Requirements (from Requirement Capturing Tool) */}
         <section aria-labelledby="requirements-heading">
           <h2 id="requirements-heading" className="text-lg font-semibold text-black dark:text-white mb-3">
-            Requirements (Req. Tool) ({requirements.length})
+            Requirements ({requirements.length})
           </h2>
           {requirements.length === 0 ? (
             <p className="text-black/60 dark:text-slate-300 text-sm">No requirements captured yet.</p>
@@ -184,7 +183,15 @@ export default function CRMClientDetail() {
                 <tbody className="divide-y divide-black/5 dark:divide-white/5">
                   {requirements.map((r) => (
                     <tr key={r.id}>
-                      <td className="px-4 py-3 text-black dark:text-white">{r.title}</td>
+                      <td className="px-4 py-3 font-medium">
+                        <Link
+                          to={`/requirements/${r.id}`}
+                          className="text-black dark:text-white hover:underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                          aria-label={`Open requirement: ${r.title}`}
+                        >
+                          {r.title}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-black/60 dark:text-slate-300 capitalize">{r.status}</td>
                       <td className="px-4 py-3 text-black/60 dark:text-slate-300 text-xs">
                         {new Date(r.created_at).toLocaleDateString('en-IN')}

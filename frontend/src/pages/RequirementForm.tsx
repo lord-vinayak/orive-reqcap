@@ -745,6 +745,16 @@ export default function RequirementForm() {
               className="hidden"
               onChange={handleProposalUpload}
             />
+            {client.phone_no && (
+              <button
+                type="button"
+                onClick={() => navigate(`/crm/projects/new?client=${client.phone_no}`)}
+                className="btn-secondary"
+                aria-label={`Start a new CRM project for this client`}
+              >
+                Start Project →
+              </button>
+            )}
             {proposalUploadError && (
               <p className="text-xs text-red-600 dark:text-red-400 w-full mt-1">{proposalUploadError}</p>
             )}

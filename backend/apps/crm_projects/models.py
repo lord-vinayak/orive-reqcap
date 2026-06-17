@@ -109,7 +109,13 @@ class CRMProject(models.Model):
         if not self.project_no:
             today = date.today().strftime('%Y%m%d')
             client_prefix = (self.client.name[:3]).upper()
-            self.project_no = f'SKI{today}{client_prefix}'
+            base = f'SKI{today}{client_prefix}'
+            candidate = base
+            counter = 2
+            while CRMProject.objects.filter(project_no=candidate).exists():
+                candidate = f'{base}{counter}'
+                counter += 1
+            self.project_no = candidate
         super().save(*args, **kwargs)
 
     @property

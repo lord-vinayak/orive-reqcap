@@ -84,14 +84,14 @@ export default function CRMProjectList() {
             Loading projects…
           </div>
         ) : projects.length === 0 ? (
-          <p className="text-black/60 dark:text-slate-300 text-sm">No projects found.</p>
+          <p role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm">No projects found.</p>
         ) : (
           <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
             <table className="w-full text-sm" aria-label="Project list">
               <thead>
                 <tr className="bg-black/5 dark:bg-white/5 text-left">
-                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project No</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Client</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project No</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Stage</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Progress</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
@@ -102,6 +102,14 @@ export default function CRMProjectList() {
                 {projects.map((p) => (
                   <tr key={p.id} className="hover:bg-black/2 dark:hover:bg-white/2">
                     <td className="px-4 py-3">
+                      <Link to={`/crm/clients/${p.client}`} className="hover:underline text-black dark:text-white font-medium">
+                        {p.client_name}
+                      </Link>
+                      {p.client_company && (
+                        <div className="text-xs text-black/70 dark:text-slate-300">{p.client_company}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       <Link
                         to={`/crm/projects/${p.id}`}
                         className="font-medium text-mustard hover:underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
@@ -109,14 +117,6 @@ export default function CRMProjectList() {
                       >
                         {p.project_no}
                       </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link to={`/crm/clients/${p.client}`} className="hover:underline text-black dark:text-white">
-                        {p.client_name}
-                      </Link>
-                      {p.client_company && (
-                        <div className="text-xs text-black/70 dark:text-slate-300">{p.client_company}</div>
-                      )}
                     </td>
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300 capitalize">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
