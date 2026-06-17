@@ -7,7 +7,7 @@ Stage keys for resample cycle 1 have no suffix.
 Cycle 2 and 3 use _c2 / _c3 suffix (created on-demand when a resample is initiated).
 """
 
-MAX_RESAMPLE_CYCLES = 3
+MAX_RESAMPLE_CYCLES = 10
 
 # ── Sample Phase ──────────────────────────────────────────────────────────────
 

@@ -36,6 +36,7 @@ export default function CRMFinancials() {
   const [txCategory, setTxCategory] = useState('')
   const [projectSearch, setProjectSearch] = useState('')
   const [vendorSearch, setVendorSearch] = useState('')
+  const [pendingModal, setPendingModal] = useState<'payable' | 'receivable' | null>(null)
 
   useEffect(() => {
     if (!dateFrom || !dateTo) return
@@ -205,16 +206,34 @@ export default function CRMFinancials() {
                   Pending
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 p-4">
-                    <p className="text-xs text-amber-700 dark:text-amber-400 mb-1">Payable</p>
+                  <button
+                    type="button"
+                    onClick={() => setPendingModal('payable')}
+                    className="rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 p-4 text-left hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-colors focus-visible:ring-2 focus-visible:ring-mustard"
+                    aria-label="View payable breakdown"
+                  >
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mb-1">Payable <span className="opacity-60 text-xs font-normal">· click to view</span></p>
                     <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{fmt(totalPayable)}</p>
-                  </div>
-                  <div className="rounded-lg border border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-900/10 p-4">
-                    <p className="text-xs text-blue-700 dark:text-blue-400 mb-1">Receivable</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingModal('receivable')}
+                    className="rounded-lg border border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-900/10 p-4 text-left hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors focus-visible:ring-2 focus-visible:ring-mustard"
+                    aria-label="View receivable breakdown"
+                  >
+                    <p className="text-xs text-blue-700 dark:text-blue-400 mb-1">Receivable <span className="opacity-60 text-xs font-normal">· click to view</span></p>
                     <p className="text-xl font-bold text-blue-700 dark:text-blue-400">{fmt(totalReceivable)}</p>
-                  </div>
+                  </button>
                 </div>
               </section>
+            )}
+
+            {pendingModal && (
+              <PendingModal
+                direction={pendingModal}
+                payments={payments.filter((p) => p.direction === pendingModal && !p.is_settled)}
+                onClose={() => setPendingModal(null)}
+              />
             )}
 
             {/* ── Category breakdown ── */}
@@ -524,4 +543,100 @@ function Td({ children, right, green, red, colored }: {
 
 function Empty() {
   return <p className="text-black/70 dark:text-slate-300 text-sm">No payments in this date range.</p>
+}
+
+function PendingModal({ direction, payments, onClose }: {
+  direction: 'payable' | 'receivable'
+  payments: ProjectPayment[]
+  onClose: () => void
+}) {
+  const total = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
+  const sorted = [...payments].sort((a, b) => b.payment_date.localeCompare(a.payment_date))
+  const isPayable = direction === 'payable'
+  const colorCls = isPayable ? 'text-amber-700 dark:text-amber-400' : 'text-blue-700 dark:text-blue-400'
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pending-modal-title"
+    >
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-4xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 dark:border-white/10 shrink-0">
+          <div>
+            <h2 id="pending-modal-title" className={`text-lg font-bold ${colorCls}`}>
+              {isPayable ? 'Pending Payable' : 'Pending Receivable'}
+            </h2>
+            <p className="text-sm text-black/60 dark:text-slate-400 mt-0.5">
+              {sorted.length} entr{sorted.length === 1 ? 'y' : 'ies'} · Total: <span className={`font-semibold ${colorCls}`}>{fmt(total)}</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-black/50 hover:text-black dark:text-slate-400 dark:hover:text-white focus-visible:ring-2 focus-visible:ring-mustard rounded p-1"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-auto flex-1">
+          {sorted.length === 0 ? (
+            <p className="px-6 py-8 text-black/60 dark:text-slate-300 text-sm">No pending entries.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white dark:bg-slate-900 z-10">
+                <tr className="bg-black/5 dark:bg-white/5 text-left">
+                  <Th>Date</Th>
+                  <Th>{isPayable ? 'Vendor / Manufacturer' : 'Client'}</Th>
+                  <Th>Project</Th>
+                  <Th>Category</Th>
+                  <Th>Comments</Th>
+                  <Th right>Amount</Th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                {sorted.map((p) => (
+                  <tr key={p.id} className="hover:bg-black/2 dark:hover:bg-white/2">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-black/70 dark:text-slate-300">{p.payment_date}</td>
+                    <td className="px-4 py-2.5 text-black dark:text-white font-medium">
+                      {isPayable
+                        ? (p.manufacturer_name ?? p.vendor_name ?? '—')
+                        : (p.project_client_name ?? '—')}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <div className="font-mono text-xs text-black dark:text-white">{p.project_no}</div>
+                      {!isPayable && (p.manufacturer_name ?? p.vendor_name) && (
+                        <div className="text-xs text-black/50 dark:text-slate-400">{p.manufacturer_name ?? p.vendor_name}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-black/70 dark:text-slate-300">
+                      {p.sub_type_display || SUB_TYPE_LABEL[p.sub_type] || p.sub_type}
+                    </td>
+                    <td className="px-4 py-2.5 text-black/60 dark:text-slate-400 max-w-[160px]">
+                      <span className="line-clamp-2">{p.comments || '—'}</span>
+                    </td>
+                    <td className={`px-4 py-2.5 text-right font-semibold tabular-nums ${colorCls}`}>
+                      {fmt(parseFloat(p.amount) || 0)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-black/5 dark:bg-white/5 border-t-2 border-black/10 dark:border-white/10">
+                  <td colSpan={5} className="px-4 py-2.5 font-semibold text-black dark:text-white">Total</td>
+                  <td className={`px-4 py-2.5 text-right font-bold tabular-nums ${colorCls}`}>{fmt(total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }

@@ -266,7 +266,7 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
         'phase': project.phase,
         'resample_cycle': cycle,
         'max_cycles': MAX_RESAMPLE_CYCLES,
-        'order_advance_received': project.order_advance_received,
+        'order_booking_steps': project.order_booking_steps or {},
         'order_booked': project.order_booked,
         'sample_phase_complete': sample_phase_complete,
         'resample_notes': notes_map,
@@ -507,17 +507,17 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='set-order-gate')
     def set_order_gate(self, request, pk=None):
-        """Set order advance received and order booked status."""
+        """Set order booking steps and order booked status."""
         project = self.get_object()
-        order_advance = bool(request.data.get('order_advance_received', False))
+        steps = request.data.get('order_booking_steps', {})
         order_booked = bool(request.data.get('order_booked', False))
 
-        project.order_advance_received = order_advance
+        project.order_booking_steps = steps if isinstance(steps, dict) else {}
         project.order_booked = order_booked
         if order_booked:
             project.phase = 'order'
             project.project_stage = 'pkg_req_captured'
-        project.save(update_fields=['order_advance_received', 'order_booked', 'phase', 'project_stage', 'updated_at'])
+        project.save(update_fields=['order_booking_steps', 'order_booked', 'phase', 'project_stage', 'updated_at'])
 
         completion_map = {
             sc.stage_key: sc

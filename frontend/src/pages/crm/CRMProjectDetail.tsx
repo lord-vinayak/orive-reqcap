@@ -71,6 +71,7 @@ export default function CRMProjectDetail() {
   const [actionSaving, setActionSaving] = useState(false)
   const [teamMembers, setTeamMembers] = useState<InternalTeamMember[]>([])
   const [uploadError, setUploadError] = useState('')
+  const pendingStages = useRef(0)
 
   const fetchProject = () => {
     if (!id) return
@@ -106,9 +107,10 @@ export default function CRMProjectDetail() {
     })
   }, [id])
 
-  // WS: when a task is assigned/updated by anyone, refresh stage status
+  // WS: when a task is assigned/updated by anyone, refresh stage status.
+  // Skip if stage saves are in-flight — they already reconcile on completion.
   useTaskSocket((_task: TaskItem) => {
-    fetchStageStatus()
+    if (pendingStages.current === 0) fetchStageStatus()
   })
 
   const refresh = async () => {
@@ -118,14 +120,18 @@ export default function CRMProjectDetail() {
   // ── Stage action handlers ──────────────────────────────────────────────────
 
   const handleCompleteStage = async (key: string, complete: boolean) => {
-    if (!id || !stageStatus) return
-    const previous = stageStatus
-    setStageStatus(patchStage(previous, key, complete))
+    if (!id) return
+    // Functional form: concurrent calls chain on latest state, not stale closure
+    setStageStatus((prev) => prev ? patchStage(prev, key, complete) : prev)
+    pendingStages.current++
     try {
-      const res = await crmApi.completeStage(id, key, complete)
-      setStageStatus(res.data)
+      await crmApi.completeStage(id, key, complete)
     } catch {
-      setStageStatus(previous)
+      // reconcile fetch below will revert to server truth on error
+    } finally {
+      pendingStages.current--
+      // Single authoritative fetch once all concurrent ticks have settled
+      if (pendingStages.current === 0) fetchStageStatus()
     }
   }
 
@@ -152,7 +158,7 @@ export default function CRMProjectDetail() {
     }
   }
 
-  const handleSetOrderGate = async (data: { order_advance_received: boolean; order_booked: boolean }) => {
+  const handleSetOrderGate = async (data: { order_booking_steps: Record<string, boolean>; order_booked: boolean }) => {
     if (!id) return
     setActionSaving(true)
     try {
@@ -246,7 +252,7 @@ export default function CRMProjectDetail() {
             <div className="mt-1.5">
               <LeadStatusBadge
                 client={{ phone_no: project.client_phone, lead_status: project.client_lead_status as LeadStatus, lead_sub_status: project.client_lead_sub_status }}
-                onUpdated={(patch) => setProject((prev) => prev ? { ...prev, ...patch } : prev)}
+                onUpdated={(patch) => setProject((prev) => prev ? { ...prev, client_lead_status: patch.lead_status, client_lead_sub_status: patch.lead_sub_status } : prev)}
               />
             </div>
           </div>

@@ -130,7 +130,7 @@ export interface StageStatusResponse {
   phase: ProjectPhase
   resample_cycle: number
   max_cycles: number
-  order_advance_received: boolean
+  order_booking_steps: Record<string, boolean>
   order_booked: boolean
   sample_phase_complete: boolean
   resample_notes: Record<string, ResampleNote>  // keyed by cycle_from as string
@@ -245,7 +245,7 @@ export interface CRMProjectList {
 
 export interface CRMProject extends CRMProjectList {
   resample_cycle: number
-  order_advance_received: boolean
+  order_booking_steps: Record<string, boolean>
   order_booked: boolean
   stage_completions: StageCompletion[]
   notes: ProjectNote[]

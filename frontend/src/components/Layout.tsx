@@ -107,11 +107,11 @@ export default function Layout({
             <Link to="/tasks" className="btn-secondary text-sm" aria-label="Go to Task Tracker">
               Tasks
             </Link>
+            <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data">
+              Master Data
+            </Link>
             {user?.role === "admin" && (
               <>
-                <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data">
-                  Master Data
-                </Link>
                 <Link to="/admin/catalog" className="btn-secondary text-sm" aria-label="Go to Catalog">
                   Catalog
                 </Link>

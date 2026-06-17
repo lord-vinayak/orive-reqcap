@@ -95,7 +95,6 @@ export default function CRMProjectList() {
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Stage</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Progress</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
-                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Next Milestone</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
@@ -132,11 +131,6 @@ export default function CRMProjectList() {
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge hasDelays={p.has_delays} />
-                    </td>
-                    <td className="px-4 py-3 text-xs text-black/60 dark:text-slate-300">
-                      {p.next_milestone
-                        ? `${p.next_milestone.display} · ${p.next_milestone.planned_date}`
-                        : '—'}
                     </td>
                   </tr>
                 ))}

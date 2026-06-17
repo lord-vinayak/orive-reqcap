@@ -14,11 +14,11 @@ from .serializers import (
 
 
 class CRMMasterDataPermission(permissions.BasePermission):
-    """All authenticated users read; only admin writes."""
+    """All authenticated users can read and create; only admin can edit/delete."""
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        if request.method in permissions.SAFE_METHODS:
+        if request.method in (*permissions.SAFE_METHODS, 'POST'):
             return True
         return request.user.role == 'admin'
 

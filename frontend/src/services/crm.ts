@@ -66,7 +66,7 @@ export const crmApi = {
   deleteResampleNote: (id: string) =>
     api.delete(`/crm/resample-notes/${id}/`),
 
-  setOrderGate: (projectId: string, data: { order_advance_received: boolean; order_booked: boolean }) =>
+  setOrderGate: (projectId: string, data: { order_booking_steps: Record<string, boolean>; order_booked: boolean }) =>
     api.post<StageStatusResponse>(`/crm/projects/${projectId}/set-order-gate/`, data),
 
   resetBatch: (projectId: string) =>

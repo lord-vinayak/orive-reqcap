@@ -70,7 +70,8 @@ class CRMProject(models.Model):
         max_length=10, choices=PHASE_CHOICES, default='sample', db_index=True,
     )
     resample_cycle = models.PositiveSmallIntegerField(default=1)
-    order_advance_received = models.BooleanField(default=False)
+    order_advance_received = models.BooleanField(default=False)  # kept for old data
+    order_booking_steps = models.JSONField(default=dict, blank=True)
     order_booked = models.BooleanField(default=False)
 
     # Legacy display field — free-form, set to the current active stage key for list views

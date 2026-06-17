@@ -134,17 +134,15 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="space-y-4">
-      {isAdmin && (
-        <div className="flex justify-end">
-          <button
-            className="btn-primary text-sm"
-            onClick={() => { setEditing(null); setShowModal(true) }}
-            aria-label="Add a new manufacturer"
-          >
-            + Add Manufacturer
-          </button>
-        </div>
-      )}
+      <div className="flex justify-end">
+        <button
+          className="btn-primary text-sm"
+          onClick={() => { setEditing(null); setShowModal(true) }}
+          aria-label="Add a new manufacturer"
+        >
+          + Add Manufacturer
+        </button>
+      </div>
 
       {showModal && (
         <Modal
@@ -378,17 +376,15 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
 
   return (
     <div className="space-y-4">
-      {isAdmin && (
-        <div className="flex justify-end">
-          <button
-            className="btn-primary text-sm"
-            onClick={() => { setEditing(null); setShowModal(true) }}
-            aria-label={`Add a new ${vendorType} vendor`}
-          >
-            + Add Vendor
-          </button>
-        </div>
-      )}
+      <div className="flex justify-end">
+        <button
+          className="btn-primary text-sm"
+          onClick={() => { setEditing(null); setShowModal(true) }}
+          aria-label={`Add a new ${vendorType} vendor`}
+        >
+          + Add Vendor
+        </button>
+      </div>
 
       {showModal && (
         <Modal
@@ -579,17 +575,15 @@ function InternalTeamTab({ team, isAdmin }: { team: 'formulation' | 'sales' | 'o
 
   return (
     <div className="space-y-4">
-      {isAdmin && (
-        <div className="flex justify-end">
-          <button
-            className="btn-primary text-sm"
-            onClick={() => { setEditing(null); setShowModal(true) }}
-            aria-label={`Add a new ${team} team member`}
-          >
-            + Add Member
-          </button>
-        </div>
-      )}
+      <div className="flex justify-end">
+        <button
+          className="btn-primary text-sm"
+          onClick={() => { setEditing(null); setShowModal(true) }}
+          aria-label={`Add a new ${team} team member`}
+        >
+          + Add Member
+        </button>
+      </div>
 
       {showModal && (
         <Modal

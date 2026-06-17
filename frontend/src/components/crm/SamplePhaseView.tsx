@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import type { StageStatusResponse, InternalTeamMember } from '@/types/crm'
 import { StageCheckbox } from './StageCheckbox'
 import ResampleModal from './ResampleModal'
@@ -10,7 +10,7 @@ interface Props {
   setActiveStageKey: (key: string) => void
   onCompleteStage: (key: string, complete: boolean) => Promise<void>
   onApproveSample: (approved: boolean, reason?: string) => Promise<void>
-  onSetOrderGate: (data: { order_advance_received: boolean; order_booked: boolean }) => Promise<void>
+  onSetOrderGate: (data: { order_booking_steps: Record<string, boolean>; order_booked: boolean }) => Promise<void>
   saving: boolean
   teamMembers?: InternalTeamMember[]
   onAssign?: (key: string, memberId: string, comment?: string) => Promise<void>
@@ -22,7 +22,7 @@ export function SamplePhaseView({
   onCompleteStage, onApproveSample, onSetOrderGate, saving,
   teamMembers = [], onAssign, onUpload,
 }: Props) {
-  const { sample_phase, order_advance_received, order_booked, sample_phase_complete, resample_cycle, max_cycles, resample_notes } = stageStatus
+  const { sample_phase, order_booking_steps, order_booked, sample_phase_complete, resample_cycle, max_cycles, resample_notes } = stageStatus
 
   return (
     <div className="space-y-6">
@@ -128,7 +128,7 @@ export function SamplePhaseView({
       {/* Order gate */}
       {sample_phase_complete && (
         <OrderGate
-          advanceReceived={order_advance_received}
+          steps={order_booking_steps}
           orderBooked={order_booked}
           onSave={onSetOrderGate}
           saving={saving}
@@ -290,16 +290,27 @@ function ApprovalGate({
 
 // ── Order gate ────────────────────────────────────────────────────────────────
 
+const ORDER_BOOKING_STEPS: { key: string; label: string }[] = [
+  { key: 'invoice_shared',        label: 'Invoice Shared' },
+  { key: 'order_booked_substage', label: 'Order Booked' },
+  { key: 'mou_shared',            label: 'MOU shared with the client' },
+  { key: 'mou_signed',            label: 'MOU signed by client' },
+  { key: 'trademark_gst',         label: 'Trade Mark + GST Details received from client' },
+  { key: 'fda_client_created',    label: 'FDA document created for client' },
+  { key: 'fda_client_shared',     label: 'FDA document shared with client' },
+  { key: 'fda_manufacturer',      label: 'FDA document created and shared with manufacturer' },
+]
+
 function OrderGate({
-  advanceReceived, orderBooked, onSave, saving,
+  steps, orderBooked, onSave, saving,
 }: {
-  advanceReceived: boolean
+  steps: Record<string, boolean>
   orderBooked: boolean
-  onSave: (data: { order_advance_received: boolean; order_booked: boolean }) => Promise<void>
+  onSave: (data: { order_booking_steps: Record<string, boolean>; order_booked: boolean }) => Promise<void>
   saving: boolean
 }) {
-  const [localAdvance, setLocalAdvance] = useState(advanceReceived)
-  const [localBooked, setLocalBooked] = useState<boolean | null>(orderBooked || null)
+  const [localSteps, setLocalSteps] = useState<Record<string, boolean>>(steps)
+  const [localBooked, setLocalBooked] = useState(orderBooked)
   const [saving2, setSaving2] = useState(false)
 
   if (orderBooked) {
@@ -313,11 +324,13 @@ function OrderGate({
     )
   }
 
+  const toggle = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setLocalSteps((prev) => ({ ...prev, [key]: e.target.checked }))
+
   const handleSave = async () => {
-    if (localBooked === null) return
     setSaving2(true)
     try {
-      await onSave({ order_advance_received: localAdvance, order_booked: localBooked })
+      await onSave({ order_booking_steps: localSteps, order_booked: localBooked })
     } finally {
       setSaving2(false)
     }
@@ -331,20 +344,23 @@ function OrderGate({
     >
       <h3 className="font-semibold text-black dark:text-white">Order Booking</h3>
       <p className="text-sm text-black/60 dark:text-slate-400">
-        Sample has been approved. Confirm order details to unlock the production phase.
+        Sample has been approved. Complete the steps below to unlock the production phase.
       </p>
 
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={localAdvance}
-          onChange={(e) => setLocalAdvance(e.target.checked)}
-          disabled={saving || saving2}
-          className="w-4 h-4 accent-mustard"
-          aria-label="Order advance received"
-        />
-        <span className="text-sm text-black dark:text-white">Order Advance Received</span>
-      </label>
+      <div className="space-y-2">
+        {ORDER_BOOKING_STEPS.map(({ key, label }) => (
+          <label key={key} className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!localSteps[key]}
+              onChange={toggle(key)}
+              disabled={saving || saving2}
+              className="w-4 h-4 accent-mustard"
+            />
+            <span className="text-sm text-black dark:text-white">{label}</span>
+          </label>
+        ))}
+      </div>
 
       <fieldset>
         <legend className="text-sm font-medium text-black dark:text-white mb-2">Order Booked?</legend>
@@ -381,7 +397,7 @@ function OrderGate({
       <button
         type="button"
         onClick={handleSave}
-        disabled={localBooked === null || saving || saving2}
+        disabled={saving || saving2}
         className="btn-primary text-sm disabled:opacity-50"
       >
         {saving2 ? 'Saving…' : 'Save Order Status'}

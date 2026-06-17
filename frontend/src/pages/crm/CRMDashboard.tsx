@@ -176,7 +176,7 @@ export default function CRMDashboard() {
                           <td className="px-4 py-3">
                             <LeadStatusBadge
                               client={{ phone_no: p.client_phone, lead_status: p.client_lead_status as LeadStatus, lead_sub_status: p.client_lead_sub_status }}
-                              onUpdated={(patch) => setProjects((prev) => prev.map((x) => x.id === p.id ? { ...x, ...patch } : x))}
+                              onUpdated={(patch) => setProjects((prev) => prev.map((x) => x.id === p.id ? { ...x, client_lead_status: patch.lead_status, client_lead_sub_status: patch.lead_sub_status } : x))}
                             />
                           </td>
                           <td className="px-4 py-3 text-black/70 dark:text-slate-300 capitalize">
