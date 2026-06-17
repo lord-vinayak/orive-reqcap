@@ -153,7 +153,7 @@ def get_all_initial_stage_keys() -> list:
     keys += [s['key'] for s in SAMPLE_POST_APPROVAL]
     for section in ORDER_PHASE_SECTIONS:
         keys += [s['key'] for s in section['stages']]
-    return keys
+    return list(dict.fromkeys(keys))  # deduplicate, preserve order
 
 
 ALL_INITIAL_STAGE_KEYS = get_all_initial_stage_keys()

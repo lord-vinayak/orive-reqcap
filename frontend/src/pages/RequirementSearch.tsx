@@ -544,7 +544,7 @@ export default function RequirementSearch() {
   return (
     <Layout title="Edit Old Requirement">
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold">Edit Old Requirement</h1>
+        <h1 className="text-2xl font-semibold">Edit Record</h1>
 
         {/* ── Tab bar ── */}
         <div role="tablist" aria-label="Edit record or browse clients" className="flex gap-1 border-b border-black/10 dark:border-white/10">

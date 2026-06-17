@@ -337,7 +337,7 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         StageCompletion.objects.bulk_create([
             StageCompletion(project=project, stage_key=k)
             for k in ALL_INITIAL_STAGE_KEYS
-        ])
+        ], ignore_conflicts=True)
         if project.sample_booked_date:
             _build_milestones(project)
 
