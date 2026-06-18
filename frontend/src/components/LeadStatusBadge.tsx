@@ -21,12 +21,14 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuContainerRef = useRef<HTMLDivElement>(null)
 
-  // Focus first menu item when open
+  // Focus first menu item when open; return focus to trigger when closed (skip initial mount)
+  const didOpen = useRef(false)
   useEffect(() => {
     if (open) {
+      didOpen.current = true
       const first = menuContainerRef.current?.querySelector<HTMLElement>('[role="menuitemradio"], [role="menuitem"]')
       first?.focus()
-    } else {
+    } else if (didOpen.current) {
       triggerRef.current?.focus()
     }
   }, [open])

@@ -44,15 +44,22 @@ ORDER_PHASE_SECTIONS = [
         'key': 'packaging',
         'display': 'Packaging',
         'stages': [
-            {'key': 'pkg_req_captured',    'display': 'Packaging Requirement Captured'},
-            {'key': 'pkg_quotes_taken',    'display': 'Packaging Quotes Taken'},
-            {'key': 'pkg_approved_client', 'display': 'Packaging Approved by Client'},
-            {'key': 'pkg_samples_ordered', 'display': 'Packaging Samples Ordered (Client, SS, Printer, KLD)'},
-            {'key': 'pkg_po_taken',        'display': 'Packaging PO / Quotation Taken'},
-            {'key': 'pkg_ordered',         'display': 'Packaging Order Placed'},
-            {'key': 'pkg_dispatched',      'display': 'Packaging Dispatched (Handle with Care Checked)'},
-            {'key': 'pkg_evaluated',       'display': 'Packaging Evaluated on Receive'},
-            {'key': 'pkg_inventory_done',  'display': 'Packaging Entry Done in Inventory Tracker'},
+            {'key': 'pkg_req_captured',        'display': 'Packaging Requirement Captured'},
+            {'key': 'pkg_quotes_taken',        'display': 'Packaging quotes taken'},
+            {'key': 'pkg_approved_client',     'display': 'Packaging approved by client'},
+            {'key': 'pkg_details_saved',       'display': 'Packaging details saved in the client folder'},
+            {'key': 'pkg_vendor_added_sdms',   'display': 'Vendor details added if new vendor to SDMS'},
+            {'key': 'pkg_samples_ordered',     'display': 'Packaging samples ordered for client, SS, printer for KLD'},
+            {'key': 'pkg_samples_received',    'display': 'Packaging samples received'},
+            {'key': 'pkg_kld_validated',       'display': 'Packaging KLD create and validated'},
+            {'key': 'pkg_po_taken',            'display': 'Packaging PO / Quotation taken'},
+            {'key': 'pkg_ordered',             'display': 'Packaging order'},
+            {'key': 'pkg_dispatched',          'display': 'Packaging dispatched – checked for hand with care stickers'},
+            {'key': 'pkg_evaluated',           'display': 'Packaging evaluated on receive for damage and likage'},
+            {'key': 'pkg_damaged_inform',      'display': 'Damaged Packaging – inform vendor'},
+            {'key': 'pkg_debit_note',          'display': 'Take a debit note from vendor'},
+            {'key': 'pkg_vendor_records',      'display': 'Update in vendor records'},
+            {'key': 'pkg_inventory_done',      'display': 'Packaging updated in inventory tracker'},
         ],
     },
     {
@@ -68,16 +75,30 @@ ORDER_PHASE_SECTIONS = [
     },
     {
         'key': 'design_printing',
-        'display': 'Design & Printing',
+        'display': 'Design',
         'stages': [
-            {'key': 'design_group_created',   'display': 'Design Group Created'},
-            {'key': 'design_created',          'display': 'Design Created'},
-            {'key': 'design_sample_boxes',     'display': 'Sample Boxes Made'},
-            {'key': 'design_approved_client',  'display': 'Approved by Client'},
-            {'key': 'design_quote_taken',      'display': 'Design Quote & Timelines Taken from Printer'},
+            {'key': 'design_group_created',    'display': 'Design Group created'},
+            {'key': 'design_kld_created',      'display': 'Design KLD created by Printer and approved by SS team with packaging'},
+            {'key': 'design_created',          'display': 'Design created'},
+            {'key': 'design_approved_client',  'display': 'Design Approved by Client'},
+            {'key': 'design_files_shared',     'display': 'Design files shared with Printer'},
+            {'key': 'design_quote_taken',      'display': 'Design quote & timelines received from printer'},
+            {'key': 'design_costing_shared',   'display': 'Costing shared with client'},
+            {'key': 'design_sample_boxes',     'display': 'Sample boxes made'},
+            {'key': 'design_sample_approved',  'display': 'Sample Box approved by clients'},
+        ],
+    },
+    {
+        'key': 'printing',
+        'display': 'Printing',
+        'stages': [
             {'key': 'printing_initiated',      'display': 'Printing Initiated'},
             {'key': 'printing_delivered',      'display': 'Printing Material Delivered'},
-            {'key': 'printing_inventory',      'display': 'Printing Inventory Maintained'},
+            {'key': 'printing_checked',        'display': 'Printing Material Checked'},
+            {'key': 'printing_damaged_inform', 'display': 'Damaged Printing – inform vendor'},
+            {'key': 'printing_debit_note',     'display': 'Take a debit note from vendor'},
+            {'key': 'printing_vendor_records', 'display': 'Update in vendor records'},
+            {'key': 'printing_inventory',      'display': 'Printing inventory updated'},
         ],
     },
     {
@@ -165,7 +186,7 @@ ALL_ORDER_STAGE_KEYS = [
 ]
 
 SAMPLE_TOTAL_STAGES = len(SAMPLE_PRE_LOOP) + len(RESAMPLE_LOOP_BASE) + len(SAMPLE_POST_APPROVAL)
-ORDER_TOTAL_STAGES = len(ALL_ORDER_STAGE_KEYS)  # 46
+ORDER_TOTAL_STAGES = len(ALL_ORDER_STAGE_KEYS)  # 61
 
 # Flat map of stage_key → human display name (all cycles included).
 STAGE_DISPLAY_MAP: dict[str, str] = {}

@@ -4,7 +4,7 @@ from django.db import transaction
 
 logger = logging.getLogger(__name__)
 from django.utils import timezone
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Exists, OuterRef
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -684,17 +684,29 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         sample_count = qs.filter(phase='sample').count()
         order_active = qs.filter(phase='order').count() - completed_orders
 
+        # Subqueries for pipeline counts — Exists avoids the JOIN-collapse bug
+        # where chained filter() on related models ORs conditions instead of ANDing them.
+        def _stage_incomplete(key):
+            return StageCompletion.objects.filter(
+                project=OuterRef('pk'), stage_key=key, is_complete=False,
+            )
+
+        def _stage_complete(key):
+            return StageCompletion.objects.filter(
+                project=OuterRef('pk'), stage_key=key, is_complete=True,
+            )
+
         pipeline = {
-            'formula_pending': qs.filter(
-                phase='sample',
-                stage_completions__stage_key='formula_pending',
-                stage_completions__is_complete=False,
-            ).distinct().count(),
-            'sample_in_pipeline': qs.filter(
-                phase='sample',
-                stage_completions__stage_key='sample_in_pipeline',
-                stage_completions__is_complete=False,
-            ).distinct().count(),
+            # formula_pending: sample_booked done (entered the loop) AND formula_pending not done yet
+            'formula_pending': qs.filter(phase='sample').filter(
+                Exists(_stage_complete('sample_booked')),
+                Exists(_stage_incomplete('formula_pending')),
+            ).count(),
+            # sample_in_pipeline: formula_made done AND sample_in_pipeline not done yet
+            'sample_in_pipeline': qs.filter(phase='sample').filter(
+                Exists(_stage_complete('formula_made')),
+                Exists(_stage_incomplete('sample_in_pipeline')),
+            ).count(),
         }
         return Response({
             'stage_distribution': {

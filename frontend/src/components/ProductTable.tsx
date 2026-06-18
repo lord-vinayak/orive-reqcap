@@ -16,14 +16,20 @@ export const REQUIRED_PRODUCT_FIELDS: (keyof RequirementProduct)[] = [
 /** Returns the list of human-readable error messages for a single product row. */
 export function validateProductRow(p: RequirementProduct): string[] {
   const errors: string[] = []
-  if (!p.body_part?.trim())     errors.push('Body part is required')
-  if (!p.category?.trim())      errors.push('Category is required')
-  if (!p.sub_category?.trim())  errors.push('Sub category is required')
+  if (!p.body_part?.trim())      errors.push('Body part is required')
+  if (!p.category?.trim())       errors.push('Category is required')
+  if (!p.sub_category?.trim())   errors.push('Texture is required')
   if (!p.key_benefits || p.key_benefits.length === 0) errors.push('At least one Key benefit is required')
-  if (!p.size?.trim())          errors.push('Size is required')
-  if (!p.packaging_type?.trim()) errors.push('Packaging is required')
-  if (p.has_color === null)     errors.push('Color (Yes/No) is required')
-  if (p.has_fragrance === null) errors.push('Fragrance (Yes/No) is required')
+  if (!p.size?.trim())           errors.push('Size is required')
+  if (!p.packaging_type?.trim()) errors.push('Packaging type is required')
+  if (!p.packaging_notes?.trim()) errors.push('Packaging notes is required')
+  if (p.planned_mrp === null || p.planned_mrp === undefined) errors.push('Planned MRP is required')
+  if (!p.specific_ingredient?.trim()) errors.push('Specific ingredient is required')
+  if (!p.benchmark_product?.trim()) errors.push('Benchmark is required')
+  if (p.has_color === null)      errors.push('Color (Yes/No) is required')
+  if (p.has_color === true && !p.color_details?.trim()) errors.push('Color details is required')
+  if (p.has_fragrance === null)  errors.push('Fragrance (Yes/No) is required')
+  if (p.has_fragrance === true && !p.fragrance_details?.trim()) errors.push('Fragrance details is required')
   return errors
 }
 
@@ -74,7 +80,12 @@ export default function ProductTable({
   return (
     <section className="card p-0 overflow-hidden" aria-labelledby="products-heading">
       <div className="px-4 py-3 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
-        <h2 id="products-heading" className="text-lg font-semibold">Product details</h2>
+        <div>
+          <h2 id="products-heading" className="text-lg font-semibold">Product details</h2>
+          <p className="text-xs text-black/60 dark:text-slate-400 mt-0.5">
+            All fields marked <abbr title="required" aria-label="required">*</abbr> are required
+          </p>
+        </div>
         <span className="text-xs text-black/60 dark:text-slate-300">{products.length} row{products.length === 1 ? '' : 's'}</span>
       </div>
 
@@ -91,18 +102,18 @@ export default function ProductTable({
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 w-10">#</th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[110px]">Body part *</th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[120px]">Category *</th>
-              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[140px]">Sub category *</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[140px]">Texture *</th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[170px]">Key benefits *</th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[80px]">Size *</th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[100px]">Packaging *</th>
-              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Packaging Notes</th>
-              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[110px]">Planned MRP</th>
-              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[180px]">Specific ingredient</th>
-              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Benchmark</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Packaging Notes *</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[110px]">Planned MRP *</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[180px]">Specific ingredient *</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Benchmark *</th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[90px]">Color *</th>
-              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Color details</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Color details <span className="text-black/50 dark:text-slate-400 text-[10px]">(if Yes)</span> *</th>
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[90px]">Fragrance *</th>
-              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Fragrance details</th>
+              <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 min-w-[160px]">Fragrance details <span className="text-black/50 dark:text-slate-400 text-[10px]">(if Yes)</span> *</th>
               <th scope="col" className="px-2 py-2 text-center font-medium border-b border-black/10 dark:border-white/10 w-28"><span className="sr-only">Row actions</span></th>
             </tr>
           </thead>
@@ -165,7 +176,7 @@ export default function ProductTable({
                       value={p.sub_category}
                       onChange={(e) => onChange(i, { sub_category: e.target.value })}
                       className={`${inputCls} ${invalid(!p.sub_category?.trim())}`}
-                      aria-label={`Row ${p.row_number} sub category`}
+                      aria-label={`Row ${p.row_number} texture`}
                       aria-invalid={showValidation && !p.sub_category?.trim() ? true : undefined}
                       aria-required="true"
                       placeholder="Type or pick…"
@@ -214,8 +225,10 @@ export default function ProductTable({
                     <input
                       value={p.packaging_notes}
                       onChange={(e) => onChange(i, { packaging_notes: e.target.value })}
-                      className={inputCls}
+                      className={`${inputCls} ${invalid(!p.packaging_notes?.trim())}`}
                       aria-label={`Row ${p.row_number} packaging notes`}
+                      aria-required="true"
+                      aria-invalid={showValidation && !p.packaging_notes?.trim() ? true : undefined}
                     />
                   </td>
 
@@ -224,8 +237,10 @@ export default function ProductTable({
                       type="number"
                       value={p.planned_mrp ?? ''}
                       onChange={(e) => onChange(i, { planned_mrp: e.target.value ? Number(e.target.value) : null })}
-                      className={inputCls}
+                      className={`${inputCls} ${invalid(p.planned_mrp === null || p.planned_mrp === undefined)}`}
                       aria-label={`Row ${p.row_number} planned MRP`}
+                      aria-required="true"
+                      aria-invalid={showValidation && (p.planned_mrp === null || p.planned_mrp === undefined) ? true : undefined}
                     />
                   </td>
 
@@ -233,8 +248,10 @@ export default function ProductTable({
                     <input
                       value={p.specific_ingredient}
                       onChange={(e) => onChange(i, { specific_ingredient: e.target.value })}
-                      className={inputCls}
+                      className={`${inputCls} ${invalid(!p.specific_ingredient?.trim())}`}
                       aria-label={`Row ${p.row_number} specific ingredient`}
+                      aria-required="true"
+                      aria-invalid={showValidation && !p.specific_ingredient?.trim() ? true : undefined}
                     />
                   </td>
 
@@ -242,8 +259,10 @@ export default function ProductTable({
                     <input
                       value={p.benchmark_product}
                       onChange={(e) => onChange(i, { benchmark_product: e.target.value })}
-                      className={inputCls}
+                      className={`${inputCls} ${invalid(!p.benchmark_product?.trim())}`}
                       aria-label={`Row ${p.row_number} benchmark`}
+                      aria-required="true"
+                      aria-invalid={showValidation && !p.benchmark_product?.trim() ? true : undefined}
                     />
                   </td>
 
@@ -270,8 +289,10 @@ export default function ProductTable({
                       value={p.color_details}
                       onChange={(e) => onChange(i, { color_details: e.target.value })}
                       disabled={p.has_color !== true}
-                      className={inputCls}
+                      className={`${inputCls} ${p.has_color === true ? invalid(!p.color_details?.trim()) : ''}`}
                       aria-label={`Row ${p.row_number} color details`}
+                      aria-required={p.has_color === true ? 'true' : 'false'}
+                      aria-invalid={showValidation && p.has_color === true && !p.color_details?.trim() ? true : undefined}
                     />
                   </td>
 
@@ -298,8 +319,10 @@ export default function ProductTable({
                       value={p.fragrance_details}
                       onChange={(e) => onChange(i, { fragrance_details: e.target.value })}
                       disabled={p.has_fragrance !== true}
-                      className={inputCls}
+                      className={`${inputCls} ${p.has_fragrance === true ? invalid(!p.fragrance_details?.trim()) : ''}`}
                       aria-label={`Row ${p.row_number} fragrance details`}
+                      aria-required={p.has_fragrance === true ? 'true' : 'false'}
+                      aria-invalid={showValidation && p.has_fragrance === true && !p.fragrance_details?.trim() ? true : undefined}
                     />
                   </td>
 
