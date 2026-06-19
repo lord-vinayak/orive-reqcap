@@ -95,8 +95,12 @@ export default function ProductTable({
       <datalist id={dlSize}>{SIZES.map((s) => <option key={s} value={s} />)}</datalist>
       <datalist id={dlPack}>{PACKAGING.map((p) => <option key={p} value={p} />)}</datalist>
 
+      <p id="product-table-hint" className="sr-only">
+        Each row has dropdown fields. Type to filter suggestions or press the Down Arrow key to open the list and navigate options with arrow keys.
+      </p>
+
       <div className="overflow-x-auto min-h-[220px]">
-        <table className="w-full text-sm border-collapse">
+        <table className="w-full text-sm border-collapse" aria-describedby="product-table-hint">
           <thead>
             <tr className="bg-mustard-50 dark:bg-slate-700 text-black/80 dark:text-slate-300 text-xs">
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 w-10">#</th>
@@ -150,6 +154,8 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} body part`}
                       aria-invalid={showValidation && !p.body_part?.trim() ? true : undefined}
                       aria-required="true"
+                      aria-autocomplete="list"
+                      aria-haspopup="listbox"
                       placeholder="Type or pick…"
                     />
                   </td>
@@ -164,6 +170,8 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} category`}
                       aria-invalid={showValidation && !p.category?.trim() ? true : undefined}
                       aria-required="true"
+                      aria-autocomplete="list"
+                      aria-haspopup="listbox"
                       placeholder="Type or pick…"
                     />
                   </td>
@@ -179,6 +187,8 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} texture`}
                       aria-invalid={showValidation && !p.sub_category?.trim() ? true : undefined}
                       aria-required="true"
+                      aria-autocomplete="list"
+                      aria-haspopup="listbox"
                       placeholder="Type or pick…"
                     />
                   </td>
@@ -203,6 +213,8 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} size`}
                       aria-invalid={showValidation && !p.size?.trim() ? true : undefined}
                       aria-required="true"
+                      aria-autocomplete="list"
+                      aria-haspopup="listbox"
                       placeholder="Type or pick…"
                     />
                   </td>
@@ -217,6 +229,8 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} packaging`}
                       aria-invalid={showValidation && !p.packaging_type?.trim() ? true : undefined}
                       aria-required="true"
+                      aria-autocomplete="list"
+                      aria-haspopup="listbox"
                       placeholder="Type or pick…"
                     />
                   </td>
