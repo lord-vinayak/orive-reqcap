@@ -69,15 +69,16 @@ export function BulkStatusModal({ clients, onClose, onDone }: Props) {
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
         ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 dark:border-white/10">

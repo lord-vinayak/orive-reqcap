@@ -58,7 +58,6 @@ export default function NotesSection({ requirementId, refreshKey }: Props) {
             onChange={(e) => { setText(e.target.value); setAddError('') }}
             placeholder="Add a note…"
             className="flex-1"
-            aria-label="New note"
           />
           <button type="submit" disabled={adding || !text.trim()} className="btn-primary">
             {adding ? 'Adding…' : 'Add'}
@@ -85,7 +84,7 @@ export default function NotesSection({ requirementId, refreshKey }: Props) {
                     type="button"
                     onClick={() => handleDelete(n.id)}
                     className="ml-2 text-red-700 underline-offset-2 hover:underline"
-                    aria-label="Delete note"
+                    aria-label={`Delete note by ${n.added_by_name || 'Unknown'}`}
                   >
                     delete
                   </button>

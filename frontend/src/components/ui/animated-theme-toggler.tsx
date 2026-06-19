@@ -123,7 +123,7 @@ export function AnimatedThemeToggler({
           borderRadius: 8,
           WebkitTapHighlightColor: "transparent",
         }}
-        aria-label="Toggle theme"
+        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       >
         <motion.svg
           aria-hidden="true"

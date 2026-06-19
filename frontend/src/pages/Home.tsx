@@ -52,28 +52,28 @@ export default function Home() {
             title="Add Client Record"
             description="Capture a new client requirement or import clients from Excel."
             onClick={() => navigate("/requirements/add")}
-            ariaLabel="Add a new record — capture requirement or import clients"
+            ariaLabel="Add Client Record — capture a new client requirement or import clients from Excel"
           />
           <NavCard
             icon={<FileSearch />}
             title="Update Client Record"
             description="Search and edit existing client requirements."
             onClick={() => navigate("/requirements/search")}
-            ariaLabel="Edit an existing requirement record"
+            ariaLabel="Update Client Record — search and edit existing client requirements"
           />
           <NavCard
             icon={<FolderKanban />}
             title="Update Project"
-            description="View and manage all active CRM projects."
+            description="View and manage all active client projects."
             onClick={() => navigate("/crm/projects")}
-            ariaLabel="Update a CRM project"
+            ariaLabel="Update Project — view and manage all active client projects"
           />
           <NavCard
             icon={<LayoutDashboard />}
             title="Dashboard"
             description="CRM overview — pipeline, project health, and key metrics."
             onClick={() => navigate("/crm/dashboard")}
-            ariaLabel="Go to CRM Dashboard"
+            ariaLabel="Dashboard — CRM overview, pipeline, project health, and key metrics"
           />
         </div>
 

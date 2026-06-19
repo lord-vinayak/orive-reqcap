@@ -68,6 +68,7 @@ function MultiSelect({ options, selected, onAdd, onRemove, placeholder }: MultiS
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
           placeholder={placeholder ?? 'Search by name or ID…'}
+          aria-label={placeholder ?? 'Search by name or ID'}
           className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
         />
         {open && (

@@ -95,29 +95,15 @@ export default function Layout({
           </Link>
 
           <nav className="flex items-center gap-2 flex-wrap" aria-label="Primary">
-            <Link to="/home" className="btn-secondary text-sm" aria-label="Go to Home page">
-              Home
-            </Link>
-            <Link to="/crm/clients" className="btn-secondary text-sm" aria-label="Go to CRM Clients">
-              Clients
-            </Link>
-            <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to CRM Dashboard">
-              CRM
-            </Link>
-            <Link to="/tasks" className="btn-secondary text-sm" aria-label="Go to Task Tracker">
-              Tasks
-            </Link>
-            <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data">
-              Master Data
-            </Link>
+            <Link to="/home" className="btn-secondary text-sm" aria-label="Go to Home page">Home</Link>
+            <Link to="/crm/clients" className="btn-secondary text-sm" aria-label="Go to CRM Clients">Clients</Link>
+            <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to CRM Dashboard">CRM</Link>
+            <Link to="/tasks" className="btn-secondary text-sm" aria-label="Tasks — Task Tracker">Tasks</Link>
+            <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data">Master Data</Link>
             {user?.role === "admin" && (
               <>
-                <Link to="/admin/catalog" className="btn-secondary text-sm" aria-label="Go to Catalog">
-                  Catalog
-                </Link>
-                <Link to="/admin/users" className="btn-secondary text-sm" aria-label="Go to Users">
-                  Users
-                </Link>
+                <Link to="/admin/catalog" className="btn-secondary text-sm" aria-label="Go to Catalog">Catalog</Link>
+                <Link to="/admin/users" className="btn-secondary text-sm" aria-label="Go to Users">Users</Link>
               </>
             )}
             {/* Dark mode toggle */}

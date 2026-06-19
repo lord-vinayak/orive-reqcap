@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { crmApi } from '@/services/crm'
 import type { ProjectPayment, PaymentDirection, PaymentSubType, PaymentVendorOption } from '@/types/crm'
 import { useAuthStore } from '@/store/authStore'
@@ -171,6 +171,7 @@ function VendorSearch({ options, selectedId, selectedKind, onSelect, onClear, di
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
           placeholder="Search by name or ID (e.g. MFR-001)…"
+          aria-label="Search vendor or manufacturer by name or ID"
           className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
           disabled={disabled}
         />
@@ -220,6 +221,8 @@ interface PaymentFormProps {
 }
 
 function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, error, isNew, isSettling, fileInputRef, existingInvoice }: PaymentFormProps) {
+  const rawId = useId()
+  const uid = rawId.replace(/:/g, '')
   const subTypes = SUB_TYPES_BY_DIRECTION[form.direction] ?? PAID_SUB_TYPES
 
   const handleDirectionChange = (dir: PaymentDirection) => {
@@ -236,8 +239,9 @@ function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, 
 
       {/* Row 1: Date */}
       <div>
-        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Date *</label>
+        <label htmlFor={`pf-date-${uid}`} className="block text-xs text-black/60 dark:text-slate-400 mb-1">Date *</label>
         <input
+          id={`pf-date-${uid}`}
           type="date"
           value={form.payment_date}
           onChange={(e) => onChange({ payment_date: e.target.value })}
@@ -247,16 +251,17 @@ function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, 
       </div>
 
       {/* Payment Type: 2×2 grid (Actual row / Pending row) */}
-      <div>
-        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Payment Type</label>
+      <fieldset>
+        <legend className="block text-xs text-black/60 dark:text-slate-400 mb-1">Payment Type</legend>
         <div className="space-y-1">
-          <div className="flex rounded border border-black/20 dark:border-white/20 overflow-hidden">
+          <div className="flex rounded border border-black/20 dark:border-white/20 overflow-hidden" role="group" aria-label="Actual payment type">
             {(['paid', 'received'] as PaymentDirection[]).map((dir) => (
               <button
                 key={dir}
                 type="button"
                 onClick={() => handleDirectionChange(dir)}
                 disabled={saving || isSettling}
+                aria-pressed={form.direction === dir}
                 className={`flex-1 py-1.5 text-xs font-medium transition-colors ${
                   form.direction === dir
                     ? 'bg-mustard text-black'
@@ -267,13 +272,14 @@ function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, 
               </button>
             ))}
           </div>
-          <div className="flex rounded border border-black/20 dark:border-white/20 overflow-hidden">
+          <div className="flex rounded border border-black/20 dark:border-white/20 overflow-hidden" role="group" aria-label="Pending payment type">
             {(['payable', 'receivable'] as PaymentDirection[]).map((dir) => (
               <button
                 key={dir}
                 type="button"
                 onClick={() => handleDirectionChange(dir)}
                 disabled={saving || isSettling}
+                aria-pressed={form.direction === dir}
                 className={`flex-1 py-1.5 text-xs font-medium transition-colors ${
                   form.direction === dir
                     ? 'bg-mustard text-black'
@@ -288,12 +294,13 @@ function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, 
             {(form.direction === 'paid' || form.direction === 'received') ? 'Actual transaction' : 'Pending / expected'}
           </p>
         </div>
-      </div>
+      </fieldset>
 
       {/* Sub Type */}
       <div>
-        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Sub Type</label>
+        <label htmlFor={`pf-subtype-${uid}`} className="block text-xs text-black/60 dark:text-slate-400 mb-1">Sub Type</label>
         <select
+          id={`pf-subtype-${uid}`}
           value={form.sub_type}
           onChange={(e) => onChange({ sub_type: e.target.value as PaymentSubType })}
           className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
@@ -307,8 +314,9 @@ function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, 
 
       {/* Amount */}
       <div>
-        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Amount (₹)</label>
+        <label htmlFor={`pf-amount-${uid}`} className="block text-xs text-black/60 dark:text-slate-400 mb-1">Amount (₹)</label>
         <input
+          id={`pf-amount-${uid}`}
           type="number"
           min={0}
           step="0.01"
@@ -323,9 +331,9 @@ function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, 
       {/* Vendor search (Paid and Payable) */}
       {(form.direction === 'paid' || form.direction === 'payable') && (
         <div>
-          <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">
+          <p className="block text-xs text-black/60 dark:text-slate-400 mb-1">
             Vendor / Manufacturer <span className="text-black/30 dark:text-slate-500">(optional)</span>
-          </label>
+          </p>
           <VendorSearch
             options={vendorOptions}
             selectedId={form.vendor_id_selected}
@@ -339,8 +347,9 @@ function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, 
 
       {/* Comments */}
       <div>
-        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Comments</label>
+        <label htmlFor={`pf-comments-${uid}`} className="block text-xs text-black/60 dark:text-slate-400 mb-1">Comments</label>
         <textarea
+          id={`pf-comments-${uid}`}
           value={form.comments}
           onChange={(e) => onChange({ comments: e.target.value })}
           rows={2}
@@ -352,13 +361,14 @@ function PaymentForm({ form, vendorOptions, onChange, onSave, onCancel, saving, 
 
       {/* Invoice upload */}
       <div>
-        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">
+        <label htmlFor={`pf-invoice-${uid}`} className="block text-xs text-black/60 dark:text-slate-400 mb-1">
           Invoice {existingInvoice && !isNew ? '(upload new to replace)' : '(optional)'}
         </label>
         {existingInvoice && !form.invoice_file && (
           <p className="text-xs text-mustard mb-1 truncate">Current: {existingInvoice}</p>
         )}
         <input
+          id={`pf-invoice-${uid}`}
           ref={fileInputRef}
           type="file"
           accept="image/*,application/pdf"
@@ -603,6 +613,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
                         <button
                           type="button"
                           onClick={() => startSettle(p)}
+                          aria-label={`Settle ${p.sub_type_display} ₹${fmt(p.amount)}`}
                           className="text-xs text-mustard hover:underline font-medium"
                         >
                           Settle →
@@ -612,6 +623,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
                         <button
                           type="button"
                           onClick={() => startEdit(p)}
+                          aria-label={`Edit ${p.sub_type_display} ₹${fmt(p.amount)}`}
                           className="text-xs text-mustard hover:underline"
                         >
                           Edit
@@ -621,6 +633,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
                         <button
                           type="button"
                           onClick={() => startEdit(p)}
+                          aria-label={`Edit ${p.sub_type_display} ₹${fmt(p.amount)}`}
                           className="text-xs text-black/40 dark:text-slate-500 hover:underline"
                         >
                           Edit
@@ -631,6 +644,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
                           type="button"
                           onClick={() => handleDelete(p.id)}
                           disabled={deletingId === p.id}
+                          aria-label={`Delete ${p.sub_type_display} ₹${fmt(p.amount)}`}
                           className="text-xs text-red-500 hover:underline disabled:opacity-50"
                         >
                           {deletingId === p.id ? '…' : 'Delete'}

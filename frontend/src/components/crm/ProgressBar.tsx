@@ -13,7 +13,7 @@ export function ProgressBar({ value, label, size = 'md' }: ProgressBarProps) {
       {label && (
         <div className="flex justify-between text-xs text-black/60 dark:text-slate-400 mb-1">
           <span>{label}</span>
-          <span aria-label={`${pct}% complete`}>{pct}%</span>
+          <span aria-hidden="true">{pct}%</span>
         </div>
       )}
       <div

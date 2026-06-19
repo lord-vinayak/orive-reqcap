@@ -50,16 +50,16 @@ export function Modal({ title, onClose, children, size = 'md' }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center px-4 z-50 overflow-y-auto"
-      aria-hidden="true"
+      className="fixed inset-0 flex items-center justify-center px-4 z-50 overflow-y-auto"
       onClick={onClose}
     >
+      <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className={`bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full ${widthClass} my-8`}
+        className={`relative bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full ${widthClass} my-8`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

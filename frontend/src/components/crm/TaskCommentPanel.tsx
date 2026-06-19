@@ -119,7 +119,7 @@ export default function TaskCommentPanel({ task, onClose, onCommentAdded }: Prop
           className="flex-1 overflow-y-auto px-5 py-4 space-y-4"
         >
           {loading ? (
-            <p className="text-sm text-black/40 dark:text-slate-500" aria-live="polite">Loading…</p>
+            <p className="text-sm text-black/40 dark:text-slate-500">Loading…</p>
           ) : comments.length === 0 ? (
             <p className="text-sm text-black/40 dark:text-slate-500 text-center py-8">No comments yet.</p>
           ) : (

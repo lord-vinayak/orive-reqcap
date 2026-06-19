@@ -20,7 +20,7 @@ export default function RequirementsAdd() {
             role="button"
             tabIndex={0}
             className="card text-left hover:border-mustard transition-colors group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard"
-            aria-label="Capture new — fill in a new client requirement form step by step"
+            aria-label="Capture New — fill in a new client requirement form manually"
           >
             <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center mb-4 group-hover:bg-mustard transition-colors" aria-hidden="true">
               <span className="text-2xl text-mustard-700"><StickyNote /></span>
@@ -37,7 +37,7 @@ export default function RequirementsAdd() {
             role="button"
             tabIndex={0}
             className="card text-left hover:border-mustard transition-colors group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard"
-            aria-label="Import from Excel — bulk-import clients from a spreadsheet and browse all records"
+            aria-label="Import from Excel — bulk-add clients from a spreadsheet"
           >
             <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center mb-4 group-hover:bg-mustard transition-colors" aria-hidden="true">
               <span className="text-2xl text-mustard-700"><FileSpreadsheet /></span>

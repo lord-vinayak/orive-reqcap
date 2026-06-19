@@ -178,10 +178,10 @@ export default function SendEmailModal({
 
           {/* Subject (read-only preview) */}
           <div>
-            <label htmlFor="email-modal-subject" className="block text-xs font-medium text-black/60 dark:text-slate-300 mb-1">
+            <p className="block text-xs font-medium text-black/60 dark:text-slate-300 mb-1">
               Subject
-            </label>
-            <p id="email-modal-subject" className="text-sm text-black/70 dark:text-slate-300 bg-black/[0.03] dark:bg-white/5 rounded px-3 py-2">
+            </p>
+            <p className="text-sm text-black/70 dark:text-slate-300 bg-black/[0.03] dark:bg-white/5 rounded px-3 py-2">
               Product Proposal, Cost & Next Steps for Sample Development
             </p>
           </div>
