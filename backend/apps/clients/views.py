@@ -239,59 +239,74 @@ class ClientViewSet(viewsets.ModelViewSet):
         created = []
         skipped = []
 
+        # Parse all valid rows first, then do one EXISTS check and one bulk insert.
+        pending = []  # list of (row_num, name, phone, kwargs, email_warning)
+        seen_phones = set()  # deduplicate within the file itself
+
         for row_num, row_data in enumerate(rows[1:], start=2):
-            # Skip fully blank rows
             if all(v is None or str(v).strip() == '' for v in row_data):
                 continue
 
-            name  = cell(row_data, idx_name)
+            name = cell(row_data, idx_name)
             phone_raw = cell(row_data, idx_phone)
 
-            # Validate name
             if not name:
                 skipped.append({'row': row_num, 'name': '—', 'phone': phone_raw or '—',
                                  'reason': 'Missing full_name'})
                 continue
 
-            # Parse phone
             phone = _parse_phone(phone_raw)
             if not phone:
                 skipped.append({'row': row_num, 'name': name, 'phone': phone_raw or '—',
                                  'reason': 'Could not extract a 10-digit phone number'})
                 continue
 
-            # Check duplicate
-            if Client.objects.filter(phone_no=phone).exists():
+            if phone in seen_phones:
                 skipped.append({'row': row_num, 'name': name, 'phone': phone,
-                                 'reason': 'Phone number already exists in the system'})
+                                 'reason': 'Duplicate phone number within the uploaded file'})
                 continue
+            seen_phones.add(phone)
 
-            # Validate email (basic check — store anyway but flag)
             email = cell(row_data, idx_email) or ''
             email_warning = None
             if email and not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
                 email_warning = f'Invalid email "{email}" stored as-is'
-                # We store it but note the warning
 
-            Client.objects.create(
-                phone_no=phone,
-                name=name,
-                email=email,
-                company_name=cell(row_data, idx_company) or '',
-                city=cell(row_data, idx_city) or '',
-                no_of_products=_int_or_none(row_data, idx_noprod),
-                planned_selling_price_range=cell(row_data, idx_price) or '',
-                how_many_units_per_product=_int_or_none(row_data, idx_units),
-                physical_address=cell(row_data, idx_address) or '',
-                gst_details=cell(row_data, idx_gst) or '',
-                lead_status=_parse_lead_status(cell(row_data, idx_lead_status)),
-                lead_sub_status=_parse_sub_status(
-                    cell(row_data, idx_sub_status),
-                    _parse_lead_status(cell(row_data, idx_lead_status)),
-                ),
-                poc=request.user,
-            )
+            lead_status = _parse_lead_status(cell(row_data, idx_lead_status))
+            pending.append((row_num, name, phone, {
+                'phone_no': phone,
+                'name': name,
+                'email': email,
+                'company_name': cell(row_data, idx_company) or '',
+                'city': cell(row_data, idx_city) or '',
+                'no_of_products': _int_or_none(row_data, idx_noprod),
+                'planned_selling_price_range': cell(row_data, idx_price) or '',
+                'how_many_units_per_product': _int_or_none(row_data, idx_units),
+                'physical_address': cell(row_data, idx_address) or '',
+                'gst_details': cell(row_data, idx_gst) or '',
+                'lead_status': lead_status,
+                'lead_sub_status': _parse_sub_status(cell(row_data, idx_sub_status), lead_status),
+                'poc': request.user,
+            }, email_warning))
 
+        # Single query to find all phones that already exist
+        pending_phones = [p[2] for p in pending]
+        existing_phones = set(
+            Client.objects.filter(phone_no__in=pending_phones).values_list('phone_no', flat=True)
+        )
+
+        to_create = []
+        for row_num, name, phone, kwargs, email_warning in pending:
+            if phone in existing_phones:
+                skipped.append({'row': row_num, 'name': name, 'phone': phone,
+                                 'reason': 'Phone number already exists in the system'})
+                continue
+            to_create.append((row_num, name, phone, kwargs, email_warning))
+
+        # Single bulk insert
+        Client.objects.bulk_create([Client(**kw) for _, _, _, kw, _ in to_create])
+
+        for row_num, name, phone, _, email_warning in to_create:
             entry = {'row': row_num, 'name': name, 'phone': phone}
             if email_warning:
                 entry['warning'] = email_warning

@@ -165,11 +165,11 @@ def build_proposal_xlsx(proposal):
         ('Raw Material Cost (per unit)',     '__raw_per_unit__'),
         ('Manufacturing Cost',               'manufacturing_cost'),
         ('Estimated Unit Cost',              '__est_unit__'),
-        ('Tentative Packaging Cost',         'tentative_packaging_cost'),
-        ('Label Cost',                       'label_cost'),
-        ('Tentative Monocarton Cost',        'tentative_monocarton_cost'),
-        ('Total Cost',                       '__total__'),
-        ('Potential MRP',                    '__mrp__'),
+        ('Tentative Packaging Cost ~',        'tentative_packaging_cost'),
+        ('Label Cost ~',                     'label_cost'),
+        ('Tentative Monocarton Cost ~',      'tentative_monocarton_cost'),
+        ('Total Cost ~',                     '__total__'),
+        ('Potential MRP ~',                  '__mrp__'),
     ]
 
     # Now that we know the column count, apply the banner merges dynamically
@@ -231,6 +231,12 @@ def build_proposal_xlsx(proposal):
             cell.border = BORDER
             if idx % 2 == 0:
                 cell.fill = PatternFill('solid', fgColor=LIGHT_GREY)
+
+    footnote_row = header_row + len(items) + 1
+    ws.merge_cells(f'A{footnote_row}:{last_col_letter}{footnote_row}')
+    fn_cell = ws.cell(row=footnote_row, column=1, value='~ Tentative figures — subject to revision')
+    fn_cell.font = Font(name='Aptos', italic=True, color='806600')
+    fn_cell.alignment = Alignment(horizontal='left', vertical='center')
 
     widths = [14, 16, 18, 26, 32, 12, 12, 10, 14, 14, 22, 22, 18, 20, 22, 14, 22, 14, 14]
     for i, w in enumerate(widths, start=1):

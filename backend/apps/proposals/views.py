@@ -80,8 +80,8 @@ class ProposalViewSet(viewsets.ModelViewSet):
         proposal.save(update_fields=['status', 'last_exported_at'])
 
         client_name = proposal.requirement.client.name
-        date_str = datetime.now().date().isoformat()
-        filename = f'ClientCosting_{client_name}_{date_str}.xlsx'
+        client_name_safe = ''.join(c for c in client_name if c.isalnum() or c in ' _-').strip()
+        filename = f'{client_name_safe} Costing.xlsx'
 
         # Silently archive a copy to Drive — never fail the download if Drive is unavailable
         try:
@@ -135,8 +135,7 @@ class ProposalViewSet(viewsets.ModelViewSet):
         # Generate XLSX in memory (reuse existing export logic)
         xlsx_data = build_proposal_xlsx(proposal)
         client_name_clean = ''.join(c for c in client.name if c.isalnum() or c in ' _-').strip()
-        date_str = datetime.now().strftime('%Y%m%d')
-        attachment_name = f'ClientCosting_{client_name_clean}_{date_str}.xlsx'
+        attachment_name = f'{client_name_clean} Costing.xlsx'
 
         # Silently archive XLSX to Drive
         try:

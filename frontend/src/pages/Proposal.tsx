@@ -496,8 +496,8 @@ export default function ProposalPage() {
 
 /** Column descriptor — either an editable input or an auto-computed display cell. */
 type ColSpec =
-  | { kind: 'edit'; key: string; label: string; numeric?: boolean }
-  | { kind: 'calc'; key: string; label: string }
+  | { kind: 'edit'; key: string; label: string; numeric?: boolean; tentative?: boolean }
+  | { kind: 'calc'; key: string; label: string; tentative?: boolean }
 
 const TABLE_COLUMNS: ColSpec[] = [
   { kind: 'edit', key: 'body_part',                 label: 'Body Part' },
@@ -517,11 +517,11 @@ const TABLE_COLUMNS: ColSpec[] = [
   { kind: 'calc', key: 'raw_per_unit',              label: 'RM Cost/unit' },
   { kind: 'edit', key: 'manufacturing_cost',        label: 'Mfg Cost',        numeric: true },
   { kind: 'calc', key: 'est_unit',                  label: 'Est. Unit Cost' },
-  { kind: 'edit', key: 'tentative_packaging_cost',  label: 'Pkg Cost',        numeric: true },
-  { kind: 'edit', key: 'label_cost',                label: 'Label Cost',      numeric: true },
-  { kind: 'edit', key: 'tentative_monocarton_cost', label: 'Monocarton',      numeric: true },
-  { kind: 'calc', key: 'total_cost',                label: 'Total Cost' },
-  { kind: 'calc', key: 'potential_mrp',             label: 'Potential MRP' },
+  { kind: 'edit', key: 'tentative_packaging_cost',  label: 'Pkg Cost',        numeric: true,  tentative: true },
+  { kind: 'edit', key: 'label_cost',                label: 'Label Cost',      numeric: true,  tentative: true },
+  { kind: 'edit', key: 'tentative_monocarton_cost', label: 'Monocarton',      numeric: true,  tentative: true },
+  { kind: 'calc', key: 'total_cost',                label: 'Total Cost',                       tentative: true },
+  { kind: 'calc', key: 'potential_mrp',             label: 'Potential MRP',                    tentative: true },
 ]
 
 function EditableItemsTable({
@@ -589,6 +589,9 @@ function EditableItemsTable({
                 }`}
               >
                 {col.label}
+                {col.tentative && (
+                  <span className="ml-0.5 text-[10px] font-semibold text-amber-600" aria-label="tentative">~</span>
+                )}
                 {col.kind === 'calc' && (
                   <span className="ml-1 text-[9px] font-normal not-italic">(auto)</span>
                 )}
@@ -720,11 +723,11 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">RM Cost (per unit)</th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Manufacturing Cost</th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Estimated Unit Cost</th>
-              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Tentative Packaging Cost</th>
-              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Label Cost</th>
-              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Tentative Monocarton Cost</th>
-              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Total Cost</th>
-              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Potential MRP</th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Tentative Packaging Cost <span className="text-amber-400 font-semibold" aria-label="tentative">~</span></th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Label Cost <span className="text-amber-400 font-semibold" aria-label="tentative">~</span></th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Tentative Monocarton Cost <span className="text-amber-400 font-semibold" aria-label="tentative">~</span></th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Total Cost <span className="text-amber-400 font-semibold" aria-label="tentative">~</span></th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Potential MRP <span className="text-amber-400 font-semibold" aria-label="tentative">~</span></th>
             </tr>
           </thead>
           <tbody>
@@ -759,6 +762,9 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
           </tbody>
         </table>
       </div>
+      <p className="mt-2 text-xs text-black/50 italic">
+        <span className="text-amber-600 font-semibold not-italic">~</span> Tentative figures
+      </p>
     </section>
   )
 }
