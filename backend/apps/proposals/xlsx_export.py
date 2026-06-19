@@ -160,7 +160,6 @@ def build_proposal_xlsx(proposal):
         ('Fragrance',                        'fragrance'),
         ('Size',                             'size'),
         ('Packaging',                        'packaging_type'),
-        ('Rate Category',                    'rate_category'),
         ('Raw Material Cost (per kg)',       'per_kg_rate'),
         ('Raw Material Cost (per unit)',     '__raw_per_unit__'),
         ('Manufacturing Cost',               'manufacturing_cost'),
@@ -213,7 +212,6 @@ def build_proposal_xlsx(proposal):
             m.get('fragrance') or '',
             m.get('size') or '',
             m.get('packaging_type') or '',
-            m.get('rate_category') or '',
             _dec(m.get('per_kg_rate')),
             raw_per_unit if raw_per_unit is not None else '',
             _dec(m.get('manufacturing_cost')),
@@ -238,7 +236,7 @@ def build_proposal_xlsx(proposal):
     fn_cell.font = Font(name='Aptos', italic=True, color='806600')
     fn_cell.alignment = Alignment(horizontal='left', vertical='center')
 
-    widths = [14, 16, 18, 26, 32, 12, 12, 10, 14, 14, 22, 22, 18, 20, 22, 14, 22, 14, 14]
+    widths = [14, 16, 18, 26, 32, 12, 12, 10, 14, 22, 22, 18, 20, 22, 14, 22, 14, 14]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 

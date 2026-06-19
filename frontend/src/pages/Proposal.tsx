@@ -511,7 +511,6 @@ const TABLE_COLUMNS: ColSpec[] = [
   { kind: 'edit', key: 'fragrance',                 label: 'Fragrance' },
   { kind: 'edit', key: 'size',                      label: 'Size' },
   { kind: 'edit', key: 'packaging_type',            label: 'Packaging' },
-  { kind: 'edit', key: 'rate_category',             label: 'Rate Category' },
   // Cost columns — editable inputs first, then auto-computed cells interleaved
   { kind: 'edit', key: 'per_kg_rate',               label: 'RM Cost/kg',      numeric: true },
   { kind: 'calc', key: 'raw_per_unit',              label: 'RM Cost/unit' },
@@ -592,9 +591,6 @@ function EditableItemsTable({
                 {col.tentative && (
                   <span className="ml-0.5 text-[10px] font-semibold text-amber-600" aria-label="tentative">~</span>
                 )}
-                {col.kind === 'calc' && (
-                  <span className="ml-1 text-[9px] font-normal not-italic">(auto)</span>
-                )}
               </th>
             ))}
             <th scope="col" className="px-2 py-1 text-center font-medium w-16">
@@ -616,18 +612,30 @@ function EditableItemsTable({
               <tr key={it.id} className={idx % 2 === 1 ? 'bg-black/[0.02]' : ''}>
                 <td className="px-2 py-1 text-center text-black/70 font-medium">{idx + 1}</td>
                 {TABLE_COLUMNS.map((col) => {
+                  // Only RM Cost/kg is editable; everything else is read-only.
+                  if (col.key === 'per_kg_rate') {
+                    return (
+                      <td key={col.key} className="px-1 py-1">
+                        <input
+                          type="number"
+                          value={cellValue(it, col.key)}
+                          onChange={(e) => updateLocal(it.id, col.key, e.target.value)}
+                          onBlur={() => commit(it, col as Extract<ColSpec, { kind: 'edit' }>)}
+                          className="w-full px-1 py-0.5 border border-transparent rounded bg-transparent hover:bg-mustard-50/50 focus:bg-white focus:border-mustard text-sm"
+                          aria-label={`Item ${idx + 1} ${col.label}`}
+                        />
+                      </td>
+                    )
+                  }
                   if (col.kind === 'calc') {
                     const val = calcValues[col.key]
-                    // Explain WHY a cell is blank so users know what to fill in.
                     const perKgSet = !isNaN(parseNumeric(merged.per_kg_rate))
                     const sizeSet  = !isNaN(parseNumeric(merged.size))
                     let hint = 'Auto-calculated'
                     if (val === null) {
-                      if (col.key === 'raw_per_unit') {
-                        hint = perKgSet ? 'Enter Size to calculate' : 'Enter RM Cost/kg and Size to calculate'
-                      } else {
-                        hint = sizeSet && perKgSet ? 'Waiting on upstream values' : 'Enter RM Cost/kg and Size to calculate'
-                      }
+                      hint = col.key === 'raw_per_unit'
+                        ? (perKgSet ? 'Enter Size to calculate' : 'Enter RM Cost/kg and Size to calculate')
+                        : (sizeSet && perKgSet ? 'Waiting on upstream values' : 'Enter RM Cost/kg and Size to calculate')
                     }
                     return (
                       <td
@@ -641,16 +649,10 @@ function EditableItemsTable({
                       </td>
                     )
                   }
+                  // All other edit columns — read-only display
                   return (
-                    <td key={col.key} className="px-1 py-1">
-                      <input
-                        type={col.numeric ? 'number' : 'text'}
-                        value={cellValue(it, col.key)}
-                        onChange={(e) => updateLocal(it.id, col.key, e.target.value)}
-                        onBlur={() => commit(it, col as Extract<ColSpec, { kind: 'edit' }>)}
-                        className="w-full px-1 py-0.5 border border-transparent rounded bg-transparent hover:bg-mustard-50/50 focus:bg-white focus:border-mustard text-sm"
-                        aria-label={`Item ${idx + 1} ${col.label}`}
-                      />
+                    <td key={col.key} className="px-2 py-1 text-sm text-black/80 whitespace-nowrap">
+                      {cellValue(it, col.key) || <span className="text-black/30">—</span>}
                     </td>
                   )
                 })}
@@ -718,7 +720,6 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
               <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Fragrance</th>
               <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Size</th>
               <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Packaging</th>
-              <th scope="col" className="text-left px-3 py-2 whitespace-nowrap">Rate Category</th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">RM Cost (per kg)</th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">RM Cost (per unit)</th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Manufacturing Cost</th>
@@ -746,7 +747,6 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
                   <td className="px-3 py-2 border-t border-black/5 text-xs">{c.fragrance || '—'}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs">{c.size}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs">{c.packaging_type}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-xs">{c.rate_category || '—'}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.per_kg_rate)}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-medium">{fmtCalc(cv.rawPerUnit)}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.manufacturing_cost)}</td>

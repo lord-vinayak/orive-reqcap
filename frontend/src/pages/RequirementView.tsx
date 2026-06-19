@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import SendEmailModal from '@/components/SendEmailModal'
 import {
-  requirementService, notesService, fileService, proposalService,
+  requirementService, notesService, fileService, proposalService, AUTO_NOTE_MARKER_RE,
 } from '@/services'
 import type { FileRecord, Note, Proposal, Requirement, SentEmail } from '@/types'
 
@@ -261,7 +261,7 @@ export default function RequirementView() {
             <ol className="space-y-3">
               {notes.map((note) => (
                 <li key={note.id} className="border border-black/8 dark:border-white/8 rounded p-3">
-                  <p className="text-sm dark:text-slate-200">{note.text}</p>
+                  <p className="text-sm dark:text-slate-200">{note.text.replace(AUTO_NOTE_MARKER_RE, '')}</p>
                   <p className="text-xs text-black/70 dark:text-slate-300 mt-1">
                     {note.added_by_name} · {new Date(note.created_at).toLocaleString()}
                   </p>
