@@ -122,9 +122,14 @@ class CRMProject(models.Model):
     @property
     def progress_percentage(self) -> int:
         """Percentage of all expected stages completed (sample active cycle + order)."""
-        completed_keys = set(
-            self.stage_completions.filter(is_complete=True).values_list('stage_key', flat=True)
-        )
+        # ponytail: use prefetch cache when available to avoid N+1 in list views
+        cache = getattr(self, '_prefetched_objects_cache', {})
+        if 'stage_completions' in cache:
+            completed_keys = {sc.stage_key for sc in cache['stage_completions'] if sc.is_complete}
+        else:
+            completed_keys = set(
+                self.stage_completions.filter(is_complete=True).values_list('stage_key', flat=True)
+            )
 
         sample_done = sum(1 for s in SAMPLE_PRE_LOOP if s['key'] in completed_keys)
         sample_done += sum(

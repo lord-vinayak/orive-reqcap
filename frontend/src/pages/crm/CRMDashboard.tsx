@@ -147,7 +147,7 @@ export default function CRMDashboard() {
                       <tr className="bg-black/5 dark:bg-white/5 text-left">
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Client</th>
-                        <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Lead Status</th>
+                        <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project Status</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Stage</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Progress</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>

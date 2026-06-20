@@ -105,7 +105,7 @@ export default function CRMClientDetail() {
               className="btn-secondary text-sm"
               aria-label={`View requirements for ${client.name} in the Requirement Capturing Tool`}
             >
-              View in Req. Tool →
+              View in Requirement Capturing Tool →
             </Link>
           </div>
         </div>

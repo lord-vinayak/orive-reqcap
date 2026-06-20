@@ -4,7 +4,7 @@ from django.db import transaction
 
 logger = logging.getLogger(__name__)
 from django.utils import timezone
-from django.db.models import Q, Count, Exists, OuterRef
+from django.db.models import Q, Count, Exists, OuterRef, Prefetch
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -136,9 +136,10 @@ def _build_milestones(project: CRMProject):
 
 
 def _refresh_milestone_statuses(project: CRMProject):
-    for m in project.milestones.all():
+    milestones = list(project.milestones.all())
+    for m in milestones:
         m.refresh_status()
-        m.save(update_fields=['status'])
+    ProjectMilestone.objects.bulk_update(milestones, ['status'])
 
 
 # ── Stage status computation ──────────────────────────────────────────────────
@@ -877,6 +878,7 @@ class TaskListViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        from .models import TaskComment
         return (
             StageCompletion.objects
             .filter(assigned_to__isnull=False)
@@ -885,7 +887,13 @@ class TaskListViewSet(viewsets.ReadOnlyModelViewSet):
                 'assigned_to', 'assigned_by',
                 'last_updated_by',
             )
-            .prefetch_related('comments__author')
+            .prefetch_related(
+                Prefetch(
+                    'comments',
+                    queryset=TaskComment.objects.select_related('author').order_by('-created_at'),
+                    to_attr='prefetched_comments',
+                )
+            )
             .order_by('-assigned_at')
         )
 
@@ -981,13 +989,20 @@ class StandaloneTaskViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        from .models import TaskComment
         return (
             StandaloneTask.objects
             .select_related(
                 'project', 'client', 'assigned_to',
                 'assigned_by', 'last_updated_by', 'created_by',
             )
-            .prefetch_related('comments__author')
+            .prefetch_related(
+                Prefetch(
+                    'comments',
+                    queryset=TaskComment.objects.select_related('author').order_by('-created_at'),
+                    to_attr='prefetched_comments',
+                )
+            )
             .order_by('-created_at')
         )
 

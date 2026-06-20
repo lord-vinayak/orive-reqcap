@@ -1,3 +1,4 @@
+from datetime import date
 from rest_framework import serializers
 from .models import (
     CRMProject, StageCompletion, SubStageCompletion,
@@ -125,7 +126,8 @@ class TaskItemSerializer(serializers.ModelSerializer):
         return None
 
     def get_latest_comment(self, obj):
-        comment = obj.comments.order_by('-created_at').first()
+        comments = getattr(obj, 'prefetched_comments', None)
+        comment = comments[0] if comments else None
         if not comment:
             return None
         return {
@@ -195,7 +197,8 @@ class StandaloneTaskSerializer(serializers.ModelSerializer):
         return None
 
     def get_latest_comment(self, obj):
-        comment = obj.comments.order_by('-created_at').first()
+        comments = getattr(obj, 'prefetched_comments', None)
+        comment = comments[0] if comments else None
         if not comment:
             return None
         return {
@@ -393,14 +396,16 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'project_no', 'start_date', 'created_at', 'phase', 'project_stage']
 
     def get_has_delays(self, obj):
-        return obj.milestones.filter(status='delayed').exists()
+        return any(m.status == 'delayed' for m in obj.milestones.all())
 
     def get_next_milestone(self, obj):
-        milestone = obj.milestones.filter(
-            actual_date__isnull=True, status__in=['on_track', 'at_risk']
-        ).order_by('planned_date').first()
-        if not milestone:
+        candidates = [
+            m for m in obj.milestones.all()
+            if m.actual_date is None and m.status in ('on_track', 'at_risk')
+        ]
+        if not candidates:
             return None
+        milestone = min(candidates, key=lambda m: m.planned_date or date(9999, 12, 31))
         return {'key': milestone.milestone_key, 'display': milestone.milestone_display,
                 'planned_date': milestone.planned_date}
 
@@ -423,10 +428,10 @@ class CRMProjectDetailSerializer(CRMProjectListSerializer):
         ]
 
     def get_delayed_count(self, obj):
-        return obj.milestones.filter(status='delayed').count()
+        return sum(1 for m in obj.milestones.all() if m.status == 'delayed')
 
     def get_at_risk_count(self, obj):
-        return obj.milestones.filter(status='at_risk').count()
+        return sum(1 for m in obj.milestones.all() if m.status == 'at_risk')
 
 
 class CRMProjectWriteSerializer(serializers.ModelSerializer):

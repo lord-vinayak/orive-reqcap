@@ -42,9 +42,6 @@ export default function RequirementView() {
   // Track which proposal panels are expanded
   const [expandedProposals, setExpandedProposals] = useState<Set<string>>(new Set())
 
-  // Creating a new proposal
-  const [creatingProposal, setCreatingProposal] = useState(false)
-
   // Send email modal
   const [emailModalProposalId, setEmailModalProposalId] = useState<string | null>(null)
   const [emailToast, setEmailToast] = useState('')
@@ -86,18 +83,7 @@ export default function RequirementView() {
     setProposals(p)
   }
 
-  const handleCreateNewProposal = async () => {
-    if (!id) return
-    setCreatingProposal(true)
-    try {
-      await proposalService.createNew(id)
-      // Navigate to the requirement edit form — CatalogSuggestions there will
-      // auto-pick the latest (newly created) proposal to add items into.
-      navigate(`/requirements/${id}/proposal`)
-    } catch {
-      setCreatingProposal(false)
-    }
-  }
+
 
   if (loading) {
     return (
@@ -128,14 +114,6 @@ export default function RequirementView() {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={handleCreateNewProposal}
-            disabled={creatingProposal}
-            className="btn-secondary"
-            aria-label="Create a new blank Client Costing for this requirement"
-          >
-            {creatingProposal ? 'Creating…' : '+ New Client Costing'}
-          </button>
           <button
             onClick={() => navigate(`/requirements/${id}`)}
             className="btn-primary"
@@ -382,19 +360,11 @@ export default function RequirementView() {
             <h2 id="view-proposals-heading" className="text-lg font-semibold">
               Client Costings <span className="text-sm font-normal text-black/60 dark:text-slate-300">({proposals.length})</span>
             </h2>
-            <button
-              onClick={handleCreateNewProposal}
-              disabled={creatingProposal}
-              className="btn-primary text-sm"
-              aria-label="Create a new blank Client Costing"
-            >
-              {creatingProposal ? 'Creating…' : '+ New Client Costing'}
-            </button>
           </div>
 
           {proposals.length === 0 && (
             <div className="card text-sm text-black/60 dark:text-slate-300">
-              No Client Costings created yet. Click "+ New Client Costing" to start one.
+              No Client Costings created yet.
             </div>
           )}
 
