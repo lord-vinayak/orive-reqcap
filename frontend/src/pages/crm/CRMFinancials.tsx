@@ -38,6 +38,11 @@ export default function CRMFinancials() {
   const [vendorSearch, setVendorSearch] = useState('')
   const [pendingModal, setPendingModal] = useState<'payable' | 'receivable' | null>(null)
 
+  const handleDrillDown = (searchValue: string) => {
+    setTxSearch(searchValue)
+    setTableView('all')
+  }
+
   useEffect(() => {
     if (!dateFrom || !dateTo) return
     setLoading(true)
@@ -274,7 +279,16 @@ export default function CRMFinancials() {
                       {projectRows.map((r) => (
                         <tr key={r.no} className="hover:bg-black/2 dark:hover:bg-white/2">
                           <td className="px-4 py-2 font-medium text-black dark:text-white">{r.no}</td>
-                          <td className="px-4 py-2 text-black/70 dark:text-slate-300">{r.client}</td>
+                          <td className="px-4 py-2">
+                            <button
+                              type="button"
+                              onClick={() => handleDrillDown(r.client)}
+                              className="text-black/70 dark:text-slate-300 hover:text-mustard hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard rounded text-left"
+                              title={`Show all transactions for ${r.client}`}
+                            >
+                              {r.client}
+                            </button>
+                          </td>
                           <Td right green>{fmt(r.credits)}</Td>
                           <Td right red>{fmt(r.debits)}</Td>
                           <Td right colored={r.net}>{fmt(r.net)}</Td>
@@ -395,13 +409,15 @@ export default function CRMFinancials() {
                 <AllRowsTable payments={filteredTxPayments} />
               ) : tableView === 'by_project' ? (
                 <BreakdownTable
-                  rows={filteredProjectRows.map((r) => ({ label: `${r.no} · ${r.client}`, credits: r.credits, debits: r.debits, net: r.net }))}
+                  rows={filteredProjectRows.map((r) => ({ label: `${r.no} · ${r.client}`, clickValue: r.client, credits: r.credits, debits: r.debits, net: r.net }))}
                   firstColLabel="Project"
+                  onLabelClick={handleDrillDown}
                 />
               ) : (
                 <BreakdownTable
-                  rows={filteredVendorRows.map((r) => ({ label: r.label, credits: r.credits, debits: r.debits, net: r.net }))}
+                  rows={filteredVendorRows.map((r) => ({ label: r.label, clickValue: r.label, credits: r.credits, debits: r.debits, net: r.net }))}
                   firstColLabel="Vendor / Manufacturer"
+                  onLabelClick={handleDrillDown}
                 />
               )}
             </section>
@@ -443,9 +459,10 @@ function SummaryCard({ label, amount, color, bold, subtext }: { label: string; a
   )
 }
 
-function BreakdownTable({ rows, firstColLabel }: {
-  rows: { label: string; credits: number; debits: number; net: number }[]
+function BreakdownTable({ rows, firstColLabel, onLabelClick }: {
+  rows: { label: string; clickValue?: string; credits: number; debits: number; net: number }[]
   firstColLabel: string
+  onLabelClick?: (value: string) => void
 }) {
   return (
     <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
@@ -461,7 +478,18 @@ function BreakdownTable({ rows, firstColLabel }: {
         <tbody className="divide-y divide-black/5 dark:divide-white/5">
           {rows.map((r) => (
             <tr key={r.label} className="hover:bg-black/2 dark:hover:bg-white/2">
-              <td className="px-4 py-2 text-black dark:text-white">{r.label}</td>
+              <td className="px-4 py-2 text-black dark:text-white">
+                {onLabelClick && r.clickValue ? (
+                  <button
+                    type="button"
+                    onClick={() => onLabelClick(r.clickValue!)}
+                    className="hover:text-mustard hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard rounded text-left"
+                    title={`Show all transactions for ${r.clickValue}`}
+                  >
+                    {r.label}
+                  </button>
+                ) : r.label}
+              </td>
               <Td right green>{fmt(r.credits)}</Td>
               <Td right red>{fmt(r.debits)}</Td>
               <Td right colored={r.net}>{fmt(r.net)}</Td>
