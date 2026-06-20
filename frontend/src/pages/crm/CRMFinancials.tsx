@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react'
+import React, { useEffect, useId, useMemo, useState } from 'react'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
 import type { ProjectPayment } from '@/types/crm'
@@ -32,7 +32,7 @@ export default function CRMFinancials() {
   const [error, setError] = useState('')
   const [tableView, setTableView] = useState<TableView>('all')
   const [txSearch, setTxSearch] = useState('')
-  const [txDirection, setTxDirection] = useState<'all' | 'received' | 'paid'>('all')
+  const [txDirection, setTxDirection] = useState<'all' | 'received' | 'paid' | 'receivable' | 'payable'>('all')
   const [txCategory, setTxCategory] = useState('')
   const [projectSearch, setProjectSearch] = useState('')
   const [vendorSearch, setVendorSearch] = useState('')
@@ -127,7 +127,6 @@ export default function CRMFinancials() {
   const filteredTxPayments = useMemo(() => {
     const q = txSearch.toLowerCase().trim()
     return payments.filter((p) => {
-      if (p.direction !== 'paid' && p.direction !== 'received') return false
       if (txDirection !== 'all' && p.direction !== txDirection) return false
       if (txCategory) {
         const cat = p.sub_type_display || SUB_TYPE_LABEL[p.sub_type] || p.sub_type
@@ -342,8 +341,10 @@ export default function CRMFinancials() {
                     className="border border-black/20 dark:border-white/20 rounded px-3 py-1.5 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
                   >
                     <option value="all">All directions</option>
-                    <option value="received">Credits only</option>
-                    <option value="paid">Debits only</option>
+                    <option value="received">Credit</option>
+                    <option value="paid">Debit</option>
+                    <option value="receivable">Receivable</option>
+                    <option value="payable">Payable</option>
                   </select>
                   <select
                     value={txCategory}
@@ -502,6 +503,7 @@ function BreakdownTable({ rows, firstColLabel, onLabelClick }: {
 }
 
 function AllRowsTable({ payments }: { payments: ProjectPayment[] }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const sorted = [...payments].sort((a, b) => b.payment_date.localeCompare(a.payment_date))
   return (
     <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
@@ -519,27 +521,63 @@ function AllRowsTable({ payments }: { payments: ProjectPayment[] }) {
         </thead>
         <tbody className="divide-y divide-black/5 dark:divide-white/5">
           {sorted.map((p) => (
-            <tr key={p.id} className="hover:bg-black/2 dark:hover:bg-white/2">
-              <td className="px-4 py-2 text-black/70 dark:text-slate-300 whitespace-nowrap">{p.payment_date}</td>
-              <td className="px-4 py-2 font-medium text-black dark:text-white">{p.project_no}</td>
-              <td className="px-4 py-2 text-black/70 dark:text-slate-300">{p.project_client_name}</td>
-              <td className="px-4 py-2 text-black/70 dark:text-slate-300">{p.sub_type_display || SUB_TYPE_LABEL[p.sub_type] || p.sub_type}</td>
-              <td className="px-4 py-2 text-black/70 dark:text-slate-300">{p.manufacturer_name ?? p.vendor_name ?? '—'}</td>
-              <td className="px-4 py-2">
-                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                  p.direction === 'received'
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+            <React.Fragment key={p.id}>
+              <tr
+                onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
+                className="hover:bg-black/2 dark:hover:bg-white/2 cursor-pointer"
+                aria-expanded={expandedId === p.id}
+              >
+                <td className="px-4 py-2 text-black/70 dark:text-slate-300 whitespace-nowrap">{p.payment_date}</td>
+                <td className="px-4 py-2 font-medium text-black dark:text-white">{p.project_no}</td>
+                <td className="px-4 py-2 text-black/70 dark:text-slate-300">{p.project_client_name}</td>
+                <td className="px-4 py-2 text-black/70 dark:text-slate-300">{p.sub_type_display || SUB_TYPE_LABEL[p.sub_type] || p.sub_type}</td>
+                <td className="px-4 py-2 text-black/70 dark:text-slate-300">{p.manufacturer_name ?? p.vendor_name ?? '—'}</td>
+                <td className="px-4 py-2">
+                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                    p.direction === 'received' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : p.direction === 'paid' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    : p.direction === 'receivable' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                  }`}>
+                    {p.direction === 'received' ? 'Credit' : p.direction === 'paid' ? 'Debit' : p.direction === 'receivable' ? 'Receivable' : 'Payable'}
+                  </span>
+                </td>
+                <td className={`px-4 py-2 text-right font-medium ${
+                  p.direction === 'received' ? 'text-green-600 dark:text-green-400' : 'text-red-700 dark:text-red-400'
                 }`}>
-                  {p.direction === 'received' ? 'Credit' : 'Debit'}
-                </span>
-              </td>
-              <td className={`px-4 py-2 text-right font-medium ${
-                p.direction === 'received' ? 'text-green-600 dark:text-green-400' : 'text-red-700 dark:text-red-400'
-              }`}>
-                {fmt(parseFloat(p.amount) || 0)}
-              </td>
-            </tr>
+                  <span className="mr-2 text-black/30 dark:text-slate-500 text-xs select-none">
+                    {expandedId === p.id ? '▼' : '▶'}
+                  </span>
+                  {fmt(parseFloat(p.amount) || 0)}
+                </td>
+              </tr>
+              {expandedId === p.id && (
+                <tr className="bg-mustard/5 dark:bg-mustard/10">
+                  <td colSpan={7} className="px-6 py-4 space-y-3">
+                    {/* First line: Invoice, Added by, Settlement (pending only), Created at */}
+                    <dl className="grid grid-flow-col auto-cols-fr gap-x-8 gap-y-3 text-sm w-full">
+                      <DetailField
+                        label="Invoice"
+                        value={p.invoice_filename || null}
+                        href={p.invoice_drive_url || null}
+                        clip
+                      />
+                      <DetailField label="Added by" value={p.created_by_name || null} />
+                      {(p.direction === 'payable' || p.direction === 'receivable') && (
+                        <DetailField label="Settlement" value={p.is_settled ? 'Settled' : 'Unsettled'} />
+                      )}
+                      <DetailField label="Created at" value={new Date(p.created_at).toLocaleString('en-IN')} />
+                    </dl>
+                    {/* Second line: Comments (full width) */}
+                    {p.comments && (
+                      <dl>
+                        <DetailField label="Comments" value={p.comments} />
+                      </dl>
+                    )}
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
           ))}
         </tbody>
       </table>
@@ -571,6 +609,19 @@ function Td({ children, right, green, red, colored }: {
 
 function Empty() {
   return <p className="text-black/70 dark:text-slate-300 text-sm">No payments in this date range.</p>
+}
+
+function DetailField({ label, value, href, clip }: { label: string; value: string | null; href?: string | null; clip?: boolean }) {
+  return (
+    <div className={clip ? 'min-w-0 max-w-xs' : undefined}>
+      <dt className="text-xs font-medium text-black/50 dark:text-slate-400 uppercase tracking-wide mb-0.5">{label}</dt>
+      <dd className="text-black dark:text-white break-words">
+        {href
+          ? <a href={href} target="_blank" rel="noopener noreferrer" className={`text-mustard hover:underline${clip ? ' block truncate' : ''}`} title={value ?? undefined}>{value}</a>
+          : (value || '—')}
+      </dd>
+    </div>
+  )
 }
 
 function PendingModal({ direction, payments, onClose }: {
