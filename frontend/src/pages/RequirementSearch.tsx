@@ -10,6 +10,7 @@ import { LeadStatusBadge } from '@/components/LeadStatusBadge'
 import { BulkEmailModal } from '@/components/BulkEmailModal'
 import { BulkStatusModal } from '@/components/BulkStatusModal'
 import { PaginationBar } from '@/components/PaginationBar'
+import { PRODUCT_COUNT_LABEL } from '@/utils/dropdownOptions'
 
 type Tab = 'edit' | 'browse'
 
@@ -735,7 +736,7 @@ export default function RequirementSearch() {
                                           <tr key={r.id}>
                                             <td>{r.title}</td>
                                             <td><span className="badge">{r.status}</span></td>
-                                            <td>{r.no_of_products ?? '—'}</td>
+                                            <td>{r.no_of_products !== null && r.no_of_products !== undefined ? (PRODUCT_COUNT_LABEL[r.no_of_products] ?? r.no_of_products.toString()) : '—'}</td>
                                             <td><time dateTime={r.updated_at}>{new Date(r.updated_at).toLocaleString()}</time></td>
                                             <td>
                                               <button

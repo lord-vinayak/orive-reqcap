@@ -65,7 +65,7 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
     try {
       // Step 1: save newly entered emails to client profiles
       const toSave = rows.filter((r) => r.draftEmail.trim() && r.draftEmail.trim() !== r.existingEmail)
-      await Promise.all(
+      await Promise.allSettled(
         toSave.map((r) => clientService.patch(r.phone_no, { email: r.draftEmail.trim() }))
       )
 

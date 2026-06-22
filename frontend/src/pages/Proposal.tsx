@@ -34,8 +34,8 @@ function computedCosts(data: Record<string, unknown>) {
 
   const rawPerUnit = (!isNaN(perKg) && !isNaN(size))   ? (perKg / 1000) * size          : null
   const estUnit    = (rawPerUnit !== null && !isNaN(mfg)) ? rawPerUnit + mfg               : null
-  const total      = estUnit !== null
-    ? estUnit + (!isNaN(pkg) ? pkg : 0) + (!isNaN(label) ? label : 0) + (!isNaN(mono) ? mono : 0)
+  const total      = (estUnit !== null && !isNaN(pkg) && !isNaN(label) && !isNaN(mono))
+    ? estUnit + pkg + label + mono
     : null
   const mrp        = total !== null ? total * 6 : null
 

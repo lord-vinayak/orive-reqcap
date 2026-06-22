@@ -372,7 +372,11 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         """Mark a flat stage complete or incomplete."""
         project = self.get_object()
         stage_key = request.data.get('stage_key', '').strip()
-        is_complete = bool(request.data.get('is_complete', True))
+        is_complete_raw = request.data.get('is_complete', True)
+        if isinstance(is_complete_raw, str):
+            is_complete = is_complete_raw.lower() in ('true', '1', 't', 'y', 'yes')
+        else:
+            is_complete = bool(is_complete_raw)
 
         if not stage_key:
             return Response({'detail': 'stage_key is required.'}, status=400)
@@ -381,7 +385,15 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         sc.is_complete = is_complete
         sc.completed_at = timezone.now() if is_complete else None
         sc.completed_by = request.user if is_complete else None
-        sc.save(update_fields=['is_complete', 'completed_at', 'completed_by'])
+        
+        update_fields = ['is_complete', 'completed_at', 'completed_by']
+        
+        if is_complete:
+            sc.task_status = 'closed'
+            sc.actual_closure_date = timezone.now().date()
+            update_fields.extend(['task_status', 'actual_closure_date'])
+
+        sc.save(update_fields=update_fields)
 
         if is_complete:
             project.project_stage = stage_key
@@ -419,7 +431,13 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         )
         StageCompletion.objects.filter(
             project=project, stage_key__in=stage_keys
-        ).update(is_complete=True, completed_at=now, completed_by=request.user)
+        ).update(
+            is_complete=True,
+            completed_at=now,
+            completed_by=request.user,
+            task_status='closed',
+            actual_closure_date=now.date()
+        )
 
         # Advance project_stage to the last key in the section
         project.project_stage = stage_keys[-1]
@@ -441,9 +459,14 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         Rejection initiates the next resample cycle if cycles remain.
         """
         project = self.get_object()
-        approved = request.data.get('approved')
-        if approved is None:
+        approved_raw = request.data.get('approved')
+        if approved_raw is None:
             return Response({'detail': 'approved (bool) is required.'}, status=400)
+            
+        if isinstance(approved_raw, str):
+            approved = approved_raw.lower() in ('true', '1', 't', 'y', 'yes')
+        else:
+            approved = bool(approved_raw)
 
         cycle = project.resample_cycle
         approval_key = get_loop_key('sample_approved', cycle)
@@ -453,7 +476,9 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
             sc.is_complete = True
             sc.completed_at = timezone.now()
             sc.completed_by = request.user
-            sc.save(update_fields=['is_complete', 'completed_at', 'completed_by'])
+            sc.task_status = 'closed'
+            sc.actual_closure_date = timezone.now().date()
+            sc.save(update_fields=['is_complete', 'completed_at', 'completed_by', 'task_status', 'actual_closure_date'])
             project.project_stage = approval_key
             project.save(update_fields=['project_stage', 'updated_at'])
         else:
@@ -511,7 +536,11 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         """Set order booking steps and order booked status."""
         project = self.get_object()
         steps = request.data.get('order_booking_steps', {})
-        order_booked = bool(request.data.get('order_booked', False))
+        order_booked_raw = request.data.get('order_booked', False)
+        if isinstance(order_booked_raw, str):
+            order_booked = order_booked_raw.lower() in ('true', '1', 't', 'y', 'yes')
+        else:
+            order_booked = bool(order_booked_raw)
 
         project.order_booking_steps = steps if isinstance(steps, dict) else {}
         project.order_booked = order_booked
@@ -554,6 +583,13 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         assigned_to_id = request.data.get('assigned_to')
         priority = request.data.get('priority', 'medium')
         planned_closure_date = request.data.get('planned_closure_date') or None
+        if planned_closure_date:
+            from datetime import datetime
+            try:
+                planned_closure_date = datetime.strptime(str(planned_closure_date), '%Y-%m-%d').date()
+            except ValueError:
+                return Response({'detail': 'Invalid date format for planned_closure_date. Use YYYY-MM-DD.'}, status=400)
+                
         comment_text = (request.data.get('comment') or '').strip()
 
         if not stage_key:
@@ -610,7 +646,15 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
             )
 
         raw = request.data.get('planned_closure_date')
-        sc.planned_closure_date = raw if raw else None
+        if raw:
+            from datetime import datetime
+            try:
+                sc.planned_closure_date = datetime.strptime(str(raw), '%Y-%m-%d').date()
+            except ValueError:
+                return Response({'detail': 'Invalid date format. Use YYYY-MM-DD.'}, status=400)
+        else:
+            sc.planned_closure_date = None
+            
         sc.last_updated_at = timezone.now()
         sc.last_updated_by = request.user
         sc.save(update_fields=['planned_closure_date', 'last_updated_at', 'last_updated_by'])
@@ -942,12 +986,16 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
             instance.invoice_filename = invoice_file.name
             instance.save(update_fields=['invoice_drive_id', 'invoice_drive_url', 'invoice_filename'])
         except Exception:
-            pass
+            logger.exception('Google Drive upload failed for invoice.')
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'invoice': 'Failed to upload to Drive.'})
 
+    @transaction.atomic
     def perform_create(self, serializer):
         instance = serializer.save(created_by=self.request.user)
         self._handle_invoice(instance, self.request)
 
+    @transaction.atomic
     def perform_update(self, serializer):
         instance = serializer.save()
         self._handle_invoice(instance, self.request)
@@ -1053,7 +1101,15 @@ class StandaloneTaskViewSet(viewsets.ModelViewSet):
                 status=403,
             )
         raw = request.data.get('planned_closure_date')
-        instance.planned_closure_date = raw if raw else None
+        if raw:
+            from datetime import datetime
+            try:
+                instance.planned_closure_date = datetime.strptime(str(raw), '%Y-%m-%d').date()
+            except ValueError:
+                return Response({'detail': 'Invalid date format. Use YYYY-MM-DD.'}, status=400)
+        else:
+            instance.planned_closure_date = None
+            
         instance.last_updated_by = request.user
         instance.save(update_fields=['planned_closure_date', 'last_updated_by'])
         broadcast_task_update(_build_standalone_task_payload(instance))

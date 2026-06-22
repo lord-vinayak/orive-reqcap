@@ -1,6 +1,6 @@
 import uuid
 from datetime import date, timedelta
-from django.db import models
+from django.db import models, transaction, IntegrityError
 from django.conf import settings
 from django.core.validators import MinValueValidator
 
@@ -113,11 +113,17 @@ class CRMProject(models.Model):
             base = f'SKI{today}{client_prefix}'
             candidate = base
             counter = 2
-            while CRMProject.objects.filter(project_no=candidate).exists():
-                candidate = f'{base}{counter}'
-                counter += 1
-            self.project_no = candidate
-        super().save(*args, **kwargs)
+            while True:
+                self.project_no = candidate
+                try:
+                    with transaction.atomic():
+                        super().save(*args, **kwargs)
+                    break
+                except IntegrityError:
+                    candidate = f'{base}{counter}'
+                    counter += 1
+        else:
+            super().save(*args, **kwargs)
 
     @property
     def progress_percentage(self) -> int:

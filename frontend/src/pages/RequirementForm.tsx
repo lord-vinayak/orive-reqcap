@@ -300,7 +300,7 @@ export default function RequirementForm() {
       try {
         const newP = await requirementService.addProduct(requirement.id);
         setProducts((cur) => { setActiveRowIndex(cur.length); return [...cur, newP]; });
-      } catch { setError("Could not add row. Please try again."); }
+      } catch (err) { setError("Could not add row. Please try again."); throw err; }
     } else {
       const tempRow: RequirementProduct = {
         id: `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -354,7 +354,7 @@ export default function RequirementForm() {
       catch { setError("Could not delete row."); return; }
     }
     dirtyProductsRef.current.delete(row.id);
-    setProducts((cur) => cur.filter((_, i) => i !== idx));
+    setProducts((cur) => cur.filter((_, i) => i !== idx).map((p, i) => ({ ...p, row_number: i + 1 })));
   };
 
   const handleExtract = (fields: Partial<RequirementProduct>) => {
@@ -427,6 +427,7 @@ export default function RequirementForm() {
       }
 
       let req = requirement;
+      let currentProducts = [...products];
       if (!req) {
         req = await requirementService.create({
           client: client.phone_no,
@@ -440,6 +441,7 @@ export default function RequirementForm() {
           created.push(newP);
         }
         setProducts(created);
+        currentProducts = created;
         localStorage.removeItem(DRAFT_KEY);
       } else {
         await requirementService.patch(req.id, {
@@ -458,6 +460,9 @@ export default function RequirementForm() {
             for (const { oldId, newP } of newlyCreated) next = next.map((x) => (x.id === oldId ? newP : x));
             return next;
           });
+          for (const { oldId, newP } of newlyCreated) {
+            currentProducts = currentProducts.map((x) => (x.id === oldId ? newP : x));
+          }
         }
         const dirtyIds = Array.from(dirtyProductsRef.current);
         const tasks = dirtyIds.flatMap((pid) => {
@@ -475,7 +480,7 @@ export default function RequirementForm() {
       // ---- Sync auto-mirror notes (item #9) ----
       // Use the in-memory products list (post-save IDs may have changed for tmp rows above,
       // but auto-mirror notes only need stable IDs to correlate runs — newly created server IDs are fine).
-      try { await syncAutoNotes(req.id, products); } catch { /* non-blocking */ }
+      try { await syncAutoNotes(req.id, currentProducts); } catch { /* non-blocking */ }
       setNotesRefreshKey((k) => k + 1);
 
       setSavedAt(new Date());

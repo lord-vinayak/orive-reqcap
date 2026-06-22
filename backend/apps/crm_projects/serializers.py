@@ -37,9 +37,11 @@ class TaskCommentSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'author', 'author_name', 'author_email', 'created_at', 'updated_at', 'edited']
 
     def validate(self, data):
-        if not data.get('stage_task') and not data.get('standalone_task'):
+        stage_task = data.get('stage_task', getattr(self.instance, 'stage_task', None))
+        standalone_task = data.get('standalone_task', getattr(self.instance, 'standalone_task', None))
+        if not stage_task and not standalone_task:
             raise serializers.ValidationError('Either stage_task or standalone_task is required.')
-        if data.get('stage_task') and data.get('standalone_task'):
+        if stage_task and standalone_task:
             raise serializers.ValidationError('Provide only one of stage_task or standalone_task.')
         return data
 

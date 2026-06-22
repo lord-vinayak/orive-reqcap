@@ -7,6 +7,9 @@ class TaskUpdateConsumer(WebsocketConsumer):
     GROUP = 'task_updates'
 
     def connect(self):
+        if not self.scope.get('user') or not self.scope['user'].is_authenticated:
+            self.close()
+            return
         async_to_sync(self.channel_layer.group_add)(self.GROUP, self.channel_name)
         self.accept()
 
