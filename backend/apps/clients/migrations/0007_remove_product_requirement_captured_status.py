@@ -7,6 +7,10 @@ def migrate_forward(apps, schema_editor):
         lead_status='initial_conversation',
         lead_sub_status='initial_conversation__product_requirement_captured',
     )
+    Client.objects.filter(lead_status='on_hold').update(
+        lead_status='lead_closed',
+        lead_sub_status='lead_closed__on_hold',
+    )
 
 
 def migrate_backward(apps, schema_editor):
@@ -15,6 +19,10 @@ def migrate_backward(apps, schema_editor):
         lead_status='initial_conversation',
         lead_sub_status='initial_conversation__product_requirement_captured',
     ).update(lead_status='product_requirement_captured', lead_sub_status='')
+    Client.objects.filter(
+        lead_status='lead_closed',
+        lead_sub_status='lead_closed__on_hold',
+    ).update(lead_status='on_hold', lead_sub_status='')
 
 
 class Migration(migrations.Migration):
@@ -41,7 +49,6 @@ class Migration(migrations.Migration):
                     ('filling', 'Filling'),
                     ('order_dispatch', 'Order Dispatch'),
                     ('order_closed', 'Order Closed'),
-                    ('on_hold', 'On Hold'),
                     ('lead_closed', 'Lead Closed'),
                 ],
             ),

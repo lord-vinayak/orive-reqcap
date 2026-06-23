@@ -9,7 +9,6 @@ export type LeadStatus =
   | 'filling'
   | 'order_dispatch'
   | 'order_closed'
-  | 'on_hold'
   | 'lead_closed'
 
 export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
@@ -22,9 +21,8 @@ export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'testing',                      label: 'Testing' },
   { value: 'filling',                      label: 'Filling' },
   { value: 'order_dispatch',               label: 'Order Dispatch' },
-  { value: 'order_closed',                 label: 'Order Closed' },
-  { value: 'on_hold',                      label: 'On Hold' },
-  { value: 'lead_closed',                  label: 'Lead Closed' },
+  { value: 'order_closed',  label: 'Order Closed' },
+  { value: 'lead_closed',  label: 'Lead Closed' },
 ]
 
 export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = Object.fromEntries(
@@ -41,8 +39,7 @@ export const LEAD_STATUS_COLOR: Record<LeadStatus, string> = {
   testing:                      'bg-sky-50     text-sky-700     border-sky-200     dark:bg-sky-900/30     dark:text-sky-300     dark:border-sky-700',
   filling:                      'bg-lime-50    text-lime-700    border-lime-200    dark:bg-lime-900/30    dark:text-lime-300    dark:border-lime-700',
   order_dispatch:               'bg-green-50   text-green-700   border-green-200   dark:bg-green-900/30   dark:text-green-300   dark:border-green-700',
-  order_closed:                 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700',
-  on_hold:                      'bg-black/5    text-black/60    border-black/10    dark:bg-white/5        dark:text-slate-400   dark:border-white/10',
+  order_closed: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700',
   lead_closed:                  'bg-red-50     text-red-700     border-red-200     dark:bg-red-900/30     dark:text-red-300     dark:border-red-700',
 }
 

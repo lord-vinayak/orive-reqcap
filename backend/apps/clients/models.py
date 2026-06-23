@@ -32,7 +32,6 @@ class Client(models.Model):
         ('filling',                        'Filling'),
         ('order_dispatch',                 'Order Dispatch'),
         ('order_closed',                   'Order Closed'),
-        ('on_hold',                        'On Hold'),
         ('lead_closed',                    'Lead Closed'),
     ]
 
