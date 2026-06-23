@@ -1,6 +1,5 @@
 export type LeadStatus =
   | 'initial_conversation'
-  | 'product_requirement_captured'
   | 'proposal'
   | 'costing'
   | 'sample'
@@ -14,9 +13,8 @@ export type LeadStatus =
   | 'lead_closed'
 
 export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
-  { value: 'initial_conversation',         label: 'Initial Conversation' },
-  { value: 'product_requirement_captured', label: 'Product Requirement Captured' },
-  { value: 'proposal',                     label: 'Proposal' },
+  { value: 'initial_conversation', label: 'Initial Conversation' },
+  { value: 'proposal',             label: 'Proposal' },
   { value: 'costing',                      label: 'Costing' },
   { value: 'sample',                       label: 'Sample' },
   { value: 'order',                        label: 'Order' },
@@ -34,8 +32,7 @@ export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = Object.fromEntries(
 ) as Record<LeadStatus, string>
 
 export const LEAD_STATUS_COLOR: Record<LeadStatus, string> = {
-  initial_conversation:         'bg-blue-50    text-blue-700    border-blue-200    dark:bg-blue-900/30    dark:text-blue-300    dark:border-blue-700',
-  product_requirement_captured: 'bg-indigo-50  text-indigo-700  border-indigo-200  dark:bg-indigo-900/30  dark:text-indigo-300  dark:border-indigo-700',
+  initial_conversation: 'bg-blue-50    text-blue-700    border-blue-200    dark:bg-blue-900/30    dark:text-blue-300    dark:border-blue-700',
   proposal:                     'bg-purple-50  text-purple-700  border-purple-200  dark:bg-purple-900/30  dark:text-purple-300  dark:border-purple-700',
   costing:                      'bg-amber-50   text-amber-700   border-amber-200   dark:bg-amber-900/30   dark:text-amber-300   dark:border-amber-700',
   sample:                       'bg-orange-50  text-orange-700  border-orange-200  dark:bg-orange-900/30  dark:text-orange-300  dark:border-orange-700',
@@ -52,6 +49,9 @@ export const LEAD_STATUS_COLOR: Record<LeadStatus, string> = {
 export interface SubStatusOption { value: string; label: string }
 
 export const LEAD_SUB_STATUS_OPTIONS: Partial<Record<LeadStatus, SubStatusOption[]>> = {
+  initial_conversation: [
+    { value: 'initial_conversation__product_requirement_captured', label: 'Product Requirement Captured' },
+  ],
   proposal: [
     { value: 'proposal__requested', label: 'Requested' },
     { value: 'proposal__send',      label: 'Send' },
@@ -111,6 +111,7 @@ export const LEAD_SUB_STATUS_OPTIONS: Partial<Record<LeadStatus, SubStatusOption
     { value: 'lead_closed__not_reachable',   label: 'Not Reachable' },
     { value: 'lead_closed__costing_high',    label: 'Costing High' },
     { value: 'lead_closed__others',          label: 'Others' },
+    { value: 'lead_closed__on_hold',         label: 'On Hold' },
   ],
 }
 

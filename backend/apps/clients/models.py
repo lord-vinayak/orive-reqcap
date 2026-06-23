@@ -23,7 +23,6 @@ class Client(models.Model):
 
     LEAD_STATUS_CHOICES = [
         ('initial_conversation',           'Initial Conversation'),
-        ('product_requirement_captured',   'Product Requirement Captured'),
         ('proposal',                       'Proposal'),
         ('costing',                        'Costing'),
         ('sample',                         'Sample'),
@@ -38,6 +37,8 @@ class Client(models.Model):
     ]
 
     LEAD_SUB_STATUS_CHOICES = [
+        # Initial Conversation
+        ('initial_conversation__product_requirement_captured', 'Product Requirement Captured'),
         # Proposal
         ('proposal__requested',            'Requested'),
         ('proposal__send',                 'Send'),
@@ -88,10 +89,12 @@ class Client(models.Model):
         ('lead_closed__not_reachable',     'Not Reachable'),
         ('lead_closed__costing_high',      'Costing High'),
         ('lead_closed__others',            'Others'),
+        ('lead_closed__on_hold',           'On Hold'),
     ]
 
     # Valid sub-statuses per main status — used for validation
     VALID_SUB_STATUSES: dict = {
+        'initial_conversation': ['initial_conversation__product_requirement_captured'],
         'proposal':      ['proposal__requested', 'proposal__send', 'proposal__approved'],
         'costing':       ['costing__requested', 'costing__send', 'costing__approved'],
         'sample':        ['sample__invoice_shared', 'sample__sample_booked', 'sample__approval_email_sent',
@@ -107,7 +110,8 @@ class Client(models.Model):
                           'order_dispatch__in_transit', 'order_dispatch__delivered'],
         'order_closed':  ['order_closed__feedback_captured'],
         'lead_closed':   ['lead_closed__not_responding', 'lead_closed__language_issue',
-                          'lead_closed__not_reachable', 'lead_closed__costing_high', 'lead_closed__others'],
+                          'lead_closed__not_reachable', 'lead_closed__costing_high',
+                          'lead_closed__others', 'lead_closed__on_hold'],
     }
 
     lead_status = models.CharField(
