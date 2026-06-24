@@ -180,11 +180,8 @@ export default function TaskTracker() {
         const res = await crmApi.updateStandaloneTask(task.id, { task_status: newStatus })
         upsertTask(res.data)
       } else {
-        await crmApi.updateTaskStatus(task.project_id!, task.stage_key!, newStatus)
-        // WS broadcast will update state; also optimistically update
-        setTasks((prev) =>
-          prev.map((t) => (t.id === task.id ? { ...t, task_status: newStatus } : t))
-        )
+        const res = await crmApi.updateTaskStatus(task.project_id!, task.stage_key!, newStatus)
+        upsertTask(res.data)
       }
     } catch {
       // ignore — WS / optimistic update will self-correct
