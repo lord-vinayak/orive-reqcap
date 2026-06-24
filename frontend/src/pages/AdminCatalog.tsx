@@ -78,6 +78,9 @@ export default function AdminCatalog() {
   // Template download state
   const [downloadingTemplate, setDownloadingTemplate] = useState(false)
 
+  // sr-only live region for delete/action announcements
+  const [statusMessage, setStatusMessage] = useState('')
+
   // ---- Load catalog -------------------------------------------------------
   const load = async () => {
     setLoading(true)
@@ -184,6 +187,8 @@ export default function AdminCatalog() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Remove this catalog item?')) return
     await catalogService.delete(id)
+    setStatusMessage('Catalog item deleted successfully.')
+    setTimeout(() => setStatusMessage(''), 3000)
     load()
   }
 
@@ -194,6 +199,7 @@ export default function AdminCatalog() {
 
   return (
     <Layout title="Product Catalog">
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{statusMessage}</div>
       {/* ---- Header ---- */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>

@@ -61,7 +61,7 @@ export default function CRMClientDetail() {
   if (loading) {
     return (
       <Layout title="Client">
-        <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm">
+        <div role="status" aria-live="polite" aria-atomic="true" className="text-black/60 dark:text-slate-300 text-sm">
           Loading client details…
         </div>
       </Layout>

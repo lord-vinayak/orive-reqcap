@@ -28,11 +28,19 @@ export default function CRMClientList() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
+  const [statusMessage, setStatusMessage] = useState('')
 
   const fetchClients = (q = '') => {
     setLoading(true)
     api.get<PaginatedClients>('/clients/', { params: q ? { search: q } : {} })
-      .then((r) => setClients(r.data.results))
+      .then((r) => {
+        setClients(r.data.results)
+        if (q) {
+          const count = r.data.results.length
+          setStatusMessage(count > 0 ? `${count} client${count !== 1 ? 's' : ''} found.` : 'No clients found.')
+          setTimeout(() => setStatusMessage(''), 3000)
+        }
+      })
       .catch(() => setError('Failed to load clients.'))
       .finally(() => setLoading(false))
   }
@@ -47,6 +55,7 @@ export default function CRMClientList() {
   return (
     <Layout title="Clients">
       <div className="space-y-6">
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{statusMessage}</div>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <h1 className="text-2xl font-bold text-black dark:text-white">Clients</h1>
           <Link to="/crm/clients/new" className="btn-primary text-sm" aria-label="Add a new client">
@@ -85,11 +94,11 @@ export default function CRMClientList() {
         )}
 
         {loading ? (
-          <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-400 text-sm">
+          <div role="status" aria-live="polite" aria-atomic="true" className="text-black/60 dark:text-slate-400 text-sm">
             Loading clients…
           </div>
         ) : clients.length === 0 ? (
-          <p role="status" aria-live="polite" className="text-black/60 dark:text-slate-400 text-sm">No clients found.</p>
+          <p role="status" aria-live="polite" aria-atomic="true" className="text-black/60 dark:text-slate-400 text-sm">No clients found.</p>
         ) : (
           <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
             <table className="w-full text-sm" aria-label="Client list">

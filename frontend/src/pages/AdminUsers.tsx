@@ -22,6 +22,8 @@ export default function AdminUsers() {
     setError('')
     try {
       await userService.create(form as any)
+      setStatusMsg(`User ${form.name} created successfully.`)
+      setTimeout(() => setStatusMsg(''), 3000)
       setForm({ email: '', name: '', role: 'poc_sales', password: '' })
       setShowForm(false)
       load()
@@ -33,13 +35,14 @@ export default function AdminUsers() {
   const handleToggle = async (u: User) => {
     const newStatus = !u.is_active
     await userService.update(u.id, { is_active: newStatus })
-    setStatusMsg(`User ${u.name} has been ${newStatus ? 'activated' : 'deactivated'}`)
+    setStatusMsg(`User ${u.name} has been ${newStatus ? 'activated' : 'deactivated'}.`)
+    setTimeout(() => setStatusMsg(''), 3000)
     load()
   }
 
   return (
     <Layout title="Manage Users">
-      <div role="status" aria-live="polite" className="sr-only">{statusMsg}</div>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{statusMsg}</div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Users</h1>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">

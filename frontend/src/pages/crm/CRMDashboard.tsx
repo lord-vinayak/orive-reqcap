@@ -78,7 +78,7 @@ export default function CRMDashboard() {
         )}
 
         {loading ? (
-          <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm">
+          <div role="status" aria-live="polite" aria-atomic="true" className="text-black/60 dark:text-slate-300 text-sm">
             Loading dashboard…
           </div>
         ) : stats && (

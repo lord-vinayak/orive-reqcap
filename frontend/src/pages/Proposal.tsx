@@ -173,7 +173,7 @@ export default function ProposalPage() {
   const selectedIds = useMemo(() => new Set(proposal?.items.map((i) => i.catalog_item) || []), [proposal])
 
   if (loading || !proposal || !requirement) {
-    return <Layout title="Client Costing"><p className="text-black/60">Loading Client Costing…</p></Layout>
+    return <Layout title="Client Costing"><p role="status" aria-live="polite" aria-atomic="true" className="text-black/60">Loading Client Costing…</p></Layout>
   }
 
   return (

@@ -22,6 +22,7 @@ export default function CRMProjectList() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [phaseFilter, setPhaseFilter] = useState<string>(searchParams.get('phase') ?? '')
+  const [statusMessage, setStatusMessage] = useState('')
 
   const fetchProjects = (q = '', phase = '') => {
     setLoading(true)
@@ -29,7 +30,14 @@ export default function CRMProjectList() {
     if (q) params.search = q
     if (phase) params.phase = phase
     crmApi.listProjects(params)
-      .then((r) => setProjects(r.data.results))
+      .then((r) => {
+        setProjects(r.data.results)
+        if (q || phase) {
+          const count = r.data.results.length
+          setStatusMessage(count > 0 ? `${count} project${count !== 1 ? 's' : ''} found.` : 'No projects found.')
+          setTimeout(() => setStatusMessage(''), 3000)
+        }
+      })
       .finally(() => setLoading(false))
   }
 
@@ -43,6 +51,7 @@ export default function CRMProjectList() {
   return (
     <Layout title="CRM Projects">
       <div className="space-y-6">
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{statusMessage}</div>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <h1 className="text-2xl font-bold text-black dark:text-white">Projects</h1>
           <Link to="/crm/projects/new" className="btn-primary text-sm" aria-label="Create a new project">
@@ -81,11 +90,11 @@ export default function CRMProjectList() {
         </form>
 
         {loading ? (
-          <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm">
+          <div role="status" aria-live="polite" aria-atomic="true" className="text-black/60 dark:text-slate-300 text-sm">
             Loading projects…
           </div>
         ) : projects.length === 0 ? (
-          <p role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm">No projects found.</p>
+          <p role="status" aria-live="polite" aria-atomic="true" className="text-black/60 dark:text-slate-300 text-sm">No projects found.</p>
         ) : (
           <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
             <table className="w-full text-sm" aria-label="Project list">

@@ -397,7 +397,7 @@ export default function TaskTracker() {
         </div>
 
         {loading ? (
-          <div role="status" aria-live="polite" className="text-sm text-black/60 dark:text-slate-300">
+          <div role="status" aria-live="polite" aria-atomic="true" className="text-sm text-black/60 dark:text-slate-300">
             Loading tasks…
           </div>
         ) : tasks.length === 0 ? (
