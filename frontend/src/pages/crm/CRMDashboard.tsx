@@ -7,7 +7,7 @@ import type { DashboardStats, CRMProjectList } from '@/types/crm'
 import { StatusBadge } from '@/components/crm/StatusBadge'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
-import { PipelineStatusBadge } from '@/components/PipelineStatusBadge'
+import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL } from '@/constants/clientStatus'
 import type { LeadStatus } from '@/constants/clientStatus'
 import { useAuthStore } from '@/store/authStore'
 
@@ -148,8 +148,8 @@ export default function CRMDashboard() {
                       <tr className="bg-black/5 dark:bg-white/5 text-left">
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Client</th>
+                        <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Lead Status</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project Status</th>
-                        <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Stage</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Progress</th>
                         <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
                       </tr>
@@ -175,18 +175,13 @@ export default function CRMDashboard() {
                             )}
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex flex-col gap-1">
-                              <PipelineStatusBadge leadStatus={p.client_lead_status} />
-                              <LeadStatusBadge
-                                client={{ phone_no: p.client_phone, lead_status: p.client_lead_status as LeadStatus, lead_sub_status: p.client_lead_sub_status }}
-                                onUpdated={(patch) => setProjects((prev) => prev.map((x) => x.id === p.id ? { ...x, client_lead_status: patch.lead_status, client_lead_sub_status: patch.lead_sub_status } : x))}
-                              />
-                            </div>
+                            <LeadStatusBadge
+                              client={{ phone_no: p.client_phone, lead_status: p.client_lead_status as LeadStatus, lead_sub_status: p.client_lead_sub_status }}
+                              onUpdated={(patch) => setProjects((prev) => prev.map((x) => x.id === p.id ? { ...x, client_lead_status: patch.lead_status, client_lead_sub_status: patch.lead_sub_status } : x))}
+                            />
                           </td>
-                          <td className="px-4 py-3 text-black/70 dark:text-slate-300 capitalize">
-                            {p.phase === 'order'
-                              ? 'Order Phase'
-                              : p.project_stage.replace(/_/g, ' ')}
+                          <td className="px-4 py-3 text-black/70 dark:text-slate-300">
+                            {PIPELINE_LEAD_STATUS_LABEL[getPipelineLeadStatus(p.client_lead_status)]}
                           </td>
                           <td className="px-4 py-3 w-40">
                             <ProgressBar value={p.progress_percentage} size="sm" />
