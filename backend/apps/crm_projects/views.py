@@ -291,6 +291,13 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
     }
 
 
+# Keys needed for pipeline card filtering — all cycles, only the 4 relevant bases.
+PIPELINE_STAGE_KEYS = [
+    get_loop_key(base, cycle)
+    for cycle in range(1, MAX_RESAMPLE_CYCLES + 1)
+    for base in ('formula_pending', 'formula_made', 'sample_in_pipeline', 'sample_created')
+]
+
 # ── Pipeline helpers ──────────────────────────────────────────────────────────
 
 def _sc_map(project):
@@ -746,12 +753,11 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def dashboard_stats(self, request):
         qs = CRMProject.objects.all()
-        delayed_projects = CRMProject.objects.filter(
-            milestones__status='delayed'
-        ).distinct().count()
+        delayed_projects = qs.filter(milestones__status='delayed').distinct().count()
 
-        # Phase breakdown for pie chart
         order_total = len(ALL_ORDER_STAGE_KEYS)
+        sample_count = qs.filter(phase='sample').count()
+        order_count  = qs.filter(phase='order').count()  # computed once, reused below
         completed_orders = qs.filter(phase='order').annotate(
             order_done=Count(
                 'stage_completions',
@@ -761,36 +767,54 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
                 )
             )
         ).filter(order_done=order_total).count()
-        sample_count = qs.filter(phase='sample').count()
-        order_active = qs.filter(phase='order').count() - completed_orders
 
-        # Pipeline counts — Python filter to handle multi-cycle correctly.
-        # ORM subqueries can't use a per-row dynamic stage key (resample_cycle varies per project),
-        # so we prefetch and classify in Python. Fine at dashboard scale.
         fp_count, sip_count = _pipeline_counts(
-            CRMProject.objects.filter(phase='sample').prefetch_related('stage_completions').only('id', 'resample_cycle')
+            CRMProject.objects.filter(phase='sample')
+            .prefetch_related(
+                Prefetch(
+                    'stage_completions',
+                    queryset=StageCompletion.objects.filter(
+                        stage_key__in=PIPELINE_STAGE_KEYS
+                    ).only('id', 'project_id', 'stage_key', 'is_complete'),
+                )
+            )
+            .only('id', 'resample_cycle')
         )
         pipeline = {'formula_pending': fp_count, 'sample_in_pipeline': sip_count}
         return Response({
-            'stage_distribution': {
-                'Sample Phase': sample_count,
-                'Order Phase': qs.filter(phase='order').count(),
-            },
-            'total_projects': qs.count(),
+            'stage_distribution': {'Sample Phase': sample_count, 'Order Phase': order_count},
+            'total_projects': sample_count + order_count,
             'delayed_projects': delayed_projects,
             'pipeline': pipeline,
             'phase_breakdown': {
                 'sample': sample_count,
-                'order_active': order_active,
+                'order_active': order_count - completed_orders,
                 'completed': completed_orders,
             },
         })
 
     @action(detail=False, methods=['get'])
     def health_table(self, request):
-        qs = self.get_queryset().prefetch_related('milestones', 'stage_completions')
-        serializer = CRMProjectListSerializer(qs, many=True)
-        return Response(serializer.data)
+        qs = (
+            CRMProject.objects
+            .select_related('client', 'sales_poc', 'formulation_poc')
+            .prefetch_related(
+                Prefetch(
+                    'stage_completions',
+                    queryset=StageCompletion.objects.only('id', 'project_id', 'stage_key', 'is_complete'),
+                ),
+                Prefetch(
+                    'milestones',
+                    queryset=ProjectMilestone.objects.only(
+                        'id', 'project_id', 'milestone_key', 'milestone_display',
+                        'planned_date', 'actual_date', 'status',
+                    ),
+                ),
+                'manufacturers', 'designers', 'packaging_vendors',
+                'printers', 'batch_testing_vendors', 'derma_testing_vendors',
+            )
+        )
+        return Response(CRMProjectListSerializer(qs, many=True).data)
 
     @action(detail=False, methods=['get'], url_path='pipeline-projects')
     def pipeline_projects(self, request):
