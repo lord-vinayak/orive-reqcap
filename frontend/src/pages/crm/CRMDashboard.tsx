@@ -7,6 +7,7 @@ import type { DashboardStats, CRMProjectList } from '@/types/crm'
 import { StatusBadge } from '@/components/crm/StatusBadge'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import { PipelineStatusBadge } from '@/components/PipelineStatusBadge'
 import type { LeadStatus } from '@/constants/clientStatus'
 import { useAuthStore } from '@/store/authStore'
 
@@ -174,10 +175,13 @@ export default function CRMDashboard() {
                             )}
                           </td>
                           <td className="px-4 py-3">
-                            <LeadStatusBadge
-                              client={{ phone_no: p.client_phone, lead_status: p.client_lead_status as LeadStatus, lead_sub_status: p.client_lead_sub_status }}
-                              onUpdated={(patch) => setProjects((prev) => prev.map((x) => x.id === p.id ? { ...x, client_lead_status: patch.lead_status, client_lead_sub_status: patch.lead_sub_status } : x))}
-                            />
+                            <div className="flex flex-col gap-1">
+                              <PipelineStatusBadge leadStatus={p.client_lead_status} />
+                              <LeadStatusBadge
+                                client={{ phone_no: p.client_phone, lead_status: p.client_lead_status as LeadStatus, lead_sub_status: p.client_lead_sub_status }}
+                                onUpdated={(patch) => setProjects((prev) => prev.map((x) => x.id === p.id ? { ...x, client_lead_status: patch.lead_status, client_lead_sub_status: patch.lead_sub_status } : x))}
+                              />
+                            </div>
                           </td>
                           <td className="px-4 py-3 text-black/70 dark:text-slate-300 capitalize">
                             {p.phase === 'order'

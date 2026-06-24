@@ -7,6 +7,7 @@ import type { CRMProjectList } from '@/types/crm'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { StatusBadge } from '@/components/crm/StatusBadge'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import { PipelineStatusBadge } from '@/components/PipelineStatusBadge'
 import type { LeadStatus } from '@/constants/clientStatus'
 
 interface Client {
@@ -84,7 +85,8 @@ export default function CRMClientDetail() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-black dark:text-white">{client.name}</h1>
-            <div className="mt-1">
+            <div className="mt-1 flex items-center gap-2">
+              <PipelineStatusBadge leadStatus={client.lead_status} />
               <LeadStatusBadge
                 client={client}
                 onUpdated={(patch) => setClient((prev) => prev ? { ...prev, ...patch } : prev)}

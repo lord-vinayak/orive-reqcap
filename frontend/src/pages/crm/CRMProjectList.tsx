@@ -5,6 +5,7 @@ import { crmApi } from '@/services/crm'
 import type { CRMProjectList as Project } from '@/types/crm'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { StatusBadge } from '@/components/crm/StatusBadge'
+import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL } from '@/constants/clientStatus'
 
 const PHASE_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'All Phases' },
@@ -117,14 +118,8 @@ export default function CRMProjectList() {
                         {p.project_no}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-black/70 dark:text-slate-300 capitalize">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        p.phase === 'order'
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                      }`}>
-                        {p.phase === 'order' ? 'Order Phase' : 'Sample Phase'}
-                      </span>
+                    <td className="px-4 py-3 text-black/70 dark:text-slate-300">
+                      {PIPELINE_LEAD_STATUS_LABEL[getPipelineLeadStatus(p.client_lead_status)]}
                     </td>
                     <td className="px-4 py-3 w-36">
                       <ProgressBar value={p.progress_percentage} size="sm" />

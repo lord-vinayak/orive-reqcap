@@ -368,18 +368,16 @@ function BrowseTab() {
                         />
                       </td>
                       <td className="px-4 py-3 font-medium text-black dark:text-white">{c.name}</td>
-                      <td className="px-4 py-3 text-black/70 dark:text-slate-300 font-mono tabular-nums">{c.phone_no}</td>
+                      <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.phone_no}</td>
                       <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.company_name || '—'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded border ${LEAD_STATUS_COLOR[c.lead_status as LeadStatus] ?? ''}`}>
-                          {LEAD_STATUS_LABEL[c.lead_status as LeadStatus] ?? c.lead_status}
-                        </span>
+                      <td className="px-4 py-3 text-black/70 dark:text-slate-300">
+                        {LEAD_STATUS_LABEL[c.lead_status as LeadStatus] ?? c.lead_status}
                       </td>
-                      <td className="px-4 py-3 text-xs text-black/60 dark:text-slate-300">
+                      <td className="px-4 py-3 text-black/70 dark:text-slate-300">
                         {c.lead_sub_status ? getSubStatusLabel(c.lead_sub_status) : '—'}
                       </td>
                       <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.poc_name || '—'}</td>
-                      <td className="px-4 py-3 text-black/60 dark:text-slate-300 tabular-nums whitespace-nowrap">
+                      <td className="px-4 py-3 text-black/70 dark:text-slate-300">
                         {c.created_at ? fmtDate(c.created_at) : '—'}
                       </td>
                     </tr>

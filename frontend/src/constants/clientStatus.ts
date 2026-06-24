@@ -120,6 +120,42 @@ export function getSubStatusLabel(subStatus: string): string {
   return subStatus
 }
 
+export type PipelineLeadStatus = 'new_lead' | 'contacted' | 'prospective' | 'converted' | 'lost'
+
+export const PIPELINE_LEAD_STATUS_LABEL: Record<PipelineLeadStatus, string> = {
+  new_lead:    'New Lead',
+  contacted:   'Contacted',
+  prospective: 'Prospective',
+  converted:   'Converted',
+  lost:        'Lost',
+}
+
+export const PIPELINE_LEAD_STATUS_COLOR: Record<PipelineLeadStatus, string> = {
+  new_lead:    'bg-blue-50   text-blue-700   border-blue-200   dark:bg-blue-900/30   dark:text-blue-300   dark:border-blue-700',
+  contacted:   'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700',
+  prospective: 'bg-amber-50  text-amber-700  border-amber-200  dark:bg-amber-900/30  dark:text-amber-300  dark:border-amber-700',
+  converted:   'bg-green-50  text-green-700  border-green-200  dark:bg-green-900/30  dark:text-green-300  dark:border-green-700',
+  lost:        'bg-red-50    text-red-700    border-red-200    dark:bg-red-900/30    dark:text-red-300    dark:border-red-700',
+}
+
+const PROJECT_TO_PIPELINE: Record<LeadStatus, PipelineLeadStatus> = {
+  initial_conversation: 'new_lead',
+  proposal:             'contacted',
+  costing:              'prospective',
+  sample:               'prospective',
+  order:                'converted',
+  production:           'converted',
+  testing:              'converted',
+  filling:              'converted',
+  order_dispatch:       'converted',
+  order_closed:         'converted',
+  lead_closed:          'lost',
+}
+
+export function getPipelineLeadStatus(leadStatus: LeadStatus | string): PipelineLeadStatus {
+  return PROJECT_TO_PIPELINE[leadStatus as LeadStatus] ?? 'new_lead'
+}
+
 export function formatLeadStatus(leadStatus: LeadStatus | string, subStatus?: string): string {
   const main = LEAD_STATUS_LABEL[leadStatus as LeadStatus] ?? leadStatus
   if (!subStatus) return main

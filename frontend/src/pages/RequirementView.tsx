@@ -10,6 +10,7 @@ import type { FileRecord, Note, Proposal, Requirement, SentEmail } from '@/types
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL } from '@/constants/clientStatus'
 import { PRODUCT_COUNT_LABEL } from '@/utils/dropdownOptions'
 
 const REQ_STATUS_COLORS: Record<string, string> = {
@@ -139,15 +140,12 @@ export default function RequirementView() {
                 ? (PRODUCT_COUNT_LABEL[requirement.no_of_products] ?? requirement.no_of_products.toString())
                 : undefined}
             />
-            <div>
-              <dt className="text-xs font-medium text-black/60 dark:text-slate-300 mb-1">Requirement Status</dt>
-              <dd>
-                <Badge
-                  text={requirement.status}
-                  cls={REQ_STATUS_COLORS[requirement.status] || 'bg-black/5 text-black/60 border-black/10'}
-                />
-              </dd>
-            </div>
+            {client && (
+              <div>
+                <dt className="text-xs font-medium text-black/60 dark:text-slate-300 mb-1">Project Status</dt>
+                <dd className="text-sm dark:text-slate-200">{PIPELINE_LEAD_STATUS_LABEL[getPipelineLeadStatus(client.lead_status)]}</dd>
+              </div>
+            )}
             {client && (
               <div>
                 <dt className="text-xs font-medium text-black/60 dark:text-slate-300 mb-1">Lead Status</dt>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { api } from '@/services/api'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL } from '@/constants/clientStatus'
 import type { LeadStatus } from '@/constants/clientStatus'
 
 interface Client {
@@ -97,8 +98,8 @@ export default function CRMClientList() {
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Name</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Company</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Phone</th>
-                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">City</th>
-                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project Status</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Lead Status</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Actions</th>
                 </tr>
               </thead>
@@ -115,7 +116,9 @@ export default function CRMClientList() {
                     </td>
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.company_name || '—'}</td>
                     <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.phone_no}</td>
-                    <td className="px-4 py-3 text-black/70 dark:text-slate-300">{c.city || '—'}</td>
+                    <td className="px-4 py-3 text-black/70 dark:text-slate-300">
+                      {PIPELINE_LEAD_STATUS_LABEL[getPipelineLeadStatus(c.lead_status)]}
+                    </td>
                     <td className="px-4 py-3">
                       <LeadStatusBadge
                         client={c}

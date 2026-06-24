@@ -11,6 +11,7 @@ import { SamplePhaseView } from '@/components/crm/SamplePhaseView'
 import { OrderPhaseView } from '@/components/crm/OrderPhaseView'
 import { useTaskSocket } from '@/hooks/useTaskSocket'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL } from '@/constants/clientStatus'
 import type { LeadStatus } from '@/constants/clientStatus'
 
 // Flip is_complete for the target stage then re-walk the list recomputing
@@ -281,9 +282,9 @@ export default function CRMProjectDetail() {
             </button>
             <div className="text-sm text-black/60 dark:text-slate-300 text-right">
               <div>
-                Phase:{' '}
-                <span className={`font-medium ${project.phase === 'order' ? 'text-green-600 dark:text-green-400' : 'text-mustard'}`}>
-                  {project.phase === 'order' ? 'Order/Production' : 'Sample'}
+                Project stage:{' '}
+                <span className="font-medium">
+                  {PIPELINE_LEAD_STATUS_LABEL[getPipelineLeadStatus(project.client_lead_status)]}
                 </span>
               </div>
               <div className="mt-0.5">Started: {new Date(project.start_date).toLocaleDateString('en-IN')}</div>
