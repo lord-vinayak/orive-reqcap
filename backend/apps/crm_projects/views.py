@@ -291,6 +291,41 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
     }
 
 
+# ── Pipeline helpers ──────────────────────────────────────────────────────────
+
+def _sc_map(project):
+    """Return {stage_key: is_complete} for all stage_completions on a project."""
+    return {sc.stage_key: sc.is_complete for sc in project.stage_completions.all()}
+
+
+def _is_formula_pending(p, sc):
+    cycle = p.resample_cycle
+    return sc.get(get_loop_key('formula_pending', cycle), False) and not sc.get(get_loop_key('formula_made', cycle), False)
+
+
+def _is_sample_in_pipeline(p, sc):
+    cycle = p.resample_cycle
+    return sc.get(get_loop_key('sample_in_pipeline', cycle), False) and not sc.get(get_loop_key('sample_created', cycle), False)
+
+
+def _pipeline_counts(sample_qs):
+    """Return (formula_pending_count, sample_in_pipeline_count) for a sample-phase queryset."""
+    fp = sip = 0
+    for p in sample_qs:
+        sc = _sc_map(p)
+        if _is_formula_pending(p, sc):
+            fp += 1
+        if _is_sample_in_pipeline(p, sc):
+            sip += 1
+    return fp, sip
+
+
+def _filter_pipeline(projects, filter_key):
+    """Filter a list of CRMProject objects to those matching the pipeline filter."""
+    check = _is_formula_pending if filter_key == 'formula_pending' else _is_sample_in_pipeline
+    return [p for p in projects if check(p, _sc_map(p))]
+
+
 # ── ViewSet ───────────────────────────────────────────────────────────────────
 
 class CRMProjectViewSet(viewsets.ModelViewSet):
@@ -729,30 +764,13 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         sample_count = qs.filter(phase='sample').count()
         order_active = qs.filter(phase='order').count() - completed_orders
 
-        # Subqueries for pipeline counts — Exists avoids the JOIN-collapse bug
-        # where chained filter() on related models ORs conditions instead of ANDing them.
-        def _stage_incomplete(key):
-            return StageCompletion.objects.filter(
-                project=OuterRef('pk'), stage_key=key, is_complete=False,
-            )
-
-        def _stage_complete(key):
-            return StageCompletion.objects.filter(
-                project=OuterRef('pk'), stage_key=key, is_complete=True,
-            )
-
-        pipeline = {
-            # formula_pending: sample_booked done (entered the loop) AND formula_pending not done yet
-            'formula_pending': qs.filter(phase='sample').filter(
-                Exists(_stage_complete('sample_booked')),
-                Exists(_stage_incomplete('formula_pending')),
-            ).count(),
-            # sample_in_pipeline: formula_made done AND sample_in_pipeline not done yet
-            'sample_in_pipeline': qs.filter(phase='sample').filter(
-                Exists(_stage_complete('formula_made')),
-                Exists(_stage_incomplete('sample_in_pipeline')),
-            ).count(),
-        }
+        # Pipeline counts — Python filter to handle multi-cycle correctly.
+        # ORM subqueries can't use a per-row dynamic stage key (resample_cycle varies per project),
+        # so we prefetch and classify in Python. Fine at dashboard scale.
+        fp_count, sip_count = _pipeline_counts(
+            CRMProject.objects.filter(phase='sample').prefetch_related('stage_completions').only('id', 'resample_cycle')
+        )
+        pipeline = {'formula_pending': fp_count, 'sample_in_pipeline': sip_count}
         return Response({
             'stage_distribution': {
                 'Sample Phase': sample_count,
@@ -773,6 +791,20 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         qs = self.get_queryset().prefetch_related('milestones', 'stage_completions')
         serializer = CRMProjectListSerializer(qs, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='pipeline-projects')
+    def pipeline_projects(self, request):
+        filter_key = request.query_params.get('filter')
+        if filter_key not in ('formula_pending', 'sample_in_pipeline'):
+            return Response({'error': 'Invalid filter'}, status=400)
+
+        all_sample = list(
+            CRMProject.objects.filter(phase='sample')
+            .prefetch_related('milestones', 'stage_completions')
+            .select_related('client')
+        )
+        projects = _filter_pipeline(all_sample, filter_key)
+        return Response(CRMProjectListSerializer(projects, many=True).data)
 
     @action(detail=True, methods=['get'], url_path='similar-learnings')
     def similar_learnings(self, request, pk=None):

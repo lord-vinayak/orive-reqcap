@@ -41,6 +41,9 @@ export const crmApi = {
   getHealthTable: () =>
     api.get<CRMProjectList[]>('/crm/projects/health_table/'),
 
+  getPipelineProjects: (filter: 'formula_pending' | 'sample_in_pipeline') =>
+    api.get<CRMProjectList[]>(`/crm/projects/pipeline-projects/?filter=${filter}`),
+
   getSimilarLearnings: (projectId: string) =>
     api.get<KeyLearning[]>(`/crm/projects/${projectId}/similar-learnings/`),
 

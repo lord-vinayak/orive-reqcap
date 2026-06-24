@@ -12,6 +12,12 @@ import type { LeadStatus } from '@/constants/clientStatus'
 import { useAuthStore } from '@/store/authStore'
 
 type SegmentKey = 'sample' | 'order_active' | 'completed'
+type PipelineFilter = 'formula_pending' | 'sample_in_pipeline'
+
+const PIPELINE_MODAL_TITLE: Record<PipelineFilter, string> = {
+  formula_pending: 'Formula Pending',
+  sample_in_pipeline: 'Sample in Pipeline',
+}
 
 const SEGMENT_LABELS: Record<SegmentKey, string> = {
   sample:       'Sample Stage',
@@ -27,6 +33,14 @@ export default function CRMDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeSegment, setActiveSegment] = useState<SegmentKey | null>(null)
+  const [pipelineModal, setPipelineModal] = useState<{ filter: PipelineFilter; projects: CRMProjectList[]; loading: boolean } | null>(null)
+
+  function openPipelineModal(filter: PipelineFilter) {
+    setPipelineModal({ filter, projects: [], loading: true })
+    crmApi.getPipelineProjects(filter)
+      .then(res => setPipelineModal(prev => prev ? { ...prev, projects: res.data, loading: false } : null))
+      .catch(() => setPipelineModal(prev => prev ? { ...prev, loading: false } : null))
+  }
 
   useEffect(() => {
     Promise.all([crmApi.getDashboardStats(), crmApi.getHealthTable()])
@@ -89,8 +103,8 @@ export default function CRMDashboard() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard label="Total Projects" value={stats.total_projects} />
                 <StatCard label="Delayed Projects" value={stats.delayed_projects} accent="red" />
-                <StatCard label="Formula Pending" value={stats.pipeline.formula_pending} />
-                <StatCard label="Sample in Pipeline" value={stats.pipeline.sample_in_pipeline} />
+                <StatCard label="Formula Pending" value={stats.pipeline.formula_pending} onClick={() => openPipelineModal('formula_pending')} />
+                <StatCard label="Sample in Pipeline" value={stats.pipeline.sample_in_pipeline} onClick={() => openPipelineModal('sample_in_pipeline')} />
               </div>
             </section>
 
@@ -199,21 +213,109 @@ export default function CRMDashboard() {
           </>
         )}
       </div>
+      {/* ── Pipeline modal ── */}
+      {pipelineModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pipeline-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+          onClick={() => setPipelineModal(null)}
+        >
+          <div
+            className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-black/10 dark:border-white/10">
+              <h2 id="pipeline-modal-title" className="text-base font-semibold text-black dark:text-white">
+                {PIPELINE_MODAL_TITLE[pipelineModal.filter]}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setPipelineModal(null)}
+                className="text-black/40 dark:text-slate-400 hover:text-black dark:hover:text-white text-lg leading-none focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-auto flex-1">
+              {pipelineModal.loading ? (
+                <p className="p-5 text-sm text-black/60 dark:text-slate-400">Loading…</p>
+              ) : pipelineModal.projects.length === 0 ? (
+                <p className="p-5 text-sm text-black/60 dark:text-slate-400">No projects found.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-black/5 dark:bg-white/5 text-left">
+                      <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project</th>
+                      <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Client</th>
+                      <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Phone</th>
+                      <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Current Stage</th>
+                      <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                    {pipelineModal.projects.map(p => (
+                      <tr key={p.id}>
+                        <td className="px-4 py-3">
+                          <Link
+                            to={`/crm/projects/${p.id}`}
+                            className="font-medium text-mustard hover:underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                            onClick={() => setPipelineModal(null)}
+                          >
+                            {p.project_no}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-black/80 dark:text-slate-300">
+                          <div>{p.client_name}</div>
+                          {p.client_company && <div className="text-xs text-black/50 dark:text-slate-400">{p.client_company}</div>}
+                        </td>
+                        <td className="px-4 py-3 text-black/70 dark:text-slate-300">{p.client_phone}</td>
+                        <td className="px-4 py-3 text-black/70 dark:text-slate-300 capitalize">
+                          {p.project_stage.replace(/_/g, ' ')}
+                        </td>
+                        <td className="px-4 py-3 w-32">
+                          <ProgressBar value={p.progress_percentage} size="sm" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }
 
-function StatCard({ label, value, accent }: { label: string; value: number; accent?: 'red' }) {
-  return (
-    <div
-      className="bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg p-4"
-      role="figure"
-      aria-label={`${label}: ${value}`}
-    >
+function StatCard({ label, value, accent, onClick }: { label: string; value: number; accent?: 'red'; onClick?: () => void }) {
+  const base = 'bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg p-4'
+  const inner = (
+    <>
       <div className={`text-3xl font-bold ${accent === 'red' ? 'text-red-600 dark:text-red-400' : 'text-mustard'}`}>
         {value}
       </div>
       <div className="text-sm text-black/60 dark:text-slate-300 mt-1">{label}</div>
+    </>
+  )
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`${base} text-left w-full hover:ring-2 hover:ring-mustard/40 focus-visible:ring-2 focus-visible:ring-mustard transition-shadow`}
+        aria-label={`${label}: ${value}. Click to view projects.`}
+      >
+        {inner}
+      </button>
+    )
+  }
+  return (
+    <div className={base} role="figure" aria-label={`${label}: ${value}`}>
+      {inner}
     </div>
   )
 }
