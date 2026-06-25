@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useId, useRef } from 'react'
 import { proposalService, proposalDocService } from '@/services'
 import type { Proposal, ProposalDocument } from '@/types'
 
@@ -22,6 +22,30 @@ export default function SendEmailModal({
   onClose,
   onSent,
 }: Props) {
+  const titleId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Focus trap + Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key !== 'Tab') return
+      const el = dialogRef.current
+      if (!el) return
+      const focusable = Array.from(
+        el.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.hasAttribute('disabled'))
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
   const [selectedProposalId, setSelectedProposalId] = useState(
     defaultProposalId ?? proposals[0]?.id ?? ''
   )
@@ -98,13 +122,17 @@ export default function SendEmailModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="send-email-modal-title"
     >
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-5">
-          <h2 id="send-email-modal-title" className="text-lg font-semibold dark:text-slate-100">
+          <h2 id={titleId} className="text-lg font-semibold dark:text-slate-100">
             Send Client Costing
           </h2>
           <button
@@ -188,9 +216,9 @@ export default function SendEmailModal({
 
           {/* Proposal document attachment picker */}
           <div>
-            <label className="block text-xs font-medium text-black/60 dark:text-slate-300 mb-1">
+            <p className="block text-xs font-medium text-black/60 dark:text-slate-300 mb-1">
               Attach Proposal Document(s)
-            </label>
+            </p>
             {proposalDocs.length === 0 ? (
               <p className="text-xs text-black/50 dark:text-slate-300 italic">
                 No proposal documents uploaded yet.

@@ -30,7 +30,7 @@ export function ProgressBar({ value, label, size = 'md' }: ProgressBarProps) {
         />
       </div>
       {!label && size === 'md' && (
-        <div className="text-right text-xs text-black/60 dark:text-slate-400 mt-0.5">{pct}%</div>
+        <div className="text-right text-xs text-black/60 dark:text-slate-400 mt-0.5" aria-hidden="true">{pct}%</div>
       )}
     </div>
   )

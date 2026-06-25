@@ -1,5 +1,6 @@
 ENV.md
-orive-496812-12f3786c9663.json
+*.json
+*.pdf
 PRD_GAP_ANALYSIS.md
 clean_CRM tool details.pdf
 docs/

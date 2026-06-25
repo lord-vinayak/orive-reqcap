@@ -1,19 +1,14 @@
-import { useId } from 'react'
+import { useState } from 'react'
 import type { RequirementProduct } from '@/types'
 import {
   BODY_PARTS, CATEGORIES, SUB_CATEGORIES, SIZES, PACKAGING,
 } from '@/utils/dropdownOptions'
 import KeyBenefitsCell from './KeyBenefitsCell'
 
-/**
- * Fields that are MANDATORY in every product row.
- * (Item #8 — chosen by user, has_color + has_fragrance also required.)
- */
 export const REQUIRED_PRODUCT_FIELDS: (keyof RequirementProduct)[] = [
   'body_part', 'category', 'sub_category', 'size', 'packaging_type',
 ]
 
-/** Returns the list of human-readable error messages for a single product row. */
 export function validateProductRow(p: RequirementProduct): string[] {
   const errors: string[] = []
   if (!p.body_part?.trim())      errors.push('Body part is required')
@@ -38,31 +33,16 @@ interface Props {
   onChange: (index: number, patch: Partial<RequirementProduct>) => void
   onDelete: (index: number) => void
   onAddRow: () => void
-  /** Insert a blank row immediately after the given index. */
   onInsertAfter: (index: number) => void
-  /** Index of the row currently being edited (audio fills into this row). */
   activeIndex?: number
   onActiveChange?: (i: number) => void
-  /** Whether to surface missing-field errors visually (set after a save attempt). */
   showValidation?: boolean
-  /**
-   * Optional per-row "Add to Client Costing" handler.
-   * When provided, each row gets a button that adds that row's data as a freeform costing item.
-   */
   onAddRowToCosting?: (index: number) => Promise<void> | void
-  /** Index currently being added to the costing (for showing a spinner). */
   addingRowToCostingIndex?: number | null
-  /** Opens the notes modal — only provided when requirement is saved. */
   onAddNote?: () => void
-  /** Opens the file upload modal — only provided when requirement is saved. */
   onAddImage?: () => void
 }
 
-/**
- * Excel-sheet style table of product rows.
- * Dropdown fields support free-text entry via <datalist> — user can type
- * any value not in the list (item #11).
- */
 export default function ProductTable({
   products, onChange, onDelete, onAddRow, onInsertAfter,
   activeIndex, onActiveChange,
@@ -70,12 +50,13 @@ export default function ProductTable({
   onAddRowToCosting, addingRowToCostingIndex = null,
   onAddNote, onAddImage,
 }: Props) {
-  // Unique datalist IDs so multiple ProductTables on a page don't collide.
-  const uid = useId().replace(/:/g, '')
-  const dlBody = `dl-body-${uid}`
-  const dlCat = `dl-cat-${uid}`
-  const dlSize = `dl-size-${uid}`
-  const dlPack = `dl-pack-${uid}`
+  const [liveMsg, setLiveMsg] = useState('')
+
+  // Populates the shared polite live region (e.g. when cascading options change).
+  const announce = (msg: string) => {
+    setLiveMsg('')
+    requestAnimationFrame(() => setLiveMsg(msg))
+  }
 
   return (
     <section className="card p-0 overflow-hidden" aria-labelledby="products-heading">
@@ -89,18 +70,11 @@ export default function ProductTable({
         <span className="text-xs text-black/60 dark:text-slate-300">{products.length} row{products.length === 1 ? '' : 's'}</span>
       </div>
 
-      {/* Shared <datalist>s — provide suggestions while still allowing free text */}
-      <datalist id={dlBody}>{BODY_PARTS.map((b) => <option key={b} value={b} />)}</datalist>
-      <datalist id={dlCat}>{CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
-      <datalist id={dlSize}>{SIZES.map((s) => <option key={s} value={s} />)}</datalist>
-      <datalist id={dlPack}>{PACKAGING.map((p) => <option key={p} value={p} />)}</datalist>
-
-      <p id="product-table-hint" className="sr-only">
-        Each row has dropdown fields. Type to filter suggestions or press the Down Arrow key to open the list and navigate options with arrow keys.
-      </p>
+      {/* Shared polite live region — used to announce dynamic changes (e.g. texture options updating) */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">{liveMsg}</div>
 
       <div className="overflow-x-auto min-h-[220px]">
-        <table className="w-full text-sm border-collapse" aria-describedby="product-table-hint">
+        <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="bg-mustard-50 dark:bg-slate-700 text-black/80 dark:text-slate-300 text-xs">
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 w-10">#</th>
@@ -124,15 +98,12 @@ export default function ProductTable({
           <tbody>
             {products.map((p, i) => {
               const subOptions = p.category && SUB_CATEGORIES[p.category] ? SUB_CATEGORIES[p.category] : []
-              const dlSub = `dl-sub-${uid}-${i}`
               const isActive = activeIndex === i
-
               const rowErrors = showValidation ? validateProductRow(p) : []
               const invalid = (cond: boolean) => (showValidation && cond ? 'border-red-400 bg-red-50/40' : '')
-
-              const cellCls = 'px-2 py-1 border-b border-black/5 dark:border-white/5 align-middle'
-              const inputCls =
-                'w-full px-2 py-1 text-sm border border-transparent rounded bg-transparent dark:text-slate-100 hover:bg-mustard-50/40 dark:hover:bg-slate-700/50 focus:bg-white dark:focus:bg-slate-700 focus:border-mustard'
+              const cellCls = 'px-2 py-1 border-b border-black/5 dark:border-white/5 align-top'
+              const inputCls = 'w-full px-2 py-1 text-sm border border-transparent rounded bg-transparent dark:text-slate-100 hover:bg-mustard-50/40 dark:hover:bg-slate-700/50 focus:bg-white dark:focus:bg-slate-700 focus:border-mustard'
+              const errorCls = 'text-xs text-red-700 dark:text-red-400 mt-0.5 min-h-[1rem]'
 
               return (
                 <tr
@@ -142,57 +113,105 @@ export default function ProductTable({
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onActiveChange?.(i) } }}
                   className={isActive ? 'bg-mustard-50/40 dark:bg-slate-700/40' : ''}
                 >
-                  <td className={`${cellCls} text-center text-black/60 dark:text-slate-300 font-medium`}>{p.row_number}</td>
+                  <td className={`${cellCls} text-center text-black/60 dark:text-slate-300 font-medium pt-2`}>{p.row_number}</td>
 
-                  {/* Body part — free-text + datalist */}
+                  {/* Body part */}
                   <td className={cellCls}>
-                    <input
-                      list={dlBody}
+                    <label
+                      htmlFor={`body-part-${p.id}`}
+                      id={`body-part-lbl-${p.id}`}
+                      className="sr-only"
+                    >
+                      Body Part
+                    </label>
+                    <select
+                      id={`body-part-${p.id}`}
+                      aria-labelledby={`body-part-lbl-${p.id}`}
+                      aria-describedby={`body-part-help-${p.id}`}
                       value={p.body_part}
                       onChange={(e) => onChange(i, { body_part: e.target.value, key_benefits: [] })}
                       className={`${inputCls} ${invalid(!p.body_part?.trim())}`}
-                      aria-label={`Row ${p.row_number} body part`}
                       aria-invalid={showValidation && !p.body_part?.trim() ? true : undefined}
-                      aria-required="true"
-                      aria-autocomplete="list"
-                      aria-haspopup="listbox"
-                      placeholder="Type or pick…"
-                    />
+                      required
+                    >
+                      <option value="">Select Body Part</option>
+                      {BODY_PARTS.map((b) => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                    <div id={`body-part-help-${p.id}`} className="sr-only">
+                      Use Up Arrow and Down Arrow keys to navigate options.
+                    </div>
+                    <div role="alert" aria-live="assertive" className={errorCls}>
+                      {showValidation && !p.body_part?.trim() ? 'Body Part is required' : ''}
+                    </div>
                   </td>
 
                   {/* Category */}
                   <td className={cellCls}>
-                    <input
-                      list={dlCat}
+                    <label
+                      htmlFor={`category-${p.id}`}
+                      id={`category-lbl-${p.id}`}
+                      className="sr-only"
+                    >
+                      Category
+                    </label>
+                    <select
+                      id={`category-${p.id}`}
+                      aria-labelledby={`category-lbl-${p.id}`}
+                      aria-describedby={`category-help-${p.id}`}
                       value={p.category}
-                      onChange={(e) => onChange(i, { category: e.target.value, sub_category: '' })}
+                      onChange={(e) => {
+                        onChange(i, { category: e.target.value, sub_category: '' })
+                        announce(e.target.value
+                          ? `Texture options updated for row ${p.row_number}`
+                          : `Texture cleared for row ${p.row_number}`)
+                      }}
                       className={`${inputCls} ${invalid(!p.category?.trim())}`}
-                      aria-label={`Row ${p.row_number} category`}
                       aria-invalid={showValidation && !p.category?.trim() ? true : undefined}
-                      aria-required="true"
-                      aria-autocomplete="list"
-                      aria-haspopup="listbox"
-                      placeholder="Type or pick…"
-                    />
+                      required
+                    >
+                      <option value="">Select Category</option>
+                      {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <div id={`category-help-${p.id}`} className="sr-only">
+                      Use Up Arrow and Down Arrow keys to navigate options.
+                    </div>
+                    <div role="alert" aria-live="assertive" className={errorCls}>
+                      {showValidation && !p.category?.trim() ? 'Category is required' : ''}
+                    </div>
                   </td>
 
-                  {/* Sub category */}
+                  {/* Texture — cascades from category */}
                   <td className={cellCls}>
-                    <datalist id={dlSub}>{subOptions.map((s) => <option key={s} value={s} />)}</datalist>
-                    <input
-                      list={dlSub}
+                    <label
+                      htmlFor={`texture-${p.id}`}
+                      id={`texture-lbl-${p.id}`}
+                      className="sr-only"
+                    >
+                      Texture
+                    </label>
+                    <select
+                      id={`texture-${p.id}`}
+                      aria-labelledby={`texture-lbl-${p.id}`}
+                      aria-describedby={`texture-help-${p.id}`}
                       value={p.sub_category}
                       onChange={(e) => onChange(i, { sub_category: e.target.value })}
                       className={`${inputCls} ${invalid(!p.sub_category?.trim())}`}
-                      aria-label={`Row ${p.row_number} texture`}
                       aria-invalid={showValidation && !p.sub_category?.trim() ? true : undefined}
-                      aria-required="true"
-                      aria-autocomplete="list"
-                      aria-haspopup="listbox"
-                      placeholder="Type or pick…"
-                    />
+                      disabled={!p.category}
+                      required
+                    >
+                      <option value="">{p.category ? 'Select Texture' : 'Pick category first'}</option>
+                      {subOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <div id={`texture-help-${p.id}`} className="sr-only">
+                      Use Up Arrow and Down Arrow keys to navigate options.
+                    </div>
+                    <div role="alert" aria-live="assertive" className={errorCls}>
+                      {showValidation && !p.sub_category?.trim() ? 'Texture is required' : ''}
+                    </div>
                   </td>
 
+                  {/* Key benefits */}
                   <td className={cellCls}>
                     <div className={invalid(!p.key_benefits || p.key_benefits.length === 0) ? 'rounded border border-red-400 bg-red-50/40' : ''}>
                       <KeyBenefitsCell
@@ -205,34 +224,62 @@ export default function ProductTable({
 
                   {/* Size */}
                   <td className={cellCls}>
-                    <input
-                      list={dlSize}
+                    <label
+                      htmlFor={`size-${p.id}`}
+                      id={`size-lbl-${p.id}`}
+                      className="sr-only"
+                    >
+                      Size
+                    </label>
+                    <select
+                      id={`size-${p.id}`}
+                      aria-labelledby={`size-lbl-${p.id}`}
+                      aria-describedby={`size-help-${p.id}`}
                       value={p.size}
                       onChange={(e) => onChange(i, { size: e.target.value })}
                       className={`${inputCls} ${invalid(!p.size?.trim())}`}
-                      aria-label={`Row ${p.row_number} size`}
                       aria-invalid={showValidation && !p.size?.trim() ? true : undefined}
-                      aria-required="true"
-                      aria-autocomplete="list"
-                      aria-haspopup="listbox"
-                      placeholder="Type or pick…"
-                    />
+                      required
+                    >
+                      <option value="">Select Size</option>
+                      {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <div id={`size-help-${p.id}`} className="sr-only">
+                      Use Up Arrow and Down Arrow keys to navigate options.
+                    </div>
+                    <div role="alert" aria-live="assertive" className={errorCls}>
+                      {showValidation && !p.size?.trim() ? 'Size is required' : ''}
+                    </div>
                   </td>
 
                   {/* Packaging */}
                   <td className={cellCls}>
-                    <input
-                      list={dlPack}
+                    <label
+                      htmlFor={`packaging-${p.id}`}
+                      id={`packaging-lbl-${p.id}`}
+                      className="sr-only"
+                    >
+                      Packaging
+                    </label>
+                    <select
+                      id={`packaging-${p.id}`}
+                      aria-labelledby={`packaging-lbl-${p.id}`}
+                      aria-describedby={`packaging-help-${p.id}`}
                       value={p.packaging_type}
                       onChange={(e) => onChange(i, { packaging_type: e.target.value })}
                       className={`${inputCls} ${invalid(!p.packaging_type?.trim())}`}
-                      aria-label={`Row ${p.row_number} packaging`}
                       aria-invalid={showValidation && !p.packaging_type?.trim() ? true : undefined}
-                      aria-required="true"
-                      aria-autocomplete="list"
-                      aria-haspopup="listbox"
-                      placeholder="Type or pick…"
-                    />
+                      required
+                    >
+                      <option value="">Select Packaging</option>
+                      {PACKAGING.map((pk) => <option key={pk} value={pk}>{pk}</option>)}
+                    </select>
+                    <div id={`packaging-help-${p.id}`} className="sr-only">
+                      Use Up Arrow and Down Arrow keys to navigate options.
+                    </div>
+                    <div role="alert" aria-live="assertive" className={errorCls}>
+                      {showValidation && !p.packaging_type?.trim() ? 'Packaging is required' : ''}
+                    </div>
                   </td>
 
                   <td className={cellCls}>
@@ -342,7 +389,7 @@ export default function ProductTable({
 
                   {/* + / − / Costing action buttons */}
                   <td className={`${cellCls} text-center`}>
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center gap-1 pt-1">
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onInsertAfter(i) }}
@@ -374,11 +421,6 @@ export default function ProductTable({
                         </button>
                       )}
                     </div>
-                    {showValidation && rowErrors.length > 0 && (
-                      <p role="alert" className="text-xs text-red-700 mt-1 text-left">
-                        {rowErrors.join('; ')}
-                      </p>
-                    )}
                   </td>
                 </tr>
               )
