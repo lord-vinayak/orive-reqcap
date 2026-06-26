@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { authService } from '@/services/auth'
 import { useAuthStore } from '@/store/authStore'
 import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler'
+import './login.css'
 
 declare global {
   interface Window { google?: any }
@@ -16,6 +17,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [liveMsg, setLiveMsg] = useState('')
+  const [loginSuccess, setLoginSuccess] = useState(false)
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
   useEffect(() => {
@@ -63,7 +65,9 @@ export default function Login() {
     try {
       const res = await authService.loginWithPassword(email, password)
       setAuth(res.user, res.access, res.refresh)
-      navigate('/home')
+      setLiveMsg('Signed in successfully')
+      setLoginSuccess(true)
+      setTimeout(() => navigate('/home'), 800)
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
       setLiveMsg('')
@@ -87,102 +91,103 @@ export default function Login() {
         {liveMsg}
       </div>
 
-      <div className="min-h-screen bg-white dark:bg-slate-900 px-4 py-6">
-        <div className="mx-auto flex w-full max-w-6xl justify-end">
+      <div className="login-page">
+        {/* Theme toggler — top right, outside overlay */}
+        <div style={{ position: 'absolute', top: '1rem', right: '1.5rem', zIndex: 10 }}>
           <AnimatedThemeToggler />
         </div>
 
-        <div className="flex items-center justify-center pt-8">
-          <div className="w-full max-w-md">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl text-black mx-auto mb-4">
-                <img src="/logo.png" alt="Skinovation Sciences" />
-              </div>
-              <p className="text-2xl font-semibold text-black dark:text-slate-100">
-                Welcome to Skinovation Sciences Data Management System (SDMS)
-              </p>
-              <p className="text-sm text-black/60 dark:text-slate-300 mt-1">
-                Making Bharat the Skincare Factory of the world
-              </p>
-            </div>
+        <div className="overlay">
+          <div
+            className="login-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="loginTitle"
+          >
+            {/* Logo */}
+            <img src="/logo.png" alt="Skinovation Sciences" className="logo" />
 
-            <div
-              className="card"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="loginTitle"
+            <h1
+              id="loginTitle"
+              tabIndex={-1}
+              style={{ outline: 'none' }}
             >
-              <h1
-                id="loginTitle"
-                tabIndex={-1}
-                className="text-lg font-semibold mb-4 outline-none"
-              >
-                Sign in
-              </h1>
+              Sign in
+            </h1>
 
-              {/* Google Login */}
-              <div id="googleBtn" className="flex justify-center mb-4" aria-label="Sign in with Google" />
+            <p className="subtitle">
+              Sign in to access Skinovation Sciences CRM
+            </p>
 
-              {!googleClientId && (
-                <p className="text-xs text-black/70 text-center mb-4">
-                  Google Sign-In not configured. Use email &amp; password below.
-                </p>
-              )}
+            {/* Google Login */}
+            <div id="googleBtn" className="flex justify-center mb-4" aria-label="Sign in with Google" />
 
+            {!googleClientId && (
+              <p className="text-xs text-center mb-4" style={{ color: '#64748B' }}>
+                Google Sign-In not configured. Use email &amp; password below.
+              </p>
+            )}
+
+            {googleClientId && (
               <div className="relative my-4 text-center">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-black/10" />
+                  <span className="w-full border-t" style={{ borderColor: '#E5E7EB' }} />
                 </div>
-                <span className="relative bg-white dark:bg-slate-800 px-2 text-xs text-black/60 dark:text-slate-300 uppercase">or</span>
+                <span className="relative px-2 text-xs uppercase" style={{ background: '#fff', color: '#94A3B8' }}>or</span>
+              </div>
+            )}
+
+            <form onSubmit={handlePasswordLogin} noValidate>
+              <div className="form-group">
+                <label htmlFor="email">Email Address</label>
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  autoComplete="username"
+                  required
+                  aria-required="true"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
 
-              <form onSubmit={handlePasswordLogin} className="space-y-4" noValidate>
-                <div>
-                  <label htmlFor="email" className="block mb-1">Email Address</label>
-                  <input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    autoComplete="username"
-                    required
-                    aria-required="true"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="password" className="block mb-1">Password</label>
-                  <input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
-                    required
-                    aria-required="true"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-                {error && (
-                  <div role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">
-                    {error}
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  id="signInBtn"
-                  disabled={loading}
-                  aria-busy={loading}
-                  className="btn-primary w-full"
-                >
-                  {loading ? 'Signing in…' : 'Sign in'}
-                </button>
-              </form>
-            </div>
+              <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  required
+                  aria-required="true"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
 
-            <p className="text-xs text-black/60 dark:text-slate-300 text-center mt-6">
+              {error && (
+                <div
+                  role="alert"
+                  className="mb-4 text-sm rounded p-2"
+                  style={{ color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca' }}
+                >
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                id="signInBtn"
+                className="signin-btn"
+                disabled={loading}
+                aria-busy={loading}
+              >
+                {loading ? 'Signing in…' : 'Sign in'}
+              </button>
+            </form>
+
+            <p className="footer">
               Don't have an account? Please contact admin.
             </p>
           </div>
@@ -190,6 +195,17 @@ export default function Login() {
       </div>
 
       <main id="mainContent" />
+
+      {loginSuccess && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 text-white text-sm font-medium px-4 py-3 rounded shadow-lg"
+          style={{ background: '#16a34a' }}
+        >
+          ✓ Signed in successfully
+        </div>
+      )}
     </>
   )
 }
