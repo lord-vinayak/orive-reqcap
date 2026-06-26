@@ -35,6 +35,7 @@ const PRIORITY_COLORS: Record<TaskPriority, string> = {
 
 export default function TaskTracker() {
   const user = useAuthStore((s) => s.user)
+  const accessToken = useAuthStore((s) => s.accessToken)
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -113,7 +114,7 @@ export default function TaskTracker() {
     })
   }, [])
 
-  useTaskSocket(upsertTask)
+  useTaskSocket(upsertTask, accessToken)
 
   useEffect(() => {
     // Fetch all team members for the Owner filter (full system list)

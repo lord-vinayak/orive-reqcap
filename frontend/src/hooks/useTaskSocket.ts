@@ -1,22 +1,21 @@
 import { useEffect, useRef } from 'react'
 import type { TaskItem } from '@/types/crm'
 
-// Derive the WebSocket URL from VITE_API_URL so it always points at the
-// Django backend (Railway), not at the frontend host (Vercel).
-function buildWsUrl(): string {
+function buildWsUrl(token: string): string {
   const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:8000'
   const proto = apiUrl.startsWith('https') ? 'wss:' : 'ws:'
   const host = apiUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
-  return `${proto}//${host}/ws/tasks/`
+  return `${proto}//${host}/ws/tasks/?token=${token}`
 }
 
-const WS_URL = buildWsUrl()
-
-export function useTaskSocket(onUpdate: (task: TaskItem) => void) {
+export function useTaskSocket(onUpdate: (task: TaskItem) => void, token: string | null) {
   const onUpdateRef = useRef(onUpdate)
   onUpdateRef.current = onUpdate
 
   useEffect(() => {
+    if (!token) return  // ponytail: skip entirely when logged out — no token, no socket
+
+    const WS_URL = buildWsUrl(token)
     let ws: WebSocket | null = null
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
     let destroyed = false
@@ -52,5 +51,5 @@ export function useTaskSocket(onUpdate: (task: TaskItem) => void) {
       if (reconnectTimer) clearTimeout(reconnectTimer)
       ws?.close()
     }
-  }, [])
+  }, [token])
 }

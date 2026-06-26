@@ -10,6 +10,7 @@ import { PaymentSidePanel } from '@/components/crm/PaymentSidePanel'
 import { SamplePhaseView } from '@/components/crm/SamplePhaseView'
 import { OrderPhaseView } from '@/components/crm/OrderPhaseView'
 import { useTaskSocket } from '@/hooks/useTaskSocket'
+import { useAuthStore } from '@/store/authStore'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
 import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL } from '@/constants/clientStatus'
 import type { LeadStatus } from '@/constants/clientStatus'
@@ -72,6 +73,7 @@ export default function CRMProjectDetail() {
   const [actionSaving, setActionSaving] = useState(false)
   const [teamMembers, setTeamMembers] = useState<InternalTeamMember[]>([])
   const [uploadError, setUploadError] = useState('')
+  const accessToken = useAuthStore((s) => s.accessToken)
   const pendingStages = useRef(0)
 
   const fetchProject = () => {
@@ -112,7 +114,7 @@ export default function CRMProjectDetail() {
   // Skip if stage saves are in-flight — they already reconcile on completion.
   useTaskSocket((_task: TaskItem) => {
     if (pendingStages.current === 0) fetchStageStatus()
-  })
+  }, accessToken)
 
   const refresh = async () => {
     await Promise.all([fetchProject(), fetchStageStatus()])
