@@ -27,8 +27,9 @@ BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 # backend/apps/proposals/xlsx_export.py  ->  go up 3, then frontend/public/logo.png
 _HERE = Path(__file__).resolve()
 _LOGO_CANDIDATES = [
-    _HERE.parents[3] / 'frontend' / 'public' / 'logo.png',
-    _HERE.parents[3] / 'frontend' / 'dist' / 'logo.png',
+    _HERE.parents[2] / 'logo.png',                          # bundled in Docker image (/app/logo.png)
+    _HERE.parents[3] / 'frontend' / 'public' / 'logo.png', # local dev (source tree)
+    _HERE.parents[3] / 'frontend' / 'dist' / 'logo.png',   # local dev (built)
 ]
 
 

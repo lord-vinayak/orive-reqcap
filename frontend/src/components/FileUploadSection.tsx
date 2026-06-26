@@ -52,7 +52,7 @@ export default function FileUploadSection({ requirementId }: Props) {
           disabled={uploading}
           aria-label="Choose file to upload"
         />
-        {uploading && <span className="text-sm text-black/60">Uploading to Google Drive…</span>}
+        {uploading && <span className="text-sm text-black/60 dark:text-slate-400">Uploading to Google Drive…</span>}
       </div>
       {error && <p role="alert" className="text-sm text-red-700 mb-3">{error}</p>}
 
