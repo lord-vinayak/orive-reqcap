@@ -173,7 +173,7 @@ export default function ProposalPage() {
   const selectedIds = useMemo(() => new Set(proposal?.items.map((i) => i.catalog_item) || []), [proposal])
 
   if (loading || !proposal || !requirement) {
-    return <Layout title="Client Costing"><p role="status" aria-live="polite" aria-atomic="true" className="text-black/60">Loading Client Costing…</p></Layout>
+    return <Layout title="Client Costing"><p role="status" aria-live="polite" aria-atomic="true" className="text-black/60 dark:text-slate-400">Loading Client Costing…</p></Layout>
   }
 
   return (
@@ -187,7 +187,7 @@ export default function ProposalPage() {
       </div>
 
       {/* Tabs */}
-      <div role="tablist" aria-label="Client Costing sections" className="flex border-b border-black/10 mb-6">
+      <div role="tablist" aria-label="Client Costing sections" className="flex border-b border-black/10 dark:border-white/10 mb-6">
         {(['edit', 'preview', 'export'] as Tab[]).map((t) => (
           <button
             key={t}
@@ -197,7 +197,9 @@ export default function ProposalPage() {
             aria-controls={`panel-${t}`}
             onClick={() => setTab(t)}
             className={`px-5 py-2 text-sm font-medium capitalize border-b-2 transition-colors ${
-              tab === t ? 'border-mustard text-black' : 'border-transparent text-black/60 hover:text-black'
+              tab === t
+                ? 'border-mustard text-black dark:text-white'
+                : 'border-transparent text-black/60 dark:text-slate-400 hover:text-black dark:hover:text-white'
             }`}
           >
             {t}
@@ -388,7 +390,7 @@ export default function ProposalPage() {
               In this Client Costing ({proposal.items.length})
             </h2>
             {proposal.items.length === 0 ? (
-              <p className="text-sm text-black/60">No items added yet. Search the catalog above and click Add.</p>
+              <p className="text-sm text-black/60 dark:text-slate-400">No items added yet. Search the catalog above and click Add.</p>
             ) : (
               <EditableItemsTable
                 items={proposal.items}
@@ -428,11 +430,11 @@ export default function ProposalPage() {
         <div id="panel-export" role="tabpanel" aria-labelledby="tab-export" tabIndex={0}>
         <section className="card max-w-xl">
           <h2 className="text-lg font-semibold mb-2">Export to Excel</h2>
-          <p className="text-sm text-black/60 mb-4">
+          <p className="text-sm text-black/60 dark:text-slate-400 mb-4">
             Generates a formatted .xlsx with the company logo, header, client info, and selected catalog rows.
           </p>
           {proposal.last_exported_at && (
-            <p className="text-xs text-black/60 mb-3">
+            <p className="text-xs text-black/60 dark:text-slate-400 mb-3">
               Last exported: {new Date(proposal.last_exported_at).toLocaleString()}
             </p>
           )}
@@ -577,14 +579,14 @@ function EditableItemsTable({
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse" aria-label="Client Costing items">
         <thead>
-          <tr className="bg-mustard-50 text-black/80">
+          <tr className="bg-mustard-50 dark:bg-slate-700 text-black/80 dark:text-slate-200">
             <th scope="col" className="px-2 py-1 text-left font-medium w-8">#</th>
             {TABLE_COLUMNS.map((col) => (
               <th
                 key={col.key}
                 scope="col"
                 className={`px-2 py-1 text-left font-medium whitespace-nowrap ${
-                  col.kind === 'calc' ? 'text-black/70 italic' : ''
+                  col.kind === 'calc' ? 'text-black/70 dark:text-slate-400 italic' : ''
                 }`}
               >
                 {col.label}
@@ -609,8 +611,8 @@ function EditableItemsTable({
               potential_mrp: cv.mrp,
             }
             return (
-              <tr key={it.id} className={idx % 2 === 1 ? 'bg-black/[0.02]' : ''}>
-                <td className="px-2 py-1 text-center text-black/70 font-medium">{idx + 1}</td>
+              <tr key={it.id} className={idx % 2 === 1 ? 'bg-black/[0.02] dark:bg-white/[0.03]' : ''}>
+                <td className="px-2 py-1 text-center text-black/70 dark:text-slate-300 font-medium">{idx + 1}</td>
                 {TABLE_COLUMNS.map((col) => {
                   // Only RM Cost/kg is editable; everything else is read-only.
                   if (col.key === 'per_kg_rate') {
@@ -621,7 +623,7 @@ function EditableItemsTable({
                           value={cellValue(it, col.key)}
                           onChange={(e) => updateLocal(it.id, col.key, e.target.value)}
                           onBlur={() => commit(it, col as Extract<ColSpec, { kind: 'edit' }>)}
-                          className="w-full px-1 py-0.5 border border-transparent rounded bg-transparent hover:bg-mustard-50/50 focus:bg-white focus:border-mustard text-sm"
+                          className="w-full px-1 py-0.5 border border-transparent rounded bg-transparent hover:bg-mustard-50/50 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-700 focus:border-mustard dark:text-slate-100 text-sm"
                           aria-label={`Item ${idx + 1} ${col.label}`}
                         />
                       </td>
@@ -640,19 +642,19 @@ function EditableItemsTable({
                     return (
                       <td
                         key={col.key}
-                        className="px-2 py-1 text-right bg-amber-50/50 text-black/70 font-medium tabular-nums whitespace-nowrap"
+                        className="px-2 py-1 text-right bg-amber-50/50 dark:bg-amber-900/20 text-black/70 dark:text-amber-200 font-medium tabular-nums whitespace-nowrap"
                         title={hint}
                       >
                         {val === null
-                          ? <span className="text-black/30 italic text-xs">{perKgSet && !sizeSet && col.key === 'raw_per_unit' ? '↑ size?' : '—'}</span>
+                          ? <span className="text-black/30 dark:text-slate-600 italic text-xs">{perKgSet && !sizeSet && col.key === 'raw_per_unit' ? '↑ size?' : '—'}</span>
                           : fmtCalc(val)}
                       </td>
                     )
                   }
                   // All other edit columns — read-only display
                   return (
-                    <td key={col.key} className="px-2 py-1 text-sm text-black/80 whitespace-nowrap">
-                      {cellValue(it, col.key) || <span className="text-black/30">—</span>}
+                    <td key={col.key} className="px-2 py-1 text-sm text-black/80 dark:text-slate-200 whitespace-nowrap">
+                      {cellValue(it, col.key) || <span className="text-black/30 dark:text-slate-600">—</span>}
                     </td>
                   )
                 })}
@@ -686,9 +688,9 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
   const TOTAL_COLS = 19
   return (
     <section className="card overflow-x-auto">
-      <p className="text-xs text-black/60 mb-3">Preview of the Excel that will be exported.</p>
-      <div className="border border-black/15 min-w-[1100px]">
-        <table className="w-full text-sm">
+      <p className="text-xs text-black/60 dark:text-slate-400 mb-3">Preview of the Excel that will be exported.</p>
+      <div className="border border-black/15 min-w-[1100px] bg-white text-black">
+        <table className="w-full text-sm bg-white text-black">
           <thead>
             <tr>
               <th colSpan={TOTAL_COLS} className="bg-mustard text-black font-bold text-center py-3 text-xl">
@@ -701,7 +703,7 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
               </th>
             </tr>
             <tr>
-              <td colSpan={TOTAL_COLS} className="px-4 py-3 border-b border-black/10">
+              <td colSpan={TOTAL_COLS} className="px-4 py-3 border-b border-black/10 bg-white">
                 <div className="grid grid-cols-[180px_1fr] gap-y-1 text-sm">
                   <div className="font-medium">Date</div><div>{today}</div>
                   <div className="font-medium">Client Name</div><div>{client?.name || ''}</div>
@@ -737,7 +739,7 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
               const kb = [c.kb_tag1, c.kb_tag2, c.kb_tag3].filter(Boolean).join(', ')
               const cv = computedCosts(c as Record<string, unknown>)
               return (
-                <tr key={it.id} className={i % 2 === 1 ? 'bg-black/[0.02]' : ''}>
+                <tr key={it.id} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
                   <td className="px-3 py-2 border-t border-black/5 text-xs">{c.body_part}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs">{c.product_type}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs">{c.sub_product_type}</td>
@@ -748,21 +750,21 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
                   <td className="px-3 py-2 border-t border-black/5 text-xs">{c.size}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs">{c.packaging_type}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.per_kg_rate)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-medium">{fmtCalc(cv.rawPerUnit)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-100 font-medium">{fmtCalc(cv.rawPerUnit)}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.manufacturing_cost)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-medium">{fmtCalc(cv.estUnit)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-100 font-medium">{fmtCalc(cv.estUnit)}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.tentative_packaging_cost)}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.label_cost)}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.tentative_monocarton_cost)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-semibold">{fmtCalc(cv.total)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-semibold">{fmtCalc(cv.mrp)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-100 font-semibold">{fmtCalc(cv.total)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-100 font-semibold">{fmtCalc(cv.mrp)}</td>
                 </tr>
               )
             })}
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-xs text-black/50 italic">
+      <p className="mt-2 text-xs text-black/50 dark:text-slate-500 italic">
         <span className="text-amber-600 font-semibold not-italic">~</span> Tentative figures
       </p>
     </section>
