@@ -387,7 +387,7 @@ export default function AdminCatalog() {
       {/* ---- Table ---- */}
       <div className="card p-0 overflow-hidden">
         {loading ? (
-          <p className="text-sm text-black/60 p-6">Loading…</p>
+          <p className="text-sm text-black/60 dark:text-slate-400 p-6">Loading…</p>
         ) : items.length === 0 ? (
           <p className="text-sm text-black/60 p-6">
             {activeFilterCount > 0
