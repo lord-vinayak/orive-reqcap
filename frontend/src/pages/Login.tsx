@@ -57,19 +57,27 @@ export default function Login() {
     }
   }
 
+  const loginErrorMsg = (detail: string | undefined): string => {
+    if (!detail) return 'Invalid email address or password.'
+    const d = detail.toLowerCase()
+    // ponytail: no separate "account locked" branch — simplejwt returns same string as wrong-password for inactive accounts; needs backend error_code to distinguish
+    if (d.includes('no active account') || d.includes('credentials')) return 'Incorrect username or password.'
+    return 'Invalid email address or password.'
+  }
+
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-    setLiveMsg('Signing in…')
+    setLiveMsg('Signing in. Please wait.')
     try {
       const res = await authService.loginWithPassword(email, password)
       setAuth(res.user, res.access, res.refresh)
-      setLiveMsg('Signed in successfully')
+      setLiveMsg(`Login successful. Welcome ${res.user.name}.`)
       setLoginSuccess(true)
       setTimeout(() => navigate('/home'), 800)
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
+      setError(loginErrorMsg(err.response?.data?.detail))
       setLiveMsg('')
     } finally {
       setLoading(false)
@@ -169,6 +177,7 @@ export default function Login() {
               {error && (
                 <div
                   role="alert"
+                  aria-label={`Alert. ${error}`}
                   className="mb-4 text-sm rounded p-2"
                   style={{ color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca' }}
                 >
