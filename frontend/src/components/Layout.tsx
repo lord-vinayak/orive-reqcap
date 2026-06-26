@@ -35,12 +35,27 @@ export default function Layout({
   const menuRef = useRef<HTMLDivElement>(null);
   const firstMenuItemRef = useRef<HTMLButtonElement>(null);
   const mainRef = useRef<HTMLElement>(null);
+  const navLinksRef = useRef<HTMLDivElement>(null);
   const [liveMsg, setLiveMsg] = useState("");
   const isFirstRender = useRef(true);
 
   // aria-current helper — matches exact path or any sub-route
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
+
+  // Arrow key navigation across nav links (horizontal nav → ArrowLeft/Right;
+  // also handles ArrowUp/Down to match the reference sidebar pattern)
+  const handleNavKeyDown = (e: React.KeyboardEvent) => {
+    if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) return;
+    const links = Array.from(navLinksRef.current?.querySelectorAll<HTMLElement>('a') ?? []);
+    const index = links.indexOf(document.activeElement as HTMLElement);
+    if (index === -1) return;
+    e.preventDefault();
+    const next = (e.key === 'ArrowRight' || e.key === 'ArrowDown')
+      ? (index + 1) % links.length
+      : (index - 1 + links.length) % links.length;
+    links[next].focus();
+  };
 
   useEffect(() => {
     if (menuOpen) firstMenuItemRef.current?.focus()
@@ -81,9 +96,14 @@ export default function Layout({
       return;
     }
     const name = title || getPageName(location.pathname);
-    setLiveMsg(`${name} page loaded`);
-    const id = setTimeout(() => mainRef.current?.focus(), 60);
-    return () => clearTimeout(id);
+    // Clear first so SR re-reads even when navigating to the same route twice
+    setLiveMsg("");
+    const announceId = setTimeout(() => setLiveMsg(`${name} page loaded`), 100);
+    const focusId = setTimeout(() => mainRef.current?.focus(), 60);
+    return () => {
+      clearTimeout(announceId);
+      clearTimeout(focusId);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
@@ -128,17 +148,20 @@ export default function Layout({
           </Link>
 
           <nav className="flex items-center gap-2 flex-wrap" aria-label="Primary">
-            <Link to="/home" className="btn-secondary text-sm" aria-label="Go to Home page" aria-current={isActive("/home") ? "page" : undefined}>Home</Link>
-            <Link to="/crm/clients" className="btn-secondary text-sm" aria-label="Go to CRM Clients" aria-current={isActive("/crm/clients") ? "page" : undefined}>Clients</Link>
-            <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to CRM Dashboard" aria-current={isActive("/crm/dashboard") ? "page" : undefined}>CRM</Link>
-            <Link to="/tasks" className="btn-secondary text-sm" aria-label="Tasks — Task Tracker" aria-current={isActive("/tasks") ? "page" : undefined}>Tasks</Link>
-            <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data" aria-current={isActive("/crm/master-data") ? "page" : undefined}>Master Data</Link>
-            {user?.role === "admin" && (
-              <>
-                <Link to="/admin/catalog" className="btn-secondary text-sm" aria-label="Go to Catalog" aria-current={isActive("/admin/catalog") ? "page" : undefined}>Catalog</Link>
-                <Link to="/admin/users" className="btn-secondary text-sm" aria-label="Go to Users" aria-current={isActive("/admin/users") ? "page" : undefined}>Users</Link>
-              </>
-            )}
+            {/* Arrow-key navigable link group */}
+            <div ref={navLinksRef} className="flex items-center gap-2 flex-wrap" onKeyDown={handleNavKeyDown}>
+              <Link to="/home" className="btn-secondary text-sm" aria-label="Go to Home page" aria-current={isActive("/home") ? "page" : undefined}>Home</Link>
+              <Link to="/crm/clients" className="btn-secondary text-sm" aria-label="Go to CRM Clients" aria-current={isActive("/crm/clients") ? "page" : undefined}>Clients</Link>
+              <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to CRM Dashboard" aria-current={isActive("/crm/dashboard") ? "page" : undefined}>CRM</Link>
+              <Link to="/tasks" className="btn-secondary text-sm" aria-label="Tasks — Task Tracker" aria-current={isActive("/tasks") ? "page" : undefined}>Tasks</Link>
+              <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data" aria-current={isActive("/crm/master-data") ? "page" : undefined}>Master Data</Link>
+              {user?.role === "admin" && (
+                <>
+                  <Link to="/admin/catalog" className="btn-secondary text-sm" aria-label="Go to Catalog" aria-current={isActive("/admin/catalog") ? "page" : undefined}>Catalog</Link>
+                  <Link to="/admin/users" className="btn-secondary text-sm" aria-label="Go to Users" aria-current={isActive("/admin/users") ? "page" : undefined}>Users</Link>
+                </>
+              )}
+            </div>
             {/* Dark mode toggle */}
             <AnimatedThemeToggler />
 
