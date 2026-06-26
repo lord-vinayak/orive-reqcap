@@ -3,6 +3,19 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 
+function getPageName(pathname: string): string {
+  if (pathname === "/" || pathname === "/home") return "Home"
+  if (pathname.startsWith("/crm/dashboard")) return "CRM Dashboard"
+  if (pathname.startsWith("/crm/clients")) return "Clients"
+  if (pathname.startsWith("/crm/projects")) return "Projects"
+  if (pathname.startsWith("/crm/master-data")) return "Master Data"
+  if (pathname.startsWith("/tasks")) return "Tasks"
+  if (pathname.startsWith("/admin/catalog")) return "Catalog"
+  if (pathname.startsWith("/admin/users")) return "Users"
+  if (pathname.startsWith("/requirements")) return "Requirements"
+  return "Page"
+}
+
 const BASE_TITLE = "Skinovation Sciences CRM";
 
 // Routes where a Back link is suppressed.
@@ -21,6 +34,13 @@ export default function Layout({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const firstMenuItemRef = useRef<HTMLButtonElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
+  const [liveMsg, setLiveMsg] = useState("");
+  const isFirstRender = useRef(true);
+
+  // aria-current helper — matches exact path or any sub-route
+  const isActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(path + "/");
 
   useEffect(() => {
     if (menuOpen) firstMenuItemRef.current?.focus()
@@ -53,6 +73,19 @@ export default function Layout({
       document.title = BASE_TITLE;
     };
   }, [title]);
+
+  // On every route change after first load: announce page name + move focus to main
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const name = title || getPageName(location.pathname);
+    setLiveMsg(`${name} page loaded`);
+    const id = setTimeout(() => mainRef.current?.focus(), 60);
+    return () => clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -95,15 +128,15 @@ export default function Layout({
           </Link>
 
           <nav className="flex items-center gap-2 flex-wrap" aria-label="Primary">
-            <Link to="/home" className="btn-secondary text-sm" aria-label="Go to Home page">Home</Link>
-            <Link to="/crm/clients" className="btn-secondary text-sm" aria-label="Go to CRM Clients">Clients</Link>
-            <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to CRM Dashboard">CRM</Link>
-            <Link to="/tasks" className="btn-secondary text-sm" aria-label="Tasks — Task Tracker">Tasks</Link>
-            <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data">Master Data</Link>
+            <Link to="/home" className="btn-secondary text-sm" aria-label="Go to Home page" aria-current={isActive("/home") ? "page" : undefined}>Home</Link>
+            <Link to="/crm/clients" className="btn-secondary text-sm" aria-label="Go to CRM Clients" aria-current={isActive("/crm/clients") ? "page" : undefined}>Clients</Link>
+            <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to CRM Dashboard" aria-current={isActive("/crm/dashboard") ? "page" : undefined}>CRM</Link>
+            <Link to="/tasks" className="btn-secondary text-sm" aria-label="Tasks — Task Tracker" aria-current={isActive("/tasks") ? "page" : undefined}>Tasks</Link>
+            <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data" aria-current={isActive("/crm/master-data") ? "page" : undefined}>Master Data</Link>
             {user?.role === "admin" && (
               <>
-                <Link to="/admin/catalog" className="btn-secondary text-sm" aria-label="Go to Catalog">Catalog</Link>
-                <Link to="/admin/users" className="btn-secondary text-sm" aria-label="Go to Users">Users</Link>
+                <Link to="/admin/catalog" className="btn-secondary text-sm" aria-label="Go to Catalog" aria-current={isActive("/admin/catalog") ? "page" : undefined}>Catalog</Link>
+                <Link to="/admin/users" className="btn-secondary text-sm" aria-label="Go to Users" aria-current={isActive("/admin/users") ? "page" : undefined}>Users</Link>
               </>
             )}
             {/* Dark mode toggle */}
@@ -142,8 +175,10 @@ export default function Layout({
 
       <main
         id="main-content"
+        ref={mainRef}
         role="main"
-        className="max-w-7xl mx-auto px-6 py-8"
+        tabIndex={-1}
+        className="max-w-7xl mx-auto px-6 py-8 focus:outline-none"
       >
         {showBack && (
           <button
@@ -157,6 +192,10 @@ export default function Layout({
         )}
         {children}
       </main>
+      {/* Global route-change announcer for screen readers */}
+      <div className="sr-only" aria-live="assertive" aria-atomic="true">
+        {liveMsg}
+      </div>
     </div>
   );
 }

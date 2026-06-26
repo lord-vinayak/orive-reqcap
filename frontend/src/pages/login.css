@@ -38,7 +38,7 @@
     width: 460px;
     background: #FFFFFF;
     border-radius: 18px;
-    padding: 45px;
+    padding: 32px 45px;
     border: 1px solid #E5E7EB;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
@@ -47,9 +47,9 @@
 
 .login-page .logo {
     display: block;
-    width: 80px;
+    width: 72px;
     margin: auto;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 }
 
 /* Heading */
@@ -57,9 +57,9 @@
 .login-page .login-dialog h1 {
     text-align: center;
     color: #0F172A;
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 700;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
 }
 
 /* Subtitle */
@@ -68,13 +68,13 @@
     text-align: center;
     color: #64748B;
     font-size: 15px;
-    margin-bottom: 35px;
+    margin-bottom: 24px;
 }
 
 /* Form Group */
 
 .login-page .form-group {
-    margin-bottom: 22px;
+    margin-bottom: 16px;
 }
 
 /* Labels */
@@ -92,7 +92,7 @@
 .login-page input[type="email"],
 .login-page input[type="password"] {
     width: 100%;
-    padding: 15px;
+    padding: 11px 15px;
     border: 1px solid #CBD5E1;
     border-radius: 10px;
     background: #F8FAFC;
@@ -125,7 +125,7 @@
 
 .login-page .signin-btn {
     width: 100%;
-    padding: 15px;
+    padding: 12px;
     border: none;
     border-radius: 10px;
     background: linear-gradient(90deg, #2563EB, #3B82F6);
@@ -159,7 +159,7 @@
 /* Footer */
 
 .login-page .footer {
-    margin-top: 25px;
+    margin-top: 18px;
     text-align: center;
     font-size: 13px;
     color: #94A3B8;
