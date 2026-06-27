@@ -58,6 +58,11 @@ export default function ProductTable({
     requestAnimationFrame(() => setLiveMsg(msg))
   }
 
+  // Single consolidated validation announcement — avoids flooding AT with simultaneous alerts.
+  const allErrors = showValidation
+    ? products.flatMap((p) => validateProductRow(p).map((e) => `Row ${p.row_number}: ${e}`))
+    : []
+
   return (
     <section className="card p-0 overflow-hidden" aria-labelledby="products-heading">
       <div className="px-4 py-3 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
@@ -73,8 +78,14 @@ export default function ProductTable({
       {/* Shared polite live region — used to announce dynamic changes (e.g. texture options updating) */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">{liveMsg}</div>
 
+      {/* Single assertive live region for all validation errors — prevents simultaneous per-cell alert flood */}
+      <div role="alert" aria-live="assertive" aria-atomic="true" className="sr-only">
+        {allErrors.length > 0 ? `${allErrors.length} validation error${allErrors.length > 1 ? 's' : ''}: ${allErrors.join('. ')}` : ''}
+      </div>
+
       <div className="overflow-x-auto min-h-[220px]">
         <table className="w-full text-sm border-collapse">
+          <caption className="sr-only">Product details — {products.length} row{products.length !== 1 ? 's' : ''}</caption>
           <thead>
             <tr className="bg-mustard-50 dark:bg-slate-700 text-black/80 dark:text-slate-300 text-xs">
               <th scope="col" className="px-2 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 w-10">#</th>
@@ -109,8 +120,7 @@ export default function ProductTable({
                 <tr
                   key={p.id}
                   onClick={() => onActiveChange?.(i)}
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onActiveChange?.(i) } }}
+                  onFocus={() => onActiveChange?.(i)}
                   className={isActive ? 'bg-mustard-50/40 dark:bg-slate-700/40' : ''}
                 >
                   <td className={`${cellCls} text-center text-black/60 dark:text-slate-300 font-medium pt-2`}>{p.row_number}</td>
@@ -127,7 +137,7 @@ export default function ProductTable({
                     <select
                       id={`body-part-${p.id}`}
                       aria-labelledby={`body-part-lbl-${p.id}`}
-                      aria-describedby={`body-part-help-${p.id}`}
+                      aria-describedby={`body-part-help-${p.id} body-part-err-${p.id}`}
                       value={p.body_part}
                       onChange={(e) => onChange(i, { body_part: e.target.value, key_benefits: [] })}
                       className={`${inputCls} ${invalid(!p.body_part?.trim())}`}
@@ -140,7 +150,7 @@ export default function ProductTable({
                     <div id={`body-part-help-${p.id}`} className="sr-only">
                       Use Up Arrow and Down Arrow keys to navigate options.
                     </div>
-                    <div role="alert" aria-live="assertive" className={errorCls}>
+                    <div id={`body-part-err-${p.id}`} className={errorCls}>
                       {showValidation && !p.body_part?.trim() ? 'Body Part is required' : ''}
                     </div>
                   </td>
@@ -157,7 +167,7 @@ export default function ProductTable({
                     <select
                       id={`category-${p.id}`}
                       aria-labelledby={`category-lbl-${p.id}`}
-                      aria-describedby={`category-help-${p.id}`}
+                      aria-describedby={`category-help-${p.id} category-err-${p.id}`}
                       value={p.category}
                       onChange={(e) => {
                         onChange(i, { category: e.target.value, sub_category: '' })
@@ -175,7 +185,7 @@ export default function ProductTable({
                     <div id={`category-help-${p.id}`} className="sr-only">
                       Use Up Arrow and Down Arrow keys to navigate options.
                     </div>
-                    <div role="alert" aria-live="assertive" className={errorCls}>
+                    <div id={`category-err-${p.id}`} className={errorCls}>
                       {showValidation && !p.category?.trim() ? 'Category is required' : ''}
                     </div>
                   </td>
@@ -192,7 +202,7 @@ export default function ProductTable({
                     <select
                       id={`texture-${p.id}`}
                       aria-labelledby={`texture-lbl-${p.id}`}
-                      aria-describedby={`texture-help-${p.id}`}
+                      aria-describedby={`texture-help-${p.id} texture-err-${p.id}`}
                       value={p.sub_category}
                       onChange={(e) => onChange(i, { sub_category: e.target.value })}
                       className={`${inputCls} ${invalid(!p.sub_category?.trim())}`}
@@ -206,7 +216,7 @@ export default function ProductTable({
                     <div id={`texture-help-${p.id}`} className="sr-only">
                       Use Up Arrow and Down Arrow keys to navigate options.
                     </div>
-                    <div role="alert" aria-live="assertive" className={errorCls}>
+                    <div id={`texture-err-${p.id}`} className={errorCls}>
                       {showValidation && !p.sub_category?.trim() ? 'Texture is required' : ''}
                     </div>
                   </td>
@@ -234,7 +244,7 @@ export default function ProductTable({
                     <select
                       id={`size-${p.id}`}
                       aria-labelledby={`size-lbl-${p.id}`}
-                      aria-describedby={`size-help-${p.id}`}
+                      aria-describedby={`size-help-${p.id} size-err-${p.id}`}
                       value={p.size}
                       onChange={(e) => onChange(i, { size: e.target.value })}
                       className={`${inputCls} ${invalid(!p.size?.trim())}`}
@@ -247,7 +257,7 @@ export default function ProductTable({
                     <div id={`size-help-${p.id}`} className="sr-only">
                       Use Up Arrow and Down Arrow keys to navigate options.
                     </div>
-                    <div role="alert" aria-live="assertive" className={errorCls}>
+                    <div id={`size-err-${p.id}`} className={errorCls}>
                       {showValidation && !p.size?.trim() ? 'Size is required' : ''}
                     </div>
                   </td>
@@ -264,7 +274,7 @@ export default function ProductTable({
                     <select
                       id={`packaging-${p.id}`}
                       aria-labelledby={`packaging-lbl-${p.id}`}
-                      aria-describedby={`packaging-help-${p.id}`}
+                      aria-describedby={`packaging-help-${p.id} packaging-err-${p.id}`}
                       value={p.packaging_type}
                       onChange={(e) => onChange(i, { packaging_type: e.target.value })}
                       className={`${inputCls} ${invalid(!p.packaging_type?.trim())}`}
@@ -277,7 +287,7 @@ export default function ProductTable({
                     <div id={`packaging-help-${p.id}`} className="sr-only">
                       Use Up Arrow and Down Arrow keys to navigate options.
                     </div>
-                    <div role="alert" aria-live="assertive" className={errorCls}>
+                    <div id={`packaging-err-${p.id}`} className={errorCls}>
                       {showValidation && !p.packaging_type?.trim() ? 'Packaging is required' : ''}
                     </div>
                   </td>
@@ -417,7 +427,7 @@ export default function ProductTable({
                           aria-label={`Add row ${p.row_number} to Client Costing`}
                           title={rowErrors.length > 0 ? 'Fill required fields first' : 'Add this row to Client Costing'}
                         >
-                          {addingRowToCostingIndex === i ? '…' : '→Cost'}
+                          {addingRowToCostingIndex === i ? '…' : '+ Costing'}
                         </button>
                       )}
                     </div>

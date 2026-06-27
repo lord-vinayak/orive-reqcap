@@ -51,7 +51,7 @@ export default function Login() {
       setAuth(res.user, res.access, res.refresh)
       navigate('/home')
     } catch (e: any) {
-      setError(e.response?.data?.detail || 'Google login failed')
+      setError(e.response?.data?.detail || 'Google sign-in failed. Try refreshing the page, or use your email and password below.')
     }
   }
 
@@ -92,7 +92,7 @@ export default function Login() {
           <AnimatedThemeToggler />
         </div>
 
-        <div className="flex items-center justify-center pt-8">
+        <main id="mainContent" className="flex items-center justify-center pt-8">
           <div className="w-full max-w-md">
             <div className="text-center mb-8">
               <div className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl text-black mx-auto mb-4">
@@ -108,8 +108,6 @@ export default function Login() {
 
             <div
               className="card"
-              role="dialog"
-              aria-modal="true"
               aria-labelledby="loginTitle"
             >
               <h1
@@ -136,9 +134,13 @@ export default function Login() {
                 <span className="relative bg-white dark:bg-slate-800 px-2 text-xs text-black/60 dark:text-slate-300 uppercase">or</span>
               </div>
 
+              <p className="text-xs text-black/60 dark:text-slate-400 mb-2">
+                Fields marked <span aria-hidden="true">*</span><span className="sr-only">with an asterisk</span> are required.
+              </p>
+
               <form onSubmit={handlePasswordLogin} className="space-y-4" noValidate>
                 <div>
-                  <label htmlFor="email" className="block mb-1">Email Address</label>
+                  <label htmlFor="email" className="block mb-1">Email Address <span aria-hidden="true">*</span></label>
                   <input
                     id="email"
                     type="email"
@@ -152,7 +154,7 @@ export default function Login() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="password" className="block mb-1">Password</label>
+                  <label htmlFor="password" className="block mb-1">Password <span aria-hidden="true">*</span></label>
                   <input
                     id="password"
                     type="password"
@@ -187,9 +189,8 @@ export default function Login() {
             </p>
           </div>
         </div>
+        </main>
       </div>
-
-      <main id="mainContent" />
     </>
   )
 }

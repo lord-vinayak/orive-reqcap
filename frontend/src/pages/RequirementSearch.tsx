@@ -114,7 +114,7 @@ function BrowseTab() {
       const next = new Map(prev)
       if (next.has(client.phone_no)) next.delete(client.phone_no)
       else next.set(client.phone_no, client)
-      setAnnouncement(`${next.size} client${next.size !== 1 ? 's' : ''} selected`)
+      setAnnouncement(`${next.size === 1 ? '1 client' : `${next.size} clients`} selected`)
       return next
     })
   }
@@ -128,7 +128,7 @@ function BrowseTab() {
         setAnnouncement('Current page deselected')
       } else {
         clients.forEach((c) => next.set(c.phone_no, c))
-        setAnnouncement(`${next.size} client${next.size !== 1 ? 's' : ''} selected`)
+        setAnnouncement(`${next.size === 1 ? '1 client' : `${next.size} clients`} selected`)
       }
       return next
     })
@@ -249,9 +249,9 @@ function BrowseTab() {
           onClick={resetFilters}
           disabled={!isFiltered}
           aria-label="Reset all filters"
-          className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-black/15 dark:border-white/15 text-black/50 dark:text-slate-400 hover:border-red-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors self-end mb-0.5"
+          className="shrink-0 px-3 h-8 flex items-center justify-center rounded-lg border border-black/15 dark:border-white/15 text-black/50 dark:text-slate-400 hover:border-red-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors self-end mb-0.5"
         >
-          <span aria-hidden="true">✕</span>
+          Reset filters
         </button>
       </div>
 
@@ -285,7 +285,7 @@ function BrowseTab() {
               className="text-sm text-black/60 dark:text-slate-300 hover:text-black dark:hover:text-white underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
               aria-label="Clear selection"
             >
-              Clear
+              Clear selection
             </button>
           </div>
         </div>

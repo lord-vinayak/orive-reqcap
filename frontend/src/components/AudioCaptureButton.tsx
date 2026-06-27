@@ -39,7 +39,7 @@ export default function AudioCaptureButton({ onExtract }: Props) {
 
     setExtracting(true)
     setExtractMsg(null)
-    setStatusMsg('Extracting fields…')
+    setStatusMsg('Extracting product details from your recording…')
     audioService.extract(text)
       .then((res) => {
         if (res.fields && Object.keys(res.fields).length > 0) {
@@ -52,8 +52,8 @@ export default function AudioCaptureButton({ onExtract }: Props) {
         }
       })
       .catch(() => {
-        setExtractMsg({ text: 'Extraction failed — fill fields manually.', ok: false })
-        setStatusMsg('Extraction failed — fill fields manually.')
+        setExtractMsg({ text: 'Audio extraction failed. Please fill the fields manually.', ok: false })
+        setStatusMsg('Audio extraction failed. Please fill the fields manually.')
       })
       .finally(() => {
         setExtracting(false)

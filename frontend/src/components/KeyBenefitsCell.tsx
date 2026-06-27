@@ -92,7 +92,7 @@ export default function KeyBenefitsCell({ bodyPart, value, onChange }: Props) {
         className="w-full text-left px-2 py-1 border border-black/15 dark:border-white/15 rounded bg-white dark:bg-slate-800 dark:text-slate-100 text-sm truncate hover:border-mustard"
         aria-haspopup="dialog"
         aria-expanded={open}
-        title={summary}
+        aria-label={value.length ? `Key benefits: ${summary}. Press to change.` : 'Key benefits — none selected. Press to choose.'}
       >
         {summary}
       </button>
@@ -101,7 +101,7 @@ export default function KeyBenefitsCell({ bodyPart, value, onChange }: Props) {
           ref={dropdownRef}
           role="dialog"
           aria-label="Select key benefits"
-          aria-modal="false"
+          aria-modal="true"
           style={dropdownStyle}
           className="max-h-72 overflow-auto bg-white dark:bg-slate-800 border border-black/15 dark:border-white/15 rounded shadow-lg p-2"
           onKeyDown={(e) => {

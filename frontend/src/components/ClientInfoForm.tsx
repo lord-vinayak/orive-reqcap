@@ -66,6 +66,7 @@ export default function ClientInfoForm({
           </label>
           <input
             id="ci_phone"
+            type="tel"
             value={client.phone_no || ""}
             onChange={(e) => {
               const val = e.target.value.replace(/\D/g, "").slice(0, 10);
@@ -76,6 +77,7 @@ export default function ClientInfoForm({
             inputMode="numeric"
             pattern="\d{10}"
             maxLength={10}
+            autoComplete="tel"
             className="w-full"
             aria-required="true"
             aria-describedby="phone-help phone-error"
@@ -100,6 +102,7 @@ export default function ClientInfoForm({
             id="ci_company"
             value={client.company_name || ""}
             onChange={(e) => patch({ company_name: e.target.value })}
+            autoComplete="organization"
             className="w-full"
           />
         </div>
@@ -113,6 +116,7 @@ export default function ClientInfoForm({
             type="email"
             value={client.email || ""}
             onChange={(e) => patch({ email: e.target.value })}
+            autoComplete="email"
             className="w-full"
           />
         </div>
@@ -125,6 +129,7 @@ export default function ClientInfoForm({
             id="ci_city"
             value={client.city || ""}
             onChange={(e) => patch({ city: e.target.value })}
+            autoComplete="address-level2"
             className="w-full"
           />
         </div>
@@ -137,7 +142,6 @@ export default function ClientInfoForm({
             id="ci_poc"
             value={currentUser?.name || ""}
             readOnly
-            disabled
             className="w-full bg-black/[0.04] dark:bg-white/[0.06] cursor-not-allowed"
             aria-readonly="true"
             aria-describedby="poc-help"
@@ -273,7 +277,7 @@ export default function ClientInfoForm({
           aria-controls="optional-details-panel"
         >
           <svg
-            className={`w-4 h-4 shrink-0 transition-transform duration-200 ${optionalOpen ? "rotate-90" : ""}`}
+            className={`w-4 h-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none ${optionalOpen ? "rotate-90" : ""}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -288,8 +292,7 @@ export default function ClientInfoForm({
           )}
         </button>
 
-        {optionalOpen && (
-          <div id="optional-details-panel" className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div id="optional-details-panel" hidden={!optionalOpen} className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label htmlFor="ci_address" className="block mb-1">
                 Physical Address
@@ -317,7 +320,6 @@ export default function ClientInfoForm({
               />
             </div>
           </div>
-        )}
       </div>
     </section>
   );

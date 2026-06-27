@@ -132,7 +132,7 @@ export default function RequirementView() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3 text-sm">
             <InfoRow label="Client Name" value={client?.name} />
             <InfoRow label="Phone" value={client?.phone_no} />
-            <InfoRow label="POC" value={client?.poc_name} />
+            <InfoRow label="Point of Contact" value={client?.poc_name} />
             <InfoRow label="Target Audience Age" value={requirement.target_audience_age} />
             <InfoRow
               label="No. of Products"
@@ -172,7 +172,7 @@ export default function RequirementView() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-mustard-50 dark:bg-slate-700 text-black/80 dark:text-slate-300 text-xs">
-                  {['#', 'Body Part', 'Category', 'Sub Category', 'Key Benefits', 'Size',
+                  {['#', 'Body Part', 'Category', 'Texture', 'Key Benefits', 'Size',
                     'Packaging', 'Planned MRP', 'Rate Category', 'Specific Ingredient',
                     'Benchmark', 'Color', 'Fragrance'].map((h) => (
                     <th key={h} scope="col" className="px-3 py-2 text-left font-medium border-b border-black/10 dark:border-white/10 whitespace-nowrap">
@@ -185,7 +185,7 @@ export default function RequirementView() {
                 {requirement.products.length === 0 && (
                   <tr>
                     <td colSpan={13} className="text-center text-sm text-black/60 dark:text-slate-300 py-6">
-                      No product rows captured.
+                      No products added to this requirement.
                     </td>
                   </tr>
                 )}
@@ -232,7 +232,7 @@ export default function RequirementView() {
             Notes <span className="text-sm font-normal text-black/60 dark:text-slate-300">({notes.length})</span>
           </h2>
           {notes.length === 0 ? (
-            <p className="text-sm text-black/60 dark:text-slate-300">No notes added.</p>
+            <p className="text-sm text-black/60 dark:text-slate-300">No notes yet.</p>
           ) : (
             <ol className="space-y-3">
               {notes.map((note) => (
@@ -253,7 +253,7 @@ export default function RequirementView() {
             Files & Images <span className="text-sm font-normal text-black/60 dark:text-slate-300">({files.length})</span>
           </h2>
           {files.length === 0 ? (
-            <p className="text-sm text-black/60 dark:text-slate-300">No files uploaded.</p>
+            <p className="text-sm text-black/60 dark:text-slate-300">No files attached.</p>
           ) : (
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {files.map((f) => (
@@ -356,7 +356,7 @@ export default function RequirementView() {
         <section aria-labelledby="view-proposals-heading">
           <div className="flex items-center justify-between mb-3">
             <h2 id="view-proposals-heading" className="text-lg font-semibold">
-              Client Costings <span className="text-sm font-normal text-black/60 dark:text-slate-300">({proposals.length})</span>
+              Client Costing <span className="text-sm font-normal text-black/60 dark:text-slate-300">({proposals.length})</span>
             </h2>
           </div>
 

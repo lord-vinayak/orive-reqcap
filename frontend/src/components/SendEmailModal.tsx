@@ -25,6 +25,16 @@ export default function SendEmailModal({
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
 
+  // Move focus into dialog on mount
+  useEffect(() => {
+    const el = dialogRef.current
+    if (!el) return
+    const first = el.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    first?.focus()
+  }, [])
+
   // Focus trap + Escape
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -174,12 +184,14 @@ export default function SendEmailModal({
             <input
               id="email-modal-to"
               type="email"
+              autoComplete="email"
               className="w-full"
               placeholder="client@example.com"
               value={toEmail}
               onChange={(e) => setToEmail(e.target.value)}
               disabled={sending}
-              autoFocus={!clientEmail}
+              required
+              aria-required="true"
             />
             {!clientEmail && (
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
@@ -250,7 +262,7 @@ export default function SendEmailModal({
 
           {/* Attachment note */}
           <p className="text-xs text-black/70 dark:text-slate-300">
-            📎 The Client Costing XLSX is always attached automatically.
+            The Client Costing spreadsheet (.xlsx) is always attached automatically.
           </p>
 
           {error && (

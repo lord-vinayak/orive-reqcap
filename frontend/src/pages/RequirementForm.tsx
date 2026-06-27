@@ -660,7 +660,7 @@ export default function RequirementForm() {
       )}
 
       {loadingRequirement ? (
-        <p className="text-black/60 dark:text-slate-400">Loading requirement…</p>
+        <p role="status" aria-live="polite" className="text-black/60 dark:text-slate-400">Loading requirement…</p>
       ) : (
         <div className="space-y-6 min-w-0">
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 min-w-0">

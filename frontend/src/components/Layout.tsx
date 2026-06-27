@@ -121,13 +121,9 @@ export default function Layout({
                 {user?.name}
               </button>
               {menuOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 mt-1 w-40 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded shadow-lg z-50 py-1"
-                >
+                <div className="absolute right-0 mt-1 w-40 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded shadow-lg z-50 py-1">
                   <button
                     ref={firstMenuItemRef}
-                    role="menuitem"
                     onClick={() => { setMenuOpen(false); handleLogout(); }}
                     className="w-full text-left px-4 py-2 text-sm text-black dark:text-white hover:bg-mustard/10 focus:bg-mustard/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-mustard focus:outline-none"
                   >
@@ -142,7 +138,6 @@ export default function Layout({
 
       <main
         id="main-content"
-        role="main"
         className="max-w-7xl mx-auto px-6 py-8"
       >
         {showBack && (

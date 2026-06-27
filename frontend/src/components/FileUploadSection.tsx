@@ -25,7 +25,7 @@ export default function FileUploadSection({ requirementId }: Props) {
       await fileService.upload(requirementId, file)
       await load()
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Upload failed')
+      setError(err.response?.data?.detail || 'File upload failed. Check your internet connection and try again. If the problem continues, contact your administrator.')
     } finally {
       setUploading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -33,7 +33,7 @@ export default function FileUploadSection({ requirementId }: Props) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this file?')) return
+    if (!confirm('Delete this file from Google Drive? This cannot be undone.')) return
     await fileService.delete(id)
     await load()
   }
@@ -57,7 +57,7 @@ export default function FileUploadSection({ requirementId }: Props) {
       {error && <p role="alert" className="text-sm text-red-700 mb-3">{error}</p>}
 
       {files.length === 0 ? (
-        <p className="text-sm text-black/70 dark:text-slate-300">No files yet.</p>
+        <p className="text-sm text-black/70 dark:text-slate-300">No files yet. Use the button above to upload an image, video, or document.</p>
       ) : (
         <ul className="space-y-2">
           {files.map((f) => (

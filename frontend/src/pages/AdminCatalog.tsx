@@ -105,6 +105,13 @@ export default function AdminCatalog() {
     catalogService.facets().then(setFacets)
   }, [])
 
+  // ---- Focus first item when KB dropdown opens ----------------------------
+  useEffect(() => {
+    if (!kbOpen) return
+    const first = kbDropRef.current?.querySelector<HTMLElement>('input, button, [tabindex]')
+    first?.focus()
+  }, [kbOpen])
+
   // ---- KB dropdown outside-click or Escape ---------------------------------
   useEffect(() => {
     if (!kbOpen) return
@@ -153,12 +160,12 @@ export default function AdminCatalog() {
     try {
       const res = await catalogService.importXlsx(file)
       setImportMsg({
-        text: `Appended ${res.created} new row${res.created === 1 ? '' : 's'} from "${file.name}" to the catalog.`,
+        text: `Appended ${res.created === 1 ? '1 new row' : `${res.created} new rows`} from "${file.name}" to the catalog.`,
         ok: true,
       })
       load()
     } catch (err: any) {
-      setImportMsg({ text: err.response?.data?.detail || 'Import failed.', ok: false })
+      setImportMsg({ text: err.response?.data?.detail || 'Catalog import failed. Make sure the file is a valid Excel spreadsheet (.xlsx) and try again.', ok: false })
     } finally {
       setImporting(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -185,7 +192,7 @@ export default function AdminCatalog() {
 
   // ---- Delete single item -------------------------------------------------
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Remove this catalog item?')) return
+    if (!window.confirm('Remove this catalog item? This cannot be undone.')) return
     await catalogService.delete(id)
     setStatusMessage('Catalog item deleted successfully.')
     setTimeout(() => setStatusMessage(''), 3000)
@@ -305,14 +312,14 @@ export default function AdminCatalog() {
 
         {/* Key Benefits multi-select */}
         <div className="flex flex-col gap-1">
-          <label htmlFor="admin-filter-key-benefits" className="text-xs font-medium text-black/60 dark:text-slate-300">Key Benefits</label>
+          <span id="admin-filter-kb-label" className="text-xs font-medium text-black/60 dark:text-slate-300">Key Benefits</span>
           <button
-            id="admin-filter-key-benefits"
             ref={kbBtnRef}
             type="button"
             onClick={openKbDrop}
             aria-haspopup="dialog"
             aria-expanded={kbOpen}
+            aria-labelledby="admin-filter-kb-label"
             className="text-sm text-left px-2 py-1 border border-black/15 rounded bg-white hover:border-mustard min-w-[160px] truncate"
           >
             {filters.key_benefits.length === 0 ? 'All' : filters.key_benefits.join(', ')}
@@ -320,10 +327,23 @@ export default function AdminCatalog() {
           {kbOpen && createPortal(
             <div
               ref={kbDropRef}
-              role="group"
-              aria-label="Key benefits options"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Key benefits filter"
               style={kbDropStyle}
               className="max-h-56 overflow-auto bg-white border border-black/15 rounded shadow-lg p-2"
+              onKeyDown={(e) => {
+                if (!kbDropRef.current) return
+                if (e.key !== 'Tab') return
+                const focusable = Array.from(
+                  kbDropRef.current.querySelectorAll<HTMLElement>('input, button, [tabindex]')
+                ).filter((el) => !el.hasAttribute('disabled'))
+                if (!focusable.length) return
+                const first = focusable[0]
+                const last = focusable[focusable.length - 1]
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+              }}
             >
               {(facets.key_benefits.length ? facets.key_benefits : []).length === 0
                 ? <p className="text-xs text-black/60 px-2 py-1">No options yet.</p>
