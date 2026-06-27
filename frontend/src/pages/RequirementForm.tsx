@@ -171,6 +171,8 @@ export default function RequirementForm() {
   const dirtyProductsRef = useRef<Set<string>>(new Set());
   const dirtyMetaRef = useRef(false);
   const autoSaveTimerRef = useRef<number | null>(null);
+  const productsRef = useRef(products);
+  useEffect(() => { productsRef.current = products; }, [products]);
 
   // If navigated here as "new requirement for existing client" (?client=PHONE),
   // fetch that client's details and pre-fill the form — skip the draft banner.
@@ -266,7 +268,7 @@ export default function RequirementForm() {
         }
         for (const pid of dirtyIds) {
           if (pid.startsWith("tmp-")) continue;
-          const p = products.find((x) => x.id === pid);
+          const p = productsRef.current.find((x) => x.id === pid);
           if (!p) continue;
           const { id: _i, requirement: _r, row_number: _rn, created_at: _c, updated_at: _u, ...rest } = p;
           tasks.push(requirementService.updateProduct(requirement.id, pid, rest));
@@ -277,7 +279,7 @@ export default function RequirementForm() {
       } catch { /* silent — manual Save surfaces errors */ }
       finally { setAutoSaving(false); }
     }, AUTOSAVE_DEBOUNCE_MS);
-  }, [requirement, targetAge, products]);
+  }, [requirement, targetAge]);
 
   useEffect(() => () => {
     if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);

@@ -1,6 +1,8 @@
 import io
 import re
 
+from django.utils import timezone
+
 import openpyxl
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
@@ -303,8 +305,11 @@ class ClientViewSet(viewsets.ModelViewSet):
                 continue
             to_create.append((row_num, name, phone, kwargs, email_warning))
 
-        # Single bulk insert
+        # Single bulk insert (bulk_create bypasses auto_now so backfill updated_at)
         Client.objects.bulk_create([Client(**kw) for _, _, _, kw, _ in to_create])
+        Client.objects.filter(
+            phone_no__in=[p for _, _, p, _, _ in to_create]
+        ).update(updated_at=timezone.now())
 
         for row_num, name, phone, _, email_warning in to_create:
             entry = {'row': row_num, 'name': name, 'phone': phone}

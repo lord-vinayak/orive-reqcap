@@ -16,11 +16,11 @@ export default function NotesSection({ requirementId, refreshKey }: Props) {
   const [addError, setAddError] = useState('')
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin')
 
-  const load = async () => {
-    const data = await notesService.list(requirementId)
-    setNotes(data)
-  }
-  useEffect(() => { load() }, [requirementId, refreshKey])
+  useEffect(() => {
+    notesService.list(requirementId).then(setNotes).catch(() => {})
+  }, [requirementId, refreshKey])
+
+  const reload = () => notesService.list(requirementId).then(setNotes).catch(() => {})
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,7 +30,7 @@ export default function NotesSection({ requirementId, refreshKey }: Props) {
     try {
       await notesService.add(requirementId, text.trim())
       setText('')
-      await load()
+      await reload()
     } catch (err: any) {
       setAddError(err.response?.data?.detail || err.response?.data?.text?.[0] || 'Failed to add note. Please try again.')
     } finally {
@@ -40,8 +40,12 @@ export default function NotesSection({ requirementId, refreshKey }: Props) {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this note? This cannot be undone.')) return
-    await notesService.delete(id)
-    await load()
+    try {
+      await notesService.delete(id)
+      await reload()
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete note.')
+    }
   }
 
   return (

@@ -82,7 +82,7 @@ export default function ProposalPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [id])
+  useEffect(() => { load().catch(() => setLoading(false)) }, [id])
 
   // Load facets
   useEffect(() => {
@@ -149,13 +149,21 @@ export default function ProposalPage() {
 
   const handleAdd = async (catalogItemId: string) => {
     if (!proposal) return
-    await proposalService.addItem(proposal.id, catalogItemId)
-    await load()
+    try {
+      await proposalService.addItem(proposal.id, catalogItemId)
+      await load()
+    } catch {
+      alert('Failed to add item. Please try again.')
+    }
   }
 
   const handleRemove = async (itemId: string) => {
-    await proposalService.removeItem(itemId)
-    await load()
+    try {
+      await proposalService.removeItem(itemId)
+      await load()
+    } catch {
+      alert('Failed to remove item. Please try again.')
+    }
   }
 
   const handleExport = async () => {
