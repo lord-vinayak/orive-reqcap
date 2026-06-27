@@ -32,7 +32,7 @@ export default function CRMClientList() {
 
   const fetchClients = (q = '') => {
     setLoading(true)
-    api.get<PaginatedClients>('/clients/', { params: q ? { search: q } : {} })
+    api.get<PaginatedClients>('/clients/', { params: q ? { q } : {} })
       .then((r) => {
         setClients(r.data.results)
         if (q) {
