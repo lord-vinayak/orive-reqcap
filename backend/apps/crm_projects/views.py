@@ -1111,9 +1111,6 @@ class StandaloneTaskViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
-        if self.request.user.role != 'admin':
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied('Only admin can create tasks.')
         task = serializer.save(
             created_by=self.request.user,
             assigned_by=self.request.user,

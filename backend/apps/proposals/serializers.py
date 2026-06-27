@@ -41,7 +41,7 @@ class ProposalItemSerializer(serializers.ModelSerializer):
         # Snapshot wins over catalog defaults.
         merged = {**base}
         for k, v in (obj.snapshot or {}).items():
-            if v is not None and v != '':
+            if v is not None:
                 merged[k] = v
         return merged
 

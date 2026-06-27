@@ -228,15 +228,13 @@ export default function TaskTracker() {
               Live
             </span>
           </div>
-          {user?.role === 'admin' && (
-            <button
-              onClick={() => setShowNewTask(true)}
-              aria-label="Create new task"
-              className="px-4 py-2 bg-mustard text-white text-sm font-medium rounded-xl hover:bg-mustard/90 transition-colors"
-            >
-              + New Task
-            </button>
-          )}
+          <button
+            onClick={() => setShowNewTask(true)}
+            aria-label="Create new task"
+            className="px-4 py-2 bg-mustard text-white text-sm font-medium rounded-xl hover:bg-mustard/90 transition-colors"
+          >
+            + New Task
+          </button>
         </div>
 
         {/* Filter bar — always visible, full width grid */}
@@ -403,9 +401,7 @@ export default function TaskTracker() {
         ) : tasks.length === 0 ? (
           <div className="text-center py-16 text-black/70 dark:text-slate-300">
             <p className="text-sm">No tasks yet.</p>
-            {user?.role === 'admin' && (
-              <p className="text-xs mt-1">Create a standalone task or assign stages from a project.</p>
-            )}
+            <p className="text-xs mt-1">Create a standalone task or assign stages from a project.</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
