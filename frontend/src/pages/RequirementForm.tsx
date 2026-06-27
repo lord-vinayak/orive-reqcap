@@ -391,6 +391,22 @@ export default function RequirementForm() {
       return null;
     }
 
+    // Block duplicate phone on NEW requirements (not when pre-filled via ?client= param)
+    if (!isEdit && !searchParams.get('client')) {
+      try {
+        const existing = await clientService.get(client.phone_no);
+        setError(`Client "${existing.name}" already exists with phone number ${client.phone_no}. Search for them to add a new requirement.`);
+        document.getElementById('ci_phone')?.focus();
+        return null;
+      } catch (e: any) {
+        if (e.response?.status !== 404) {
+          setError('Could not verify phone number. Please try again.');
+          return null;
+        }
+        // 404 = client not found, proceed normally
+      }
+    }
+
     // ---- Product row validation (item #8) ----
     if (!opts.skipValidation) {
       const rowProblems = products.map((p, i) => ({ i, errs: validateProductRow(p) })).filter((x) => x.errs.length > 0);
@@ -502,7 +518,7 @@ export default function RequirementForm() {
     } finally {
       setManualSaving(false);
     }
-  }, [client, requirement, products, targetAge, currentUser?.id]);
+  }, [client, requirement, products, targetAge, currentUser?.id, isEdit, searchParams]);
 
   const handleSave = async () => {
     const req = await saveAll();
