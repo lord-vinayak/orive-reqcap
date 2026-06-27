@@ -188,7 +188,6 @@ export default function Login() {
               Don't have an account? Please contact admin.
             </p>
           </div>
-        </div>
         </main>
       </div>
     </>

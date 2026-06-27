@@ -223,12 +223,18 @@ export default function ProductTable({
 
                   {/* Key benefits */}
                   <td className={cellCls}>
-                    <div className={invalid(!p.key_benefits || p.key_benefits.length === 0) ? 'rounded border border-red-400 bg-red-50/40' : ''}>
+                    <div
+                      className={invalid(!p.key_benefits || p.key_benefits.length === 0) ? 'rounded border border-red-400 bg-red-50/40' : ''}
+                      aria-describedby={`key-benefits-err-${p.id}`}
+                    >
                       <KeyBenefitsCell
                         bodyPart={p.body_part}
                         value={p.key_benefits || []}
                         onChange={(next) => onChange(i, { key_benefits: next })}
                       />
+                    </div>
+                    <div id={`key-benefits-err-${p.id}`} className={errorCls}>
+                      {showValidation && (!p.key_benefits || p.key_benefits.length === 0) ? 'At least one Key benefit is required' : ''}
                     </div>
                   </td>
 
@@ -300,7 +306,11 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} packaging notes`}
                       aria-required="true"
                       aria-invalid={showValidation && !p.packaging_notes?.trim() ? true : undefined}
+                      aria-describedby={`pkg-notes-err-${p.id}`}
                     />
+                    <div id={`pkg-notes-err-${p.id}`} className={errorCls}>
+                      {showValidation && !p.packaging_notes?.trim() ? 'Packaging notes is required' : ''}
+                    </div>
                   </td>
 
                   <td className={cellCls}>
@@ -312,7 +322,11 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} planned MRP`}
                       aria-required="true"
                       aria-invalid={showValidation && (p.planned_mrp === null || p.planned_mrp === undefined) ? true : undefined}
+                      aria-describedby={`mrp-err-${p.id}`}
                     />
+                    <div id={`mrp-err-${p.id}`} className={errorCls}>
+                      {showValidation && (p.planned_mrp === null || p.planned_mrp === undefined) ? 'Planned MRP is required' : ''}
+                    </div>
                   </td>
 
                   <td className={cellCls}>
@@ -323,7 +337,11 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} specific ingredient`}
                       aria-required="true"
                       aria-invalid={showValidation && !p.specific_ingredient?.trim() ? true : undefined}
+                      aria-describedby={`ingredient-err-${p.id}`}
                     />
+                    <div id={`ingredient-err-${p.id}`} className={errorCls}>
+                      {showValidation && !p.specific_ingredient?.trim() ? 'Specific ingredient is required' : ''}
+                    </div>
                   </td>
 
                   <td className={cellCls}>
@@ -334,7 +352,11 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} benchmark`}
                       aria-required="true"
                       aria-invalid={showValidation && !p.benchmark_product?.trim() ? true : undefined}
+                      aria-describedby={`benchmark-err-${p.id}`}
                     />
+                    <div id={`benchmark-err-${p.id}`} className={errorCls}>
+                      {showValidation && !p.benchmark_product?.trim() ? 'Benchmark is required' : ''}
+                    </div>
                   </td>
 
                   {/* Color Yes/No */}
@@ -348,11 +370,15 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} color`}
                       aria-invalid={showValidation && p.has_color === null ? true : undefined}
                       aria-required="true"
+                      aria-describedby={`has-color-err-${p.id}`}
                     >
                       <option value="">—</option>
                       <option value="yes">Yes</option>
                       <option value="no">No</option>
                     </select>
+                    <div id={`has-color-err-${p.id}`} className={errorCls}>
+                      {showValidation && p.has_color === null ? 'Color (Yes/No) is required' : ''}
+                    </div>
                   </td>
 
                   <td className={cellCls}>
@@ -364,7 +390,11 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} color details`}
                       aria-required={p.has_color === true ? 'true' : 'false'}
                       aria-invalid={showValidation && p.has_color === true && !p.color_details?.trim() ? true : undefined}
+                      aria-describedby={`color-details-err-${p.id}`}
                     />
+                    <div id={`color-details-err-${p.id}`} className={errorCls}>
+                      {showValidation && p.has_color === true && !p.color_details?.trim() ? 'Color details is required' : ''}
+                    </div>
                   </td>
 
                   {/* Fragrance Yes/No */}
@@ -378,11 +408,15 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} fragrance`}
                       aria-invalid={showValidation && p.has_fragrance === null ? true : undefined}
                       aria-required="true"
+                      aria-describedby={`has-fragrance-err-${p.id}`}
                     >
                       <option value="">—</option>
                       <option value="yes">Yes</option>
                       <option value="no">No</option>
                     </select>
+                    <div id={`has-fragrance-err-${p.id}`} className={errorCls}>
+                      {showValidation && p.has_fragrance === null ? 'Fragrance (Yes/No) is required' : ''}
+                    </div>
                   </td>
 
                   <td className={cellCls}>
@@ -394,7 +428,11 @@ export default function ProductTable({
                       aria-label={`Row ${p.row_number} fragrance details`}
                       aria-required={p.has_fragrance === true ? 'true' : 'false'}
                       aria-invalid={showValidation && p.has_fragrance === true && !p.fragrance_details?.trim() ? true : undefined}
+                      aria-describedby={`fragrance-details-err-${p.id}`}
                     />
+                    <div id={`fragrance-details-err-${p.id}`} className={errorCls}>
+                      {showValidation && p.has_fragrance === true && !p.fragrance_details?.trim() ? 'Fragrance details is required' : ''}
+                    </div>
                   </td>
 
                   {/* + / − / Costing action buttons */}

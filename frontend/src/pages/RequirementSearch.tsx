@@ -110,13 +110,15 @@ function BrowseTab() {
   }
 
   const toggleSelect = (client: Client) => {
+    const wasSelected = selectedMap.has(client.phone_no)
     setSelectedMap((prev) => {
       const next = new Map(prev)
-      if (next.has(client.phone_no)) next.delete(client.phone_no)
+      if (wasSelected) next.delete(client.phone_no)
       else next.set(client.phone_no, client)
-      setAnnouncement(`${next.size === 1 ? '1 client' : `${next.size} clients`} selected`)
       return next
     })
+    const newSize = wasSelected ? selectedMap.size - 1 : selectedMap.size + 1
+    setAnnouncement(newSize === 1 ? '1 client selected' : `${newSize} clients selected`)
   }
 
   const toggleAll = () => {
@@ -125,13 +127,17 @@ function BrowseTab() {
       const next = new Map(prev)
       if (allOnPageSelected) {
         clients.forEach((c) => next.delete(c.phone_no))
-        setAnnouncement('Current page deselected')
       } else {
         clients.forEach((c) => next.set(c.phone_no, c))
-        setAnnouncement(`${next.size === 1 ? '1 client' : `${next.size} clients`} selected`)
       }
       return next
     })
+    if (allOnPageSelected) {
+      setAnnouncement('Current page deselected')
+    } else {
+      const newSize = selectedMap.size + clients.filter((c) => !selectedMap.has(c.phone_no)).length
+      setAnnouncement(newSize === 1 ? '1 client selected' : `${newSize} clients selected`)
+    }
   }
 
   const selectedClients = Array.from(selectedMap.values())
