@@ -87,6 +87,10 @@ class CRMProject(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='crm_projects_as_formulation', limit_choices_to={'role': 'poc_formulation'},
     )
+    source_requirement = models.ForeignKey(
+        'requirements_app.Requirement', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='crm_projects',
+    )
     sample_booked_date = models.DateField(null=True, blank=True)
     start_date = models.DateField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)

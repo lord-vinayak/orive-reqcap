@@ -1,8 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import Layout from '@/components/Layout'
-import Plus from 'lucide-react/dist/esm/icons/plus'
-import Search from 'lucide-react/dist/esm/icons/search'
-import Upload from 'lucide-react/dist/esm/icons/upload'
+import { Plus, Search, Upload } from 'lucide-react'
  
 
 export default function RequirementsLanding() {

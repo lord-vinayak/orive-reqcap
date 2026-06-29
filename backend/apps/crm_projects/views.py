@@ -359,6 +359,9 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         client = self.request.query_params.get('client')
         if client:
             qs = qs.filter(client__phone_no=client)
+        source_req = self.request.query_params.get('source_requirement')
+        if source_req:
+            qs = qs.filter(source_requirement_id=source_req)
         return qs
 
     def get_serializer_class(self):

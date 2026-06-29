@@ -7,6 +7,7 @@ import CatalogSuggestions from "@/components/CatalogSuggestions";
 import NotesSection from "@/components/NotesSection";
 import FileUploadSection from "@/components/FileUploadSection";
 import { Modal } from "@/components/crm/Modal";
+import { crmApi } from "@/services/crm";
 import ProposalDocumentsModal from "@/components/ProposalDocumentsModal";
 import {
   clientService, requirementService, notesService, proposalService, proposalDocService,
@@ -159,6 +160,9 @@ export default function RequirementForm() {
   // Bumped when a product row is added to the Client Costing so CatalogSuggestions refetches.
   const [proposalRefreshKey, setProposalRefreshKey] = useState(0);
 
+  // Existing CRM project linked to this requirement (if any)
+  const [existingProjectId, setExistingProjectId] = useState<string | null>(null);
+
   // Proposal documents (PDF/Word) uploaded for this requirement
   const [proposalDocs, setProposalDocs] = useState<ProposalDocument[]>([]);
   const [showProposalModal, setShowProposalModal] = useState(false)
@@ -224,6 +228,13 @@ export default function RequirementForm() {
         dirtyMetaRef.current = false;
         // Load proposal documents
         proposalDocService.list(id).then(setProposalDocs).catch(() => {});
+        // Check if a CRM project already exists for this requirement
+        crmApi.listProjects({ source_requirement: id })
+          .then((res) => {
+            const results = (res.data as any).results ?? res.data
+            if (Array.isArray(results) && results.length > 0) setExistingProjectId(results[0].id)
+          })
+          .catch(() => {});
       })
       .catch(() => setError("Failed to load requirement."))
       .finally(() => setLoadingRequirement(false));
@@ -769,14 +780,25 @@ export default function RequirementForm() {
               onChange={handleProposalUpload}
             />
             {client.phone_no && (
-              <button
-                type="button"
-                onClick={() => navigate(`/crm/projects/new?client=${client.phone_no}`)}
-                className="btn-secondary"
-                aria-label={`Start a new CRM project for this client`}
-              >
-                Start Project →
-              </button>
+              existingProjectId ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/crm/projects/${existingProjectId}`)}
+                  className="btn-secondary"
+                  aria-label="View the existing CRM project for this requirement"
+                >
+                  View Project →
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/crm/projects/new?client=${client.phone_no}&requirement=${requirement!.id}`)}
+                  className="btn-secondary"
+                  aria-label="Start a new CRM project for this requirement"
+                >
+                  Start Project →
+                </button>
+              )
             )}
             {proposalUploadError && (
               <p className="text-xs text-red-600 dark:text-red-400 w-full mt-1">{proposalUploadError}</p>

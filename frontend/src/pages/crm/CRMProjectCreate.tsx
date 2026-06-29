@@ -17,6 +17,7 @@ export default function CRMProjectCreate() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const prefilledClient = searchParams.get('client') ?? ''
+  const sourceRequirement = searchParams.get('requirement') ?? ''
 
   // IDs for accessibility
   const clientId = useId()
@@ -140,6 +141,7 @@ export default function CRMProjectCreate() {
       if (form.moq) payload.moq = Number(form.moq)
       if (form.sales_poc) payload.sales_poc = form.sales_poc
       if (form.formulation_poc) payload.formulation_poc = form.formulation_poc
+      if (sourceRequirement) payload.source_requirement = sourceRequirement
 
       const res = await crmApi.createProject(payload as any)
       navigate(`/crm/projects/${res.data.id}`)

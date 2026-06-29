@@ -394,6 +394,7 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
             'sales_poc', 'sales_poc_name', 'formulation_poc', 'formulation_poc_name',
             'sample_booked_date', 'start_date', 'created_at',
             'progress_percentage', 'has_delays', 'next_milestone',
+            'source_requirement',
         ]
         read_only_fields = ['id', 'project_no', 'start_date', 'created_at', 'phase', 'project_stage']
 
@@ -444,6 +445,7 @@ class CRMProjectWriteSerializer(serializers.ModelSerializer):
             'manufacturers', 'designers', 'packaging_vendors',
             'printers', 'batch_testing_vendors', 'derma_testing_vendors',
             'sales_poc', 'formulation_poc', 'sample_booked_date',
+            'source_requirement',
         ]
         read_only_fields = ['id', 'project_no']
 
