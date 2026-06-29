@@ -157,7 +157,23 @@ function SectionAccordion({
 
       {/* Section body */}
       {open && !section.is_locked && (
-        <div id={`section-${section.key}`} role="list">
+        <>
+          {section.key === 'packaging' && (
+            <div
+              className="mx-3 mt-2 mb-1 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-700/40 text-xs text-amber-800 dark:text-amber-300"
+              role="note"
+              aria-label="Packaging recommendations"
+            >
+              <p className="font-semibold text-amber-900 dark:text-amber-200 mb-1">
+                <span aria-hidden="true">💡 </span>Packaging tips
+              </p>
+              <ul className="space-y-0.5 list-disc list-inside">
+                <li><span className="font-medium">Serums</span> — prefer amber or black glass bottles</li>
+                <li><span className="font-medium">SPF</span> — tube or airless packaging; avoid transparent packaging</li>
+              </ul>
+            </div>
+          )}
+          <div id={`section-${section.key}`} role="list">
           {section.stages.map((stage) => (
             <div
               key={stage.key}
@@ -211,7 +227,8 @@ function SectionAccordion({
               </button>
             </div>
           )}
-        </div>
+          </div>
+          </>
       )}
     </div>
   )
