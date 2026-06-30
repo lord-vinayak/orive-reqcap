@@ -54,6 +54,7 @@ export function MilestoneTable({ milestones, projectId, onRefresh }: MilestoneTa
                         autoFocus
                       />
                       <button
+                        type="button"
                         onClick={() => handleSave(m.id)}
                         disabled={saving || !actualDate}
                         className="text-mustard hover:underline focus-visible:ring-1 focus-visible:ring-mustard"
@@ -62,6 +63,7 @@ export function MilestoneTable({ milestones, projectId, onRefresh }: MilestoneTa
                         Save
                       </button>
                       <button
+                        type="button"
                         onClick={() => { setEditingId(null); setActualDate('') }}
                         className="text-black/40 hover:text-black dark:hover:text-white focus-visible:ring-1 focus-visible:ring-mustard"
                         aria-label="Cancel editing"
@@ -71,6 +73,7 @@ export function MilestoneTable({ milestones, projectId, onRefresh }: MilestoneTa
                     </div>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => { setEditingId(m.id); setActualDate(m.actual_date ?? '') }}
                       className="text-black/60 dark:text-slate-400 hover:text-mustard focus-visible:ring-1 focus-visible:ring-mustard rounded"
                       aria-label={`${m.actual_date ? `Edit actual date: ${m.actual_date}` : `Set actual completion date for ${m.milestone_display}`}`}
