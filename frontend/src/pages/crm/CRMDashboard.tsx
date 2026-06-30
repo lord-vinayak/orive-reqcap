@@ -34,11 +34,12 @@ export default function CRMDashboard() {
   const [error, setError] = useState('')
   const [activeSegment, setActiveSegment] = useState<SegmentKey | null>(null)
   const [pipelineModal, setPipelineModal] = useState<{ filter: PipelineFilter; projects: CRMProjectList[]; loading: boolean } | null>(null)
-  const pipelineModalOpenerRef = useRef<HTMLButtonElement | null>(null)
+  const pipelineModalOpenerRef = useRef<HTMLElement | null>(null)
   const pipelineModalCloseRef = useRef<HTMLButtonElement>(null)
+  const isPipelineModalOpen = !!pipelineModal
 
   function openPipelineModal(filter: PipelineFilter) {
-    pipelineModalOpenerRef.current = document.activeElement as HTMLButtonElement
+    pipelineModalOpenerRef.current = document.activeElement as HTMLElement | null
     setPipelineModal({ filter, projects: [], loading: true })
     crmApi.getPipelineProjects(filter)
       .then(res => setPipelineModal(prev => prev ? { ...prev, projects: res.data, loading: false } : null))
@@ -59,7 +60,7 @@ export default function CRMDashboard() {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPipelineModal(null) }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [pipelineModal])
+  }, [isPipelineModalOpen])
 
   useEffect(() => {
     Promise.all([crmApi.getDashboardStats(), crmApi.getHealthTable()])
