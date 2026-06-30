@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 
 interface ModalProps {
   title: string
@@ -9,6 +9,7 @@ interface ModalProps {
 
 export function Modal({ title, onClose, children, size = 'md' }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
 
   // Focus first focusable element on mount
   useEffect(() => {
@@ -58,13 +59,13 @@ export function Modal({ title, onClose, children, size = 'md' }: ModalProps) {
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
+        aria-labelledby={titleId}
         className={`relative bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full ${widthClass} my-8`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 dark:border-white/10">
-          <h2 id="modal-title" className="text-lg font-semibold text-black dark:text-white">
+          <h2 id={titleId} className="text-lg font-semibold text-black dark:text-white">
             {title}
           </h2>
           <button

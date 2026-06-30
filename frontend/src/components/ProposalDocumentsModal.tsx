@@ -15,6 +15,28 @@ export default function ProposalDocumentsModal({ requirementId, onClose, onUploa
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const closeBtnRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Focus close button on open; focus trap + Escape
+  useEffect(() => {
+    closeBtnRef.current?.focus()
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key !== 'Tab') return
+      const el = dialogRef.current
+      if (!el) return
+      const focusable = Array.from(
+        el.querySelectorAll<HTMLElement>('button, a[href], input, [tabindex]:not([tabindex="-1"])')
+      ).filter(el => !el.hasAttribute('disabled'))
+      if (!focusable.length) return
+      const [first, last] = [focusable[0], focusable[focusable.length - 1]]
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
 
   const load = async () => {
     setLoading(true)
@@ -61,15 +83,16 @@ export default function ProposalDocumentsModal({ requirementId, onClose, onUploa
       aria-modal="true"
       aria-labelledby="proposal-docs-modal-title"
     >
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg mx-4 p-6">
+      <div ref={dialogRef} className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg mx-4 p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 id="proposal-docs-modal-title" className="text-lg font-semibold dark:text-slate-100">
             Proposal Documents
           </h2>
           <button
+            ref={closeBtnRef}
             onClick={onClose}
-            className="text-black/40 hover:text-black dark:text-slate-500 dark:hover:text-slate-200 text-xl leading-none"
-            aria-label="Close"
+            className="text-black/40 hover:text-black dark:text-slate-500 dark:hover:text-slate-200 text-xl leading-none focus-visible:ring-2 focus-visible:ring-mustard rounded p-1"
+            aria-label="Close dialog"
           >
             ×
           </button>

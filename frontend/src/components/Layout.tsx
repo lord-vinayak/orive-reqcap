@@ -138,7 +138,8 @@ export default function Layout({
 
       <main
         id="main-content"
-        className="max-w-7xl mx-auto px-6 py-8"
+        tabIndex={-1}
+        className="max-w-7xl mx-auto px-6 py-8 focus:outline-none"
       >
         {showBack && (
           <button
