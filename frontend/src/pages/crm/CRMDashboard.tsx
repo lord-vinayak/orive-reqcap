@@ -389,12 +389,14 @@ function PhasePieChart({ data, activeSegment, onSegmentClick }: {
               <span
                 role={isEmpty ? undefined : 'button'}
                 tabIndex={isEmpty ? -1 : 0}
-                aria-pressed={activeIndex >= 0 && data.findIndex(d => d.name === value) === activeIndex}
+                aria-pressed={isEmpty ? undefined : (activeIndex >= 0 && data.findIndex(d => d.name === value) === activeIndex)}
                 style={{
                   fontSize: '0.8125rem',
                   opacity: activeIndex >= 0 && data.findIndex(d => d.name === value) !== activeIndex ? 0.4 : 1,
                   cursor: isEmpty ? 'default' : 'pointer',
                 }}
+                onFocus={isEmpty ? undefined : (e) => { e.currentTarget.style.outline = '2px solid #ca9a3c'; e.currentTarget.style.outlineOffset = '2px' }}
+                onBlur={isEmpty ? undefined : (e) => { e.currentTarget.style.outline = ''; e.currentTarget.style.outlineOffset = '' }}
                 onClick={() => {
                   if (isEmpty) return
                   const seg = data.find(d => d.name === value)
