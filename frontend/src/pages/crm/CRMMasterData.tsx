@@ -6,7 +6,7 @@ import type { Manufacturer, Vendor, InternalTeamMember, VendorType, ProjectPayme
 import { useAuthStore } from '@/store/authStore'
 import { Modal } from '@/components/crm/Modal'
 
-type Tab = 'manufacturers' | 'packaging' | 'printing' | 'testing' | 'designer' | 'ecommerce' | 'logistics' | 'formulation' | 'sales' | 'ops'
+type Tab = 'manufacturers' | 'packaging' | 'printing' | 'testing' | 'designer' | 'ecommerce' | 'logistics' | 'formulation' | 'sales' | 'ops' | 'admin'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'manufacturers', label: 'Manufacturers' },
@@ -19,10 +19,11 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'formulation', label: 'Formulation Team' },
   { id: 'sales', label: 'Sales Team' },
   { id: 'ops', label: 'Ops Team' },
+  { id: 'admin', label: 'Admin' },
 ]
 
 const VENDOR_TABS: VendorType[] = ['packaging', 'printing', 'testing', 'designer', 'ecommerce', 'logistics']
-const INTERNAL_TABS = ['formulation', 'sales', 'ops'] as const
+const INTERNAL_TABS = ['formulation', 'sales', 'ops', 'admin'] as const
 
 export default function CRMMasterData() {
   const { user } = useAuthStore()
@@ -588,11 +589,11 @@ function VendorForm({
 
 // ── Internal Team Tab ─────────────────────────────────────────────────────────
 
-const EMPTY_MEMBER = (team: 'formulation' | 'sales' | 'ops'): Partial<InternalTeamMember> => ({
+const EMPTY_MEMBER = (team: 'formulation' | 'sales' | 'ops' | 'admin'): Partial<InternalTeamMember> => ({
   team, name: '', email: '', phone_no: '',
 })
 
-function InternalTeamTab({ team, isAdmin }: { team: 'formulation' | 'sales' | 'ops'; isAdmin: boolean }) {
+function InternalTeamTab({ team, isAdmin }: { team: 'formulation' | 'sales' | 'ops' | 'admin'; isAdmin: boolean }) {
   const [members, setMembers] = useState<InternalTeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -623,7 +624,7 @@ function InternalTeamTab({ team, isAdmin }: { team: 'formulation' | 'sales' | 'o
 
       {showModal && (
         <Modal
-          title={editing ? 'Edit Team Member' : `Add ${team === 'formulation' ? 'Formulation' : team === 'sales' ? 'Sales' : 'Ops'} Team Member`}
+          title={editing ? 'Edit Team Member' : `Add ${team === 'formulation' ? 'Formulation' : team === 'sales' ? 'Sales' : team === 'ops' ? 'Ops' : 'Admin'} Team Member`}
           onClose={() => { setShowModal(false); setEditing(null) }}
           size="sm"
         >
