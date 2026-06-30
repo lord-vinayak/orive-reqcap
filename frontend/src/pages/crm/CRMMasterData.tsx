@@ -118,6 +118,7 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
   const [items, setItems] = useState<Manufacturer[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [editing, setEditing] = useState<Manufacturer | null>(null)
   const [txnEntity, setTxnEntity] = useState<{ id: string; vendor_id: string; company_name: string; kind: 'manufacturer' | 'vendor' } | null>(null)
 
@@ -134,7 +135,14 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <button
+          className="btn-secondary text-sm"
+          onClick={() => setShowImport(true)}
+          aria-label="Import manufacturers from Excel"
+        >
+          ↑ Import Excel
+        </button>
         <button
           className="btn-primary text-sm"
           onClick={() => { setEditing(null); setShowModal(true) }}
@@ -143,6 +151,16 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
           + Add Manufacturer
         </button>
       </div>
+
+      {showImport && (
+        <BulkImportModal
+          entityLabel="Manufacturers"
+          onDownloadTemplate={crmApi.downloadManufacturerTemplate}
+          onUpload={crmApi.bulkUploadManufacturers}
+          onClose={() => setShowImport(false)}
+          onDone={load}
+        />
+      )}
 
       {showModal && (
         <Modal
@@ -360,6 +378,7 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
   const [items, setItems] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [editing, setEditing] = useState<Vendor | null>(null)
   const [txnEntity, setTxnEntity] = useState<{ id: string; vendor_id: string; company_name: string; kind: 'manufacturer' | 'vendor' } | null>(null)
 
@@ -376,7 +395,14 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <button
+          className="btn-secondary text-sm"
+          onClick={() => setShowImport(true)}
+          aria-label={`Import ${vendorType} vendors from Excel`}
+        >
+          ↑ Import Excel
+        </button>
         <button
           className="btn-primary text-sm"
           onClick={() => { setEditing(null); setShowModal(true) }}
@@ -385,6 +411,16 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
           + Add Vendor
         </button>
       </div>
+
+      {showImport && (
+        <BulkImportModal
+          entityLabel={`${vendorType.charAt(0).toUpperCase() + vendorType.slice(1)} Vendors`}
+          onDownloadTemplate={() => crmApi.downloadVendorTemplate(vendorType)}
+          onUpload={(file) => crmApi.bulkUploadVendors(vendorType, file)}
+          onClose={() => setShowImport(false)}
+          onDone={load}
+        />
+      )}
 
       {showModal && (
         <Modal
@@ -832,6 +868,159 @@ function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionM
           </div>
         </div>
       )}
+    </Modal>
+  )
+}
+
+// ── Bulk Import Modal ─────────────────────────────────────────────────────────
+
+interface BulkImportResult {
+  created: { row: number; company_name: string; vendor_id: string }[]
+  skipped: { row: number; company_name: string; reason: string }[]
+}
+
+interface BulkImportModalProps {
+  entityLabel: string
+  onDownloadTemplate: () => Promise<any>
+  onUpload: (file: File) => Promise<{ data: BulkImportResult }>
+  onClose: () => void
+  onDone: () => void
+}
+
+function BulkImportModal({ entityLabel, onDownloadTemplate, onUpload, onClose, onDone }: BulkImportModalProps) {
+  const [uploading, setUploading] = React.useState(false)
+  const [result, setResult] = React.useState<BulkImportResult | null>(null)
+  const [error, setError] = React.useState('')
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const handleDownload = async () => {
+    try {
+      const res = await onDownloadTemplate()
+      const url = URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${entityLabel.toLowerCase().replace(/\s+/g, '_')}_template.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError('Failed to download template.')
+    }
+  }
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setError(''); setResult(null); setUploading(true)
+    try {
+      const res = await onUpload(file)
+      setResult(res.data)
+      if (res.data.created.length > 0) onDone()
+    } catch (err: any) {
+      const msg = err.response?.data?.detail ?? 'Upload failed. Please check your file and try again.'
+      setError(msg)
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  return (
+    <Modal title={`Import ${entityLabel} from Excel`} onClose={onClose} size="lg">
+      <div className="space-y-5">
+        {/* Step 1 */}
+        <div className="flex items-start gap-3">
+          <span className="shrink-0 w-6 h-6 rounded-full bg-mustard text-black text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+          <div>
+            <p className="text-sm font-medium text-black dark:text-white">Download the template</p>
+            <p className="text-xs text-black/60 dark:text-slate-400 mb-2">Fill in your data starting from row 4. Row 1 = headers, row 2 = hints, row 3 = example.</p>
+            <button onClick={handleDownload} className="btn-secondary text-sm">
+              ↓ Download Template
+            </button>
+          </div>
+        </div>
+
+        {/* Step 2 */}
+        <div className="flex items-start gap-3">
+          <span className="shrink-0 w-6 h-6 rounded-full bg-mustard text-black text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+          <div className="w-full">
+            <p className="text-sm font-medium text-black dark:text-white">Upload your filled file</p>
+            <p className="text-xs text-black/60 dark:text-slate-400 mb-2">Only <code>.xlsx</code> files. Duplicates (same company name) will be skipped.</p>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="btn-primary text-sm"
+              aria-busy={uploading}
+            >
+              {uploading ? 'Uploading…' : '↑ Choose File & Upload'}
+            </button>
+            <input ref={fileInputRef} type="file" accept=".xlsx" className="hidden" onChange={handleFile} />
+          </div>
+        </div>
+
+        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+        {/* Results */}
+        {result && (
+          <div className="space-y-3">
+            <div className="flex gap-4">
+              <div className="flex-1 rounded border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-4 py-3">
+                <p className="text-xs text-green-700 dark:text-green-400 font-medium">Created</p>
+                <p className="text-2xl font-bold text-green-700 dark:text-green-300">{result.created.length}</p>
+              </div>
+              <div className="flex-1 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
+                <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Skipped</p>
+                <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{result.skipped.length}</p>
+              </div>
+            </div>
+
+            {result.created.length > 0 && (
+              <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10 max-h-48">
+                <table className="w-full text-xs" aria-label="Created entries">
+                  <thead className="bg-black/5 dark:bg-white/5 sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold text-black dark:text-white">Row</th>
+                      <th className="px-3 py-2 text-left font-semibold text-black dark:text-white">Company</th>
+                      <th className="px-3 py-2 text-left font-semibold text-black dark:text-white">ID Assigned</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                    {result.created.map((r) => (
+                      <tr key={r.row} className="text-green-700 dark:text-green-400">
+                        <td className="px-3 py-1.5">{r.row}</td>
+                        <td className="px-3 py-1.5">{r.company_name}</td>
+                        <td className="px-3 py-1.5 font-mono">{r.vendor_id}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {result.skipped.length > 0 && (
+              <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10 max-h-48">
+                <table className="w-full text-xs" aria-label="Skipped entries">
+                  <thead className="bg-black/5 dark:bg-white/5 sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold text-black dark:text-white">Row</th>
+                      <th className="px-3 py-2 text-left font-semibold text-black dark:text-white">Company</th>
+                      <th className="px-3 py-2 text-left font-semibold text-black dark:text-white">Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                    {result.skipped.map((r) => (
+                      <tr key={r.row} className="text-amber-700 dark:text-amber-400">
+                        <td className="px-3 py-1.5">{r.row}</td>
+                        <td className="px-3 py-1.5">{r.company_name}</td>
+                        <td className="px-3 py-1.5">{r.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </Modal>
   )
 }

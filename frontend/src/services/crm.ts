@@ -222,6 +222,17 @@ export const crmApi = {
   allVendorsForPayment: () =>
     api.get<PaymentVendorOption[]>('/crm/manufacturers/all-for-payment/'),
 
+  downloadManufacturerTemplate: () =>
+    api.get('/crm/manufacturers/upload-template/', { responseType: 'blob' }),
+
+  bulkUploadManufacturers: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post<{ created: { row: number; company_name: string; vendor_id: string }[]; skipped: { row: number; company_name: string; reason: string }[] }>(
+      '/crm/manufacturers/bulk-upload/', fd, { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+  },
+
   // Vendors
   listVendors: (params?: Record<string, string>) =>
     api.get<PaginatedResponse<Vendor>>('/crm/vendors/', { params }),
@@ -237,6 +248,17 @@ export const crmApi = {
 
   vendorDropdown: (vendorType: string) =>
     api.get<DropdownOption[]>('/crm/vendors/dropdown/', { params: { vendor_type: vendorType } }),
+
+  downloadVendorTemplate: (vendorType: string) =>
+    api.get(`/crm/vendors/upload-template/`, { params: { vendor_type: vendorType }, responseType: 'blob' }),
+
+  bulkUploadVendors: (vendorType: string, file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post<{ created: { row: number; company_name: string; vendor_id: string }[]; skipped: { row: number; company_name: string; reason: string }[] }>(
+      '/crm/vendors/bulk-upload/', fd, { params: { vendor_type: vendorType }, headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+  },
 
   // Internal Team
   listTeamMembers: (team?: 'formulation' | 'sales' | 'ops') =>
