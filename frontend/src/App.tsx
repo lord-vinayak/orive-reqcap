@@ -28,6 +28,8 @@ import TaskTracker from '@/pages/crm/TaskTracker'
 export default function App() {
   return (
     <>
+      {/* Stable live region — announced by Layout on every route change */}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only" id="page-announcer" />
       <ScrollToTop />
       <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />

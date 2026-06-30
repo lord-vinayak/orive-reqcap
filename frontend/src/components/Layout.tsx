@@ -49,6 +49,8 @@ export default function Layout({
 
   useEffect(() => {
     document.title = title ? `${title} – ${BASE_TITLE}` : BASE_TITLE;
+    const announcer = document.getElementById('page-announcer');
+    if (announcer) announcer.textContent = title ? `Navigated to ${title}` : 'Page loaded';
     return () => {
       document.title = BASE_TITLE;
     };
