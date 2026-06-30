@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import Layout from '@/components/Layout'
@@ -34,13 +34,32 @@ export default function CRMDashboard() {
   const [error, setError] = useState('')
   const [activeSegment, setActiveSegment] = useState<SegmentKey | null>(null)
   const [pipelineModal, setPipelineModal] = useState<{ filter: PipelineFilter; projects: CRMProjectList[]; loading: boolean } | null>(null)
+  const pipelineModalOpenerRef = useRef<HTMLButtonElement | null>(null)
+  const pipelineModalCloseRef = useRef<HTMLButtonElement>(null)
 
   function openPipelineModal(filter: PipelineFilter) {
+    pipelineModalOpenerRef.current = document.activeElement as HTMLButtonElement
     setPipelineModal({ filter, projects: [], loading: true })
     crmApi.getPipelineProjects(filter)
       .then(res => setPipelineModal(prev => prev ? { ...prev, projects: res.data, loading: false } : null))
       .catch(() => setPipelineModal(prev => prev ? { ...prev, loading: false } : null))
   }
+
+  useEffect(() => {
+    if (pipelineModal) {
+      pipelineModalCloseRef.current?.focus()
+    } else {
+      pipelineModalOpenerRef.current?.focus()
+      pipelineModalOpenerRef.current = null
+    }
+  }, [pipelineModal])
+
+  useEffect(() => {
+    if (!pipelineModal) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPipelineModal(null) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [pipelineModal])
 
   useEffect(() => {
     Promise.all([crmApi.getDashboardStats(), crmApi.getHealthTable()])
@@ -225,12 +244,29 @@ export default function CRMDashboard() {
           <div
             className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col"
             onClick={e => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key !== 'Tab') return
+              const focusable = Array.from(
+                e.currentTarget.querySelectorAll<HTMLElement>(
+                  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                )
+              ).filter(el => !el.hasAttribute('disabled'))
+              if (focusable.length === 0) return
+              const first = focusable[0]
+              const last = focusable[focusable.length - 1]
+              if (e.shiftKey) {
+                if (document.activeElement === first) { e.preventDefault(); last.focus() }
+              } else {
+                if (document.activeElement === last) { e.preventDefault(); first.focus() }
+              }
+            }}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-black/10 dark:border-white/10">
               <h2 id="pipeline-modal-title" className="text-base font-semibold text-black dark:text-white">
                 {PIPELINE_MODAL_TITLE[pipelineModal.filter]}
               </h2>
               <button
+                ref={pipelineModalCloseRef}
                 type="button"
                 onClick={() => setPipelineModal(null)}
                 className="text-black/40 dark:text-slate-400 hover:text-black dark:hover:text-white text-lg leading-none focus-visible:ring-2 focus-visible:ring-mustard rounded"
