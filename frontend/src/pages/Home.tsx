@@ -89,11 +89,9 @@ export default function Home() {
           <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center shrink-0 group-hover:bg-mustard transition-colors" aria-hidden="true">
             <span className="text-2xl text-mustard-700"><ClipboardList /></span>
           </div>
-          <div aria-hidden="true">
-            <div className="text-lg font-semibold text-black dark:text-slate-100 mb-0.5">Task Tracker</div>
-            <div className="text-sm text-black/60 dark:text-slate-300">
-              View and update all assigned stage tasks in real-time.
-            </div>
+          <div className="text-lg font-semibold text-black dark:text-slate-100 mb-0.5" aria-hidden="true">Task Tracker</div>
+          <div className="text-sm text-black/60 dark:text-slate-300" aria-hidden="true">
+            View and update all assigned stage tasks in real-time.
           </div>
         </div>
       </div>
