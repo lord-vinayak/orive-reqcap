@@ -387,6 +387,9 @@ function PhasePieChart({ data, activeSegment, onSegmentClick }: {
             iconSize={10}
             formatter={(value, entry: any) => (
               <span
+                role={isEmpty ? undefined : 'button'}
+                tabIndex={isEmpty ? -1 : 0}
+                aria-pressed={activeIndex >= 0 && data.findIndex(d => d.name === value) === activeIndex}
                 style={{
                   fontSize: '0.8125rem',
                   opacity: activeIndex >= 0 && data.findIndex(d => d.name === value) !== activeIndex ? 0.4 : 1,
@@ -396,6 +399,13 @@ function PhasePieChart({ data, activeSegment, onSegmentClick }: {
                   if (isEmpty) return
                   const seg = data.find(d => d.name === value)
                   if (seg) onSegmentClick(seg.key)
+                }}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && !isEmpty) {
+                    e.preventDefault()
+                    const seg = data.find(d => d.name === value)
+                    if (seg) onSegmentClick(seg.key)
+                  }
                 }}
               >
                 {value}
