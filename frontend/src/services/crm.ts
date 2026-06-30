@@ -261,7 +261,7 @@ export const crmApi = {
   },
 
   // Internal Team
-  listTeamMembers: (team?: 'formulation' | 'sales' | 'ops') =>
+  listTeamMembers: (team?: 'formulation' | 'sales' | 'ops' | 'admin') =>
     api.get<PaginatedResponse<InternalTeamMember>>('/crm/team-members/', {
       params: team ? { team } : {},
     }),
