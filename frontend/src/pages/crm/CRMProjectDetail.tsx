@@ -11,6 +11,7 @@ import { SamplePhaseView } from '@/components/crm/SamplePhaseView'
 import { OrderPhaseView } from '@/components/crm/OrderPhaseView'
 import { useTaskSocket } from '@/hooks/useTaskSocket'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
+import { SendEmailModal } from '@/components/crm/SendEmailModal'
 import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL } from '@/constants/clientStatus'
 import type { LeadStatus } from '@/constants/clientStatus'
 
@@ -72,6 +73,7 @@ export default function CRMProjectDetail() {
   const [actionSaving, setActionSaving] = useState(false)
   const [teamMembers, setTeamMembers] = useState<InternalTeamMember[]>([])
   const [uploadError, setUploadError] = useState('')
+  const [emailModalOpen, setEmailModalOpen] = useState(false)
   const pendingStages = useRef(0)
 
   const fetchProject = () => {
@@ -258,6 +260,17 @@ export default function CRMProjectDetail() {
             </div>
           </div>
           <div className="flex items-start gap-3">
+            <button
+              type="button"
+              onClick={() => setEmailModalOpen(true)}
+              className="btn-secondary text-sm flex items-center gap-1.5"
+              aria-haspopup="dialog"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+              </svg>
+              Send Email
+            </button>
             <button
               type="button"
               onClick={() => setPaymentPanelOpen(true)}
@@ -535,6 +548,15 @@ export default function CRMProjectDetail() {
           projectClientName={project.client_name}
           onClose={() => setPaymentPanelOpen(false)}
           onChanged={fetchPayments}
+        />
+      )}
+
+      {emailModalOpen && (
+        <SendEmailModal
+          clientPhone={project.client_phone}
+          clientName={project.client_name}
+          onClose={() => setEmailModalOpen(false)}
+          onDone={() => setEmailModalOpen(false)}
         />
       )}
     </Layout>

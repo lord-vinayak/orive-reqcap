@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from .models import Client
 from .serializers import ClientSerializer
 from . import welcome_email_template as welcome_tpl
+from . import reminder_email_template as reminder_tpl
 
 # ---------------------------------------------------------------------------
 # Shared status helpers
@@ -329,6 +330,9 @@ class ClientViewSet(viewsets.ModelViewSet):
         if not isinstance(phone_nos, list) or not phone_nos:
             return Response({'detail': 'phone_nos must be a non-empty list.'}, status=400)
 
+        email_type = request.data.get('email_type', 'welcome')
+        tpl = reminder_tpl if email_type == 'reminder' else welcome_tpl
+
         sent = []
         skipped = []
 
@@ -351,9 +355,9 @@ class ClientViewSet(viewsets.ModelViewSet):
                 'sent_by_name': request.user.name or request.user.email,
             }
 
-            subject = welcome_tpl.SUBJECT
-            html_body = welcome_tpl.HTML_BODY.format(**ctx)
-            text_body = welcome_tpl.TEXT_BODY.format(**ctx)
+            subject = tpl.SUBJECT
+            html_body = tpl.HTML_BODY.format(**ctx)
+            text_body = tpl.TEXT_BODY.format(**ctx)
 
             try:
                 msg = EmailMultiAlternatives(

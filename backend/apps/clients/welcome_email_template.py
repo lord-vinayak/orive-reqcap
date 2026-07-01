@@ -8,7 +8,7 @@
 #   {sent_by_name}  — name of the person sending the email
 # ============================================================
 
-SUBJECT = "Welcome to Skinovation Sciences"
+SUBJECT = "Introduction to Skinovation Sciences - Idea-to-Shelf Skincare Brand Launch Support"
 
 # ── HTML version (shown in modern email clients) ─────────────────────────────
 HTML_BODY = """\

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { clientService } from '@/services'
 import type { Client } from '@/types'
 import type { WelcomeEmailResult } from '@/services'
+import { EMAIL_TEMPLATES, type EmailTemplateKey } from '@/constants/emailTemplates'
 
 interface Row {
   phone_no: string
@@ -21,6 +22,7 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const firstFocusableRef = useRef<HTMLButtonElement>(null)
 
+  const [emailType, setEmailType] = useState<EmailTemplateKey>('welcome')
   const [rows, setRows] = useState<Row[]>(() =>
     clients.map((c) => ({
       phone_no: c.phone_no,
@@ -80,7 +82,7 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
         return
       }
 
-      const result = await clientService.sendWelcomeEmail(phoneNosWithEmail)
+      const result = await clientService.sendWelcomeEmail(phoneNosWithEmail, emailType)
       onDone(result)
     } catch {
       setError('Failed to send emails. Please try again.')
@@ -107,7 +109,7 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 dark:border-white/10 shrink-0">
           <h2 id={titleId} className="text-lg font-semibold text-black dark:text-white">
-            Send Welcome Email
+            {emailType === 'reminder' ? 'Send Reminder Email' : 'Send Welcome Email'}
           </h2>
           <button
             ref={firstFocusableRef}
@@ -121,6 +123,26 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
 
         {/* Body */}
         <div className="px-6 py-4 overflow-y-auto flex-1">
+          {/* Email type choice */}
+          <fieldset className="mb-4">
+            <legend className="text-sm font-medium text-black dark:text-white mb-2">Email type</legend>
+            <div className="flex gap-6">
+              {EMAIL_TEMPLATES.map((tpl) => (
+                <label key={tpl.value} className="flex items-center gap-2 cursor-pointer text-sm text-black dark:text-white">
+                  <input
+                    type="radio"
+                    name="email-type"
+                    value={tpl.value}
+                    checked={emailType === tpl.value}
+                    onChange={() => setEmailType(tpl.value)}
+                    className="accent-mustard"
+                  />
+                  {tpl.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           <p className="text-sm text-black/70 dark:text-slate-300 mb-1">
             Review and confirm email addresses for the <strong>{rows.length}</strong> selected client{rows.length !== 1 ? 's' : ''}.
           </p>

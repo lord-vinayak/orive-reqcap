@@ -57,9 +57,9 @@ export const clientService = {
     })).data
   },
 
-  /** Send a welcome email to the given clients (by phone_no). */
-  sendWelcomeEmail: async (phoneNos: string[]): Promise<WelcomeEmailResult> =>
-    (await api.post<WelcomeEmailResult>('/clients/send-welcome-email/', { phone_nos: phoneNos })).data,
+  /** Send a welcome or reminder email to the given clients (by phone_no). */
+  sendWelcomeEmail: async (phoneNos: string[], emailType: 'welcome' | 'reminder' = 'welcome'): Promise<WelcomeEmailResult> =>
+    (await api.post<WelcomeEmailResult>('/clients/send-welcome-email/', { phone_nos: phoneNos, email_type: emailType })).data,
 
   /** Bulk-update lead_status (and optionally lead_sub_status) for the given clients. */
   bulkUpdateLeadStatus: async (phoneNos: string[], leadStatus: string, leadSubStatus = ''): Promise<{ updated: number }> =>
