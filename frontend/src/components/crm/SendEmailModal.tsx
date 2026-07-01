@@ -1,25 +1,29 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { clientService } from '@/services'
 import type { WelcomeEmailResult } from '@/services'
-import { PROJECT_EMAIL_TEMPLATES } from '@/constants/emailTemplates'
+import { PROJECT_EMAIL_TEMPLATES, TEMPLATE_FIELDS, type TemplateField } from '@/constants/emailTemplates'
 
 interface Props {
   clientPhone: string
   clientName: string
+  projectId: string
   onClose: () => void
   onDone: (result: WelcomeEmailResult) => void
 }
 
 type Step = 'template' | 'confirm'
 
-export function SendEmailModal({ clientPhone, clientName, onClose, onDone }: Props) {
+export function SendEmailModal({ clientPhone, clientName, projectId, onClose, onDone }: Props) {
   const titleId = useId()
+  const fileInputId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const firstFocusableRef = useRef<HTMLButtonElement>(null)
 
   const [step, setStep] = useState<Step>('template')
   const [emailType, setEmailType] = useState<string>(PROJECT_EMAIL_TEMPLATES[0]?.value ?? '')
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [email, setEmail] = useState('')
+  const [files, setFiles] = useState<File[]>([])
   const [fetchingEmail, setFetchingEmail] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -47,9 +51,17 @@ export function SendEmailModal({ clientPhone, clientName, onClose, onDone }: Pro
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
+  const activeFields: TemplateField[] = TEMPLATE_FIELDS[emailType] ?? []
+
   const goToConfirm = async () => {
-    setFetchingEmail(true)
+    // Validate required template fields
+    const missing = activeFields.filter((f) => !fieldValues[f.key]?.trim())
+    if (missing.length > 0) {
+      setError(`Please fill in: ${missing.map((f) => f.label).join(', ')}`)
+      return
+    }
     setError('')
+    setFetchingEmail(true)
     try {
       const client = await clientService.get(clientPhone)
       setEmail(client.email ?? '')
@@ -61,6 +73,16 @@ export function SendEmailModal({ clientPhone, clientName, onClose, onDone }: Pro
     setStep('confirm')
   }
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? [])
+    setFiles((prev) => [...prev, ...picked])
+    e.target.value = ''
+  }
+
+  const removeFile = (idx: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== idx))
+  }
+
   const handleSend = async () => {
     if (!email.trim()) {
       setError('Please enter an email address.')
@@ -70,7 +92,7 @@ export function SendEmailModal({ clientPhone, clientName, onClose, onDone }: Pro
     setError('')
     try {
       await clientService.patch(clientPhone, { email: email.trim() })
-      const result = await clientService.sendWelcomeEmail([clientPhone], emailType as 'welcome' | 'reminder')
+      const result = await clientService.sendProjectEmail(clientPhone, emailType, projectId, files, fieldValues)
       onDone(result)
     } catch {
       setError('Failed to send email. Please try again.')
@@ -110,45 +132,85 @@ export function SendEmailModal({ clientPhone, clientName, onClose, onDone }: Pro
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-5">
+        <div className="px-6 py-5 space-y-5 overflow-y-auto max-h-[70vh]">
           <div className="text-sm text-black/70 dark:text-slate-300">
             To: <span className="font-medium text-black dark:text-white">{clientName}</span>
             <span className="ml-2 text-xs font-mono text-black/40 dark:text-slate-500">{clientPhone}</span>
           </div>
 
           {step === 'template' ? (
-            <fieldset>
-              <legend className="text-sm font-medium text-black dark:text-white mb-3">Choose email template</legend>
-              {PROJECT_EMAIL_TEMPLATES.length === 0 ? (
-                <p className="text-sm text-black/50 dark:text-slate-400 italic">No templates available yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {PROJECT_EMAIL_TEMPLATES.map((tpl) => (
-                    <label
-                      key={tpl.value}
-                      className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                        border-black/10 dark:border-white/10 hover:bg-black/3 dark:hover:bg-white/5
-                        has-[:checked]:border-mustard has-[:checked]:bg-mustard/5"
-                    >
-                      <input
-                        type="radio"
-                        name="email-template"
-                        value={tpl.value}
-                        checked={emailType === tpl.value}
-                        onChange={() => setEmailType(tpl.value)}
-                        className="accent-mustard"
-                      />
-                      <span className="text-sm text-black dark:text-white">{tpl.label}</span>
-                    </label>
+            <div className="space-y-5">
+              <fieldset>
+                <legend className="text-sm font-medium text-black dark:text-white mb-3">Choose email template</legend>
+                {PROJECT_EMAIL_TEMPLATES.length === 0 ? (
+                  <p className="text-sm text-black/50 dark:text-slate-400 italic">No templates available yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {PROJECT_EMAIL_TEMPLATES.map((tpl) => (
+                      <label
+                        key={tpl.value}
+                        className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors
+                          border-black/10 dark:border-white/10 hover:bg-black/3 dark:hover:bg-white/5
+                          has-[:checked]:border-mustard has-[:checked]:bg-mustard/5"
+                      >
+                        <input
+                          type="radio"
+                          name="email-template"
+                          value={tpl.value}
+                          checked={emailType === tpl.value}
+                          onChange={() => { setEmailType(tpl.value); setFieldValues({}) }}
+                          className="accent-mustard"
+                        />
+                        <span className="text-sm text-black dark:text-white">{tpl.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </fieldset>
+
+              {/* Dynamic fields for the selected template */}
+              {activeFields.length > 0 && (
+                <div className="space-y-3 pt-1 border-t border-black/10 dark:border-white/10">
+                  <p className="text-sm font-medium text-black dark:text-white">Email details</p>
+                  {activeFields.map((field) => (
+                    <div key={field.key}>
+                      <label className="block text-xs font-medium text-black/70 dark:text-slate-300 mb-1">
+                        {field.label}
+                      </label>
+                      {field.type === 'select' ? (
+                        <select
+                          value={fieldValues[field.key] ?? ''}
+                          onChange={(e) => setFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                          className="w-full text-sm border border-black/20 dark:border-white/20 rounded px-3 py-2 bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+                          aria-label={field.label}
+                        >
+                          <option value="">Select…</option>
+                          {field.options?.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type={field.type}
+                          value={fieldValues[field.key] ?? ''}
+                          onChange={(e) => setFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                          placeholder={field.placeholder}
+                          aria-label={field.label}
+                          className="w-full text-sm border border-black/20 dark:border-white/20 rounded px-3 py-2 bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+                        />
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
-            </fieldset>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="text-sm text-black/60 dark:text-slate-400">
                 Template: <span className="font-medium text-black dark:text-white">{templateLabel}</span>
               </div>
+
+              {/* Email address */}
               <div>
                 <label className="block text-sm font-medium text-black dark:text-white mb-1">
                   Email address
@@ -171,11 +233,50 @@ export function SendEmailModal({ clientPhone, clientName, onClose, onDone }: Pro
                       }`}
                     />
                     {!email.trim() && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                        Email address required to send
-                      </p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Required</p>
                     )}
                   </>
+                )}
+              </div>
+
+              {/* File attachments */}
+              <div>
+                <label htmlFor={fileInputId} className="block text-sm font-medium text-black dark:text-white mb-1">
+                  Attachments <span className="font-normal text-black/50 dark:text-slate-400">(optional — saved to Google Drive)</span>
+                </label>
+                <label
+                  htmlFor={fileInputId}
+                  className="flex items-center gap-2 text-sm px-3 py-2 border border-dashed border-black/20 dark:border-white/20 rounded cursor-pointer hover:border-mustard hover:text-mustard transition-colors text-black/60 dark:text-slate-400"
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                  </svg>
+                  Add files
+                </label>
+                <input
+                  id={fileInputId}
+                  type="file"
+                  multiple
+                  onChange={handleFileChange}
+                  className="sr-only"
+                  aria-label="Attach files to email"
+                />
+                {files.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {files.map((f, i) => (
+                      <li key={i} className="flex items-center justify-between text-xs bg-black/5 dark:bg-white/5 rounded px-2 py-1">
+                        <span className="truncate text-black dark:text-white">{f.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(i)}
+                          aria-label={`Remove ${f.name}`}
+                          className="ml-2 shrink-0 text-black/40 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400"
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </div>

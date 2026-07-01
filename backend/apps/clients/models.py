@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.conf import settings
 
@@ -130,3 +131,31 @@ class Client(models.Model):
 
     def __str__(self):
         return f'{self.name} ({self.phone_no})'
+
+
+class EmailLog(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    client = models.ForeignKey(
+        Client, on_delete=models.CASCADE, related_name='email_logs', to_field='phone_no',
+    )
+    project = models.ForeignKey(
+        'crm_projects.CRMProject', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='email_logs',
+    )
+    email_type = models.CharField(max_length=50)
+    email_type_label = models.CharField(max_length=100)
+    recipient_email = models.EmailField()
+    subject = models.CharField(max_length=300)
+    sent_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    sent_by_name = models.CharField(max_length=150, blank=True)
+    sent_at = models.DateTimeField(auto_now_add=True)
+    # [{filename, drive_url, drive_file_id}]
+    attachments = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ['-sent_at']
+
+    def __str__(self):
+        return f'{self.email_type} → {self.recipient_email} at {self.sent_at:%Y-%m-%d}'

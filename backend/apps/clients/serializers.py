@@ -1,6 +1,6 @@
 import re
 from rest_framework import serializers
-from .models import Client
+from .models import Client, EmailLog
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -33,3 +33,15 @@ class ClientSerializer(serializers.ModelSerializer):
                     'lead_sub_status': f'"{lead_sub_status}" is not a valid sub-status for "{lead_status}".'
                 })
         return attrs
+
+
+class EmailLogSerializer(serializers.ModelSerializer):
+    project_no = serializers.CharField(source='project.project_no', read_only=True, default=None)
+
+    class Meta:
+        model = EmailLog
+        fields = [
+            'id', 'email_type', 'email_type_label', 'recipient_email',
+            'subject', 'sent_by_name', 'sent_at', 'attachments',
+            'project', 'project_no',
+        ]

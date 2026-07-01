@@ -1,4 +1,5 @@
 import io
+import json
 import re
 
 from django.utils import timezone
@@ -9,13 +10,33 @@ from django.db.models import Q
 from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Client
-from .serializers import ClientSerializer
+from .models import Client, EmailLog
+from .serializers import ClientSerializer, EmailLogSerializer
 from . import welcome_email_template as welcome_tpl
 from . import reminder_email_template as reminder_tpl
+from . import sample_initiation_email_template as sample_initiation_tpl
+from . import sample_payment_confirmation_email_template as sample_payment_tpl
+from . import sample_approval_email_template as sample_approval_tpl
+
+_TEMPLATE_MAP = {
+    'welcome': welcome_tpl,
+    'reminder': reminder_tpl,
+    'sample_initiation': sample_initiation_tpl,
+    'sample_payment_confirmation': sample_payment_tpl,
+    'sample_approval': sample_approval_tpl,
+}
+
+_TEMPLATE_LABELS = {
+    'welcome': 'Welcome Email',
+    'reminder': 'Reminder Email',
+    'sample_initiation': 'Sample Initiation Email',
+    'sample_payment_confirmation': 'Sample Payment Confirmation Email',
+    'sample_approval': 'Sample Approval Email',
+}
 
 # ---------------------------------------------------------------------------
 # Shared status helpers
@@ -324,17 +345,72 @@ class ClientViewSet(viewsets.ModelViewSet):
     # ------------------------------------------------------------------
     # POST /api/clients/send-welcome-email/
     # ------------------------------------------------------------------
-    @action(detail=False, methods=['post'], url_path='send-welcome-email')
+    @action(detail=False, methods=['post'], url_path='send-welcome-email',
+            parser_classes=[MultiPartParser, FormParser, JSONParser])
     def send_welcome_email(self, request):
-        phone_nos = request.data.get('phone_nos', [])
+        # Support both JSON (bulk, no files) and multipart (project email with files)
+        if hasattr(request.data, 'getlist'):
+            raw = request.data.get('phone_nos', '[]')
+            phone_nos = json.loads(raw) if isinstance(raw, str) else raw
+            email_type = request.data.get('email_type', 'welcome')
+            project_id = request.data.get('project_id') or None
+            uploaded_files = request.FILES.getlist('files')
+            raw_ctx = request.data.get('extra_ctx', '{}')
+            extra_ctx = json.loads(raw_ctx) if isinstance(raw_ctx, str) else {}
+        else:
+            phone_nos = request.data.get('phone_nos', [])
+            email_type = request.data.get('email_type', 'welcome')
+            project_id = request.data.get('project_id') or None
+            uploaded_files = []
+            extra_ctx = request.data.get('extra_ctx', {})
+
         if not isinstance(phone_nos, list) or not phone_nos:
             return Response({'detail': 'phone_nos must be a non-empty list.'}, status=400)
 
-        email_type = request.data.get('email_type', 'welcome')
-        tpl = reminder_tpl if email_type == 'reminder' else welcome_tpl
+        tpl = _TEMPLATE_MAP.get(email_type, welcome_tpl)
+
+        # Upload attachments to Google Drive once (shared across recipients)
+        drive_attachments = []
+        if uploaded_files:
+            from apps.files.drive_service import upload_file as drive_upload
+            first_phone = str(phone_nos[0]).strip()
+            try:
+                first_client = Client.objects.get(phone_no=first_phone)
+                client_name_for_drive = first_client.name
+            except Client.DoesNotExist:
+                client_name_for_drive = 'unknown'
+            for f in uploaded_files:
+                file_bytes = f.read()
+                try:
+                    result = drive_upload(
+                        file_bytes=file_bytes,
+                        filename=f.name,
+                        mimetype=f.content_type or 'application/octet-stream',
+                        client_name=client_name_for_drive,
+                        subfolder='Emails',
+                    )
+                    drive_attachments.append({
+                        'filename': f.name,
+                        'drive_url': result['drive_url'],
+                        'drive_file_id': result['drive_file_id'],
+                        'content_type': f.content_type or 'application/octet-stream',
+                        'bytes': file_bytes,
+                    })
+                except Exception as exc:
+                    return Response({'detail': f'Drive upload failed for {f.name}: {exc}'}, status=502)
+
+        # Resolve project FK once
+        project_obj = None
+        if project_id:
+            from apps.crm_projects.models import CRMProject
+            try:
+                project_obj = CRMProject.objects.get(pk=project_id)
+            except CRMProject.DoesNotExist:
+                pass
 
         sent = []
         skipped = []
+        sent_by_name = getattr(request.user, 'name', '') or request.user.email
 
         for phone in phone_nos:
             try:
@@ -347,31 +423,54 @@ class ClientViewSet(viewsets.ModelViewSet):
                 skipped.append({'phone_no': phone, 'reason': 'No email address on file'})
                 continue
 
-            company_line = f' and {client.company_name}' if client.company_name else ''
             ctx = {
                 'client_name': client.name,
                 'company_name': client.company_name or '',
-                'company_line': company_line,
-                'sent_by_name': request.user.name or request.user.email,
+                'company_line': f' and {client.company_name}' if client.company_name else '',
+                'sent_by_name': sent_by_name,
+                **extra_ctx,
             }
 
-            subject = tpl.SUBJECT
+            subject = tpl.SUBJECT.format(**ctx)
             html_body = tpl.HTML_BODY.format(**ctx)
             text_body = tpl.TEXT_BODY.format(**ctx)
 
             try:
-                msg = EmailMultiAlternatives(
-                    subject=subject,
-                    body=text_body,
-                    to=[client.email],
-                )
+                msg = EmailMultiAlternatives(subject=subject, body=text_body, to=[client.email])
                 msg.attach_alternative(html_body, 'text/html')
+                for att in drive_attachments:
+                    msg.attach(att['filename'], att['bytes'], att['content_type'])
                 msg.send()
+
+                EmailLog.objects.create(
+                    client=client,
+                    project=project_obj,
+                    email_type=email_type,
+                    email_type_label=_TEMPLATE_LABELS.get(email_type, email_type),
+                    recipient_email=client.email,
+                    subject=subject,
+                    sent_by=request.user,
+                    sent_by_name=sent_by_name,
+                    attachments=[
+                        {'filename': a['filename'], 'drive_url': a['drive_url'], 'drive_file_id': a['drive_file_id']}
+                        for a in drive_attachments
+                    ],
+                )
                 sent.append(phone)
             except Exception as exc:
                 skipped.append({'phone_no': phone, 'reason': f'Send failed: {exc}'})
 
         return Response({'sent': sent, 'skipped': skipped}, status=200)
+
+    @action(detail=True, methods=['get'], url_path='email-history')
+    def email_history(self, request, phone_no=None):
+        logs = (
+            EmailLog.objects
+            .filter(client_id=phone_no)
+            .select_related('project', 'sent_by')
+            .order_by('-sent_at')
+        )
+        return Response(EmailLogSerializer(logs, many=True).data)
 
     # ------------------------------------------------------------------
     # PATCH /api/clients/bulk-update-status/

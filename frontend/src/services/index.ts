@@ -38,6 +38,25 @@ export interface WelcomeEmailResult {
   skipped: { phone_no: string; reason: string }[]
 }
 
+export interface EmailLogAttachment {
+  filename: string
+  drive_url: string
+  drive_file_id: string
+}
+
+export interface EmailLog {
+  id: string
+  email_type: string
+  email_type_label: string
+  recipient_email: string
+  subject: string
+  sent_by_name: string
+  sent_at: string
+  attachments: EmailLogAttachment[]
+  project: string | null
+  project_no: string | null
+}
+
 export const clientService = {
   list: async (params: { q?: string; poc?: string; lead_status?: string; created_after?: string; created_before?: string; page_size?: number; page?: number } = {}) =>
     (await api.get<{ count: number; next: string | null; previous: string | null; results: Client[] } | Client[]>('/clients/', { params })).data,
@@ -57,9 +76,32 @@ export const clientService = {
     })).data
   },
 
-  /** Send a welcome or reminder email to the given clients (by phone_no). */
+  /** Send a welcome or reminder email to the given clients (by phone_no). JSON — no attachments. */
   sendWelcomeEmail: async (phoneNos: string[], emailType: 'welcome' | 'reminder' = 'welcome'): Promise<WelcomeEmailResult> =>
     (await api.post<WelcomeEmailResult>('/clients/send-welcome-email/', { phone_nos: phoneNos, email_type: emailType })).data,
+
+  /** Send a project email (multipart — supports file attachments and extra template fields). */
+  sendProjectEmail: async (
+    phoneNo: string,
+    emailType: string,
+    projectId: string,
+    files: File[],
+    extraCtx: Record<string, string> = {},
+  ): Promise<WelcomeEmailResult> => {
+    const form = new FormData()
+    form.append('phone_nos', JSON.stringify([phoneNo]))
+    form.append('email_type', emailType)
+    form.append('project_id', projectId)
+    form.append('extra_ctx', JSON.stringify(extraCtx))
+    files.forEach((f) => form.append('files', f))
+    return (await api.post<WelcomeEmailResult>('/clients/send-welcome-email/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data
+  },
+
+  /** Fetch email history for a client. */
+  getEmailHistory: async (phone: string): Promise<EmailLog[]> =>
+    (await api.get<EmailLog[]>(`/clients/${phone}/email-history/`)).data,
 
   /** Bulk-update lead_status (and optionally lead_sub_status) for the given clients. */
   bulkUpdateLeadStatus: async (phoneNos: string[], leadStatus: string, leadSubStatus = ''): Promise<{ updated: number }> =>
