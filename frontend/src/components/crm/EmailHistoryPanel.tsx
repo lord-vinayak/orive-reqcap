@@ -110,9 +110,6 @@ export function EmailHistoryPanel({ clientPhone, clientName, onClose }: Props) {
                     {log.sent_by_name && (
                       <div>Sent by: <span className="text-black/70 dark:text-slate-300">{log.sent_by_name}</span></div>
                     )}
-                    {log.project_no && (
-                      <div>Project: <span className="text-black/70 dark:text-slate-300">{log.project_no}</span></div>
-                    )}
                   </div>
 
                   {/* Attachments */}
