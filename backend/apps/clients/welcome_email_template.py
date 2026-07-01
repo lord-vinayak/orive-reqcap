@@ -17,27 +17,31 @@ HTML_BODY = """\
 
   <p>Dear {client_name},</p>
 
-  <p>Greetings from <strong>Skinovation Sciences</strong>!</p>
+  <p>Thank you for connecting with <strong>Skinovation Sciences</strong>.</p>
 
   <p>
-    We are delighted to connect with you{company_line}.
+    Skinovation Sciences is India's idea-to-shelf skincare innovation partner, helping founders, doctors, clinics, and emerging brands launch high-quality skincare, haircare, body care, and personal care products through a structured ecosystem covering R&amp;D, formulation, compliance, testing, packaging, manufacturing, and launch support.
+  </p>
+
+  <p>For your reference, please find attached our</p>
+  <ul>
+    <li>Client Deck</li>
+    <li>FAQ Document</li>
+    <li>Product Catalog</li>
+  </ul>
+
+  <p>
+    These documents will give you a clear overview of our capabilities, product categories, process flow, timelines, and engagement model.
   </p>
 
   <p>
-    <em><!-- TODO: Replace this placeholder with your actual welcome message content. --></em>
+    We request you to kindly share your product requirements over email or WhatsApp so our team can evaluate the scope and guide you with the next steps. Alternatively, we would be happy to connect over a call to understand your brand vision, product expectations, MOQ, packaging preference, and launch timeline.
   </p>
 
-  <p>
-    Test
-  </p>
+  <p>Looking forward to supporting your skincare brand journey.</p>
 
-  <p>
-    Test
-  </p>
-
-  <p>Warm regards,<br/>
-  <strong>{sent_by_name}</strong><br/>
-  Skinovation Sciences</p>
+  <p>Best Wishes,<br/>
+  <strong>Team Skinovation Sciences</strong></p>
 
 </body>
 </html>
@@ -47,17 +51,21 @@ HTML_BODY = """\
 TEXT_BODY = """\
 Dear {client_name},
 
-Greetings from Skinovation Sciences!
+Thank you for connecting with Skinovation Sciences.
 
-We are delighted to connect with you{company_line} and look forward to supporting your journey in developing world-class skincare and personal care products.
+Skinovation Sciences is India's idea-to-shelf skincare innovation partner, helping founders, doctors, clinics, and emerging brands launch high-quality skincare, haircare, body care, and personal care products through a structured ecosystem covering R&D, formulation, compliance, testing, packaging, manufacturing, and launch support.
 
-TODO: Replace this placeholder with your actual welcome message content.
+For your reference, please find attached our
+- Client Deck
+- FAQ Document
+- Product Catalog
 
-At Skinovation Sciences, we specialise in end-to-end product development — from formulation and sampling to packaging, testing, and dispatch. Our team is here to help you every step of the way.
+These documents will give you a clear overview of our capabilities, product categories, process flow, timelines, and engagement model.
 
-Please feel free to reach out to us at any time. We will be happy to schedule a call or share more information about our capabilities.
+We request you to kindly share your product requirements over email or WhatsApp so our team can evaluate the scope and guide you with the next steps. Alternatively, we would be happy to connect over a call to understand your brand vision, product expectations, MOQ, packaging preference, and launch timeline.
 
-Warm regards,
-{sent_by_name}
-Skinovation Sciences
+Looking forward to supporting your skincare brand journey.
+
+Best Wishes,
+Team Skinovation Sciences
 """
