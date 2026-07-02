@@ -22,6 +22,7 @@ from . import sample_initiation_email_template as sample_initiation_tpl
 from . import sample_payment_confirmation_email_template as sample_payment_tpl
 from . import sample_approval_email_template as sample_approval_tpl
 from . import order_initiation_email_template as order_initiation_tpl
+from . import packaging_confirmation_email_template as packaging_confirmation_tpl
 
 _TEMPLATE_MAP = {
     'welcome': welcome_tpl,
@@ -30,6 +31,7 @@ _TEMPLATE_MAP = {
     'sample_payment_confirmation': sample_payment_tpl,
     'sample_approval': sample_approval_tpl,
     'order_initiation': order_initiation_tpl,
+    'packaging_confirmation': packaging_confirmation_tpl,
 }
 
 _TEMPLATE_LABELS = {
@@ -39,6 +41,7 @@ _TEMPLATE_LABELS = {
     'sample_payment_confirmation': 'Sample Payment Confirmation Email',
     'sample_approval': 'Sample Approval Email',
     'order_initiation': 'Order Initiation Email - 50% Order Booking',
+    'packaging_confirmation': 'Packaging Confirmation Email',
 }
 
 # ---------------------------------------------------------------------------
