@@ -7,7 +7,6 @@ A full-stack web application for capturing client product requirements, building
 - **Database:** PostgreSQL on Supabase
 - **File storage:** Google Drive (owner account with service account fallback)
 - **Audio:** Web Speech API (Chrome) → Groq LLM + keyword matching
-- **Theme:** White / Black / Mustard, Aptos font
 
 ---
 
@@ -42,29 +41,32 @@ A full-stack web application for capturing client product requirements, building
 ### Client Costing (Proposals)
 - Multi-proposal support per requirement
 - 19-column XLSX export with logo, client info, and auto-calculated cost columns
-- Snapshot pattern: edits never mutate the master catalog; each item stores its own copy
-- Auto-calculated columns: Raw Material Cost/unit, Estimated Unit Cost, Total Cost, Potential MRP
-- Smart defaults: Manufacturing Cost (₹20), Packaging (₹30), Label (₹10), Monocarton (₹15)
 
 ### Client Management
 - Search clients by phone, name, or email
-- 8 status types: Call Back, Catalogue Shared, Costing Shared, Interested, Language Barrier, Not Interested, Not Responding, Unanswered
+- 8 status types
 - Excel bulk import: strips `+91`, deduplicates, skips invalid rows, reports results
 - Download blank import template
 
 ### Sales CRM Module
 - 16-stage project pipeline (from Sample Booking to Market Launch)
 - Auto-stage locking: prevents editing future stages; auto-completes all prior stages on project create
-- Weekday-only milestone calculations from Day 0 (sample booked date)
 - RAG delay flags: On Track / At Risk (≤2 days) / Delayed
 - Key Learnings: similarity-matched by same client or same manufacturer
-- Master data management: Manufacturers, Vendors (6 types), Internal Team Members
+- Master data management: Manufacturers, Vendors, Internal Team Members
 - CRM Dashboard: pipeline stats, health table, project progress
+
+### Email Communication
+- Send templated emails directly from the client list (bulk) or from a CRM project detail page
+- 10 built-in templates: Welcome, Reminder, Sample Initiation, Sample Payment Confirmation, Sample Approval, Order Initiation, Packaging Confirmation, Packaging Payment Confirmation, Printing Confirmation, Printing Payment Confirmation, Final Order Shipment
+- Templates with dynamic fields (product name, amounts, dates, selects) are filled in via a modal before sending
+- File attachments are uploaded to Google Drive and attached to the email in one step
+- Full email history log per client: template name, subject, recipient, sender, timestamp, and Drive links to attachments
 
 ### Admin Tools
 - User management (create/deactivate users)
 - Catalog management: import from Excel, edit items inline
-- Role-based access control (admin / poc_sales / poc_formulation)
+- Role-based access control
 
 ---
 
@@ -82,7 +84,38 @@ A full-stack web application for capturing client product requirements, building
 | **File Storage** | Google Drive API (`google-api-python-client`) |
 | **Audio** | Groq API (llama-3.1-8b-instant) |
 | **Excel Export** | `openpyxl` + `Pillow` |
-| **Hosting** | Vercel (frontend), Railway (backend, Dockerized) |
+| **Hosting** | Digital Ocean App Platform |
+
+### Architecture Diagram
+
+```mermaid
+graph TD
+    subgraph Frontend [React Frontend - Digital Ocean]
+        Vite[Vite Dev Server]
+        React[React 18 + TS]
+        Zustand[Zustand Auth Store]
+        Query[TanStack Query]
+    end
+
+    subgraph Backend [Django Backend - Digital Ocean]
+        Django[Django 5 + DRF]
+        JWT[JWT / Google OAuth authentication]
+        OpenPyXL[openpyxl Excel exporter]
+    end
+
+    subgraph Services [External Services]
+        Supabase[(PostgreSQL - Supabase)]
+        GDrive[Google Drive Storage]
+        Groq[Groq API LLM - Transcription]
+        Gmail[Gmail SMTP - Email Delivery]
+    end
+
+    React -->|HTTP Requests / JSON| Django
+    Django -->|Queries & Transactions| Supabase
+    Django -->|Upload Client Files| GDrive
+    Django -->|Audio / Transcription Request| Groq
+    Django -->|Send Templated Emails| Gmail
+```
 
 ---
 
@@ -583,6 +616,9 @@ python manage.py migrate --run-syncdb
 | Snapshot pattern (edits never mutate catalog) | ✅ |
 | Auto-calculated cost columns + Potential MRP | ✅ |
 | Smart cost defaults (mfg/packaging/label/monocarton) | ✅ |
+| Templated email sending (bulk from client list + per-project) | ✅ |
+| 10 email templates with dynamic fields and file attachments | ✅ |
+| Email history log per client (template, subject, sender, Drive links) | ✅ |
 | Admin: manage users | ✅ |
 | Admin: manage catalog + import from Excel | ✅ |
 | CRM Dashboard (pipeline stats + health table) | ✅ |

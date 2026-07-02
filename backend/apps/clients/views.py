@@ -23,6 +23,10 @@ from . import sample_payment_confirmation_email_template as sample_payment_tpl
 from . import sample_approval_email_template as sample_approval_tpl
 from . import order_initiation_email_template as order_initiation_tpl
 from . import packaging_confirmation_email_template as packaging_confirmation_tpl
+from . import packaging_payment_confirmation_email_template as packaging_payment_tpl
+from . import printing_confirmation_email_template as printing_confirmation_tpl
+from . import printing_payment_confirmation_email_template as printing_payment_tpl
+from . import final_order_shipment_email_template as final_order_shipment_tpl
 
 _TEMPLATE_MAP = {
     'welcome': welcome_tpl,
@@ -32,6 +36,10 @@ _TEMPLATE_MAP = {
     'sample_approval': sample_approval_tpl,
     'order_initiation': order_initiation_tpl,
     'packaging_confirmation': packaging_confirmation_tpl,
+    'packaging_payment_confirmation': packaging_payment_tpl,
+    'printing_confirmation': printing_confirmation_tpl,
+    'printing_payment_confirmation': printing_payment_tpl,
+    'final_order_shipment': final_order_shipment_tpl,
 }
 
 _TEMPLATE_LABELS = {
@@ -42,6 +50,10 @@ _TEMPLATE_LABELS = {
     'sample_approval': 'Sample Approval Email',
     'order_initiation': 'Order Initiation Email - 50% Order Booking',
     'packaging_confirmation': 'Packaging Confirmation Email',
+    'packaging_payment_confirmation': 'Packaging Payment Confirmation Email',
+    'printing_confirmation': 'Printing Confirmation Email',
+    'printing_payment_confirmation': 'Printing Payment Confirmation Email',
+    'final_order_shipment': 'Final Order Shipment Email with Final Invoice',
 }
 
 # ---------------------------------------------------------------------------
