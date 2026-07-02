@@ -404,8 +404,8 @@ export default function RequirementForm() {
       return null;
     }
 
-    // Block duplicate phone on NEW requirements (not when pre-filled via ?client= param)
-    if (!isEdit && !searchParams.get('client')) {
+    // Block duplicate phone only when no requirement exists yet in this session
+    if (!isEdit && !requirement && !searchParams.get('client')) {
       try {
         const existing = await clientService.get(client.phone_no);
         setError(`Client "${existing.name}" already exists with phone number ${client.phone_no}. Search for them to add a new requirement.`);
