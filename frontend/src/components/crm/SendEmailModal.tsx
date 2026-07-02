@@ -18,6 +18,7 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
   const fileInputId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const firstFocusableRef = useRef<HTMLButtonElement>(null)
+  const fieldsRef = useRef<HTMLDivElement>(null)
 
   const [step, setStep] = useState<Step>('template')
   const [emailType, setEmailType] = useState<string>(PROJECT_EMAIL_TEMPLATES[0]?.value ?? '')
@@ -52,6 +53,12 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
   }, [onClose])
 
   const activeFields: TemplateField[] = TEMPLATE_FIELDS[emailType] ?? []
+
+  useEffect(() => {
+    if (activeFields.length > 0) {
+      fieldsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [emailType])
 
   const goToConfirm = async () => {
     // Validate required template fields
@@ -170,7 +177,7 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
 
               {/* Dynamic fields for the selected template */}
               {activeFields.length > 0 && (
-                <div className="space-y-3 pt-1 border-t border-black/10 dark:border-white/10">
+                <div ref={fieldsRef} className="space-y-3 pt-1 border-t border-black/10 dark:border-white/10">
                   <p className="text-sm font-medium text-black dark:text-white">Email details</p>
                   {activeFields.map((field) => (
                     <div key={field.key}>
