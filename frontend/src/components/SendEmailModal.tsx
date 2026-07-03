@@ -24,15 +24,18 @@ export default function SendEmailModal({
 }: Props) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
+  const previousFocus = useRef<Element | null>(null)
 
-  // Move focus into dialog on mount
+  // Move focus into dialog on mount; restore on unmount
   useEffect(() => {
+    previousFocus.current = document.activeElement
     const el = dialogRef.current
     if (!el) return
     const first = el.querySelector<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     )
     first?.focus()
+    return () => { (previousFocus.current as HTMLElement)?.focus?.() }
   }, [])
 
   // Focus trap + Escape
@@ -41,7 +44,7 @@ export default function SendEmailModal({
       if (e.key === 'Escape') { onClose(); return }
       if (e.key !== 'Tab') return
       const el = dialogRef.current
-      if (!el) return
+      if (!el || !el.contains(document.activeElement)) return
       const focusable = Array.from(
         el.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -62,6 +65,7 @@ export default function SendEmailModal({
   const [toEmail, setToEmail] = useState(clientEmail)
   const [saveEmail, setSaveEmail] = useState(false)
   const [sending, setSending] = useState(false)
+  const [emailSubmitted, setEmailSubmitted] = useState(false)
   const [error, setError] = useState('')
 
   // Proposal documents for attachment selection
@@ -89,6 +93,7 @@ export default function SendEmailModal({
   }
 
   const handleSend = async () => {
+    setEmailSubmitted(true)
     setError('')
     if (!selectedProposalId) {
       setError('Please select a Client Costing to send.')
@@ -148,7 +153,7 @@ export default function SendEmailModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-black/40 hover:text-black dark:text-slate-300 dark:hover:text-slate-100 text-xl leading-none focus-visible:ring-2 focus-visible:ring-mustard focus-visible:ring-offset-1 rounded"
+            className="text-black/50 hover:text-black dark:text-slate-300 dark:hover:text-slate-100 text-xl leading-none focus-visible:ring-2 focus-visible:ring-mustard focus-visible:ring-offset-1 rounded"
             aria-label="Close"
           >
             ×
@@ -192,9 +197,10 @@ export default function SendEmailModal({
               disabled={sending}
               required
               aria-required="true"
+              aria-invalid={emailSubmitted && !toEmail.trim()}
             />
             {!clientEmail && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
                 No email on file for {clientName}.
               </p>
             )}
@@ -232,7 +238,7 @@ export default function SendEmailModal({
               Attach Proposal Document(s)
             </p>
             {proposalDocs.length === 0 ? (
-              <p className="text-xs text-black/50 dark:text-slate-300 italic">
+              <p className="text-xs text-black/60 dark:text-slate-300 italic">
                 No proposal documents uploaded yet.
               </p>
             ) : (
@@ -250,7 +256,7 @@ export default function SendEmailModal({
                       <span className="text-xs text-black/70 dark:text-slate-300 truncate" title={doc.filename}>
                         {doc.filename}
                       </span>
-                      <span className="text-xs text-black/40 dark:text-slate-300 whitespace-nowrap ml-auto">
+                      <span className="text-xs text-black/60 dark:text-slate-300 whitespace-nowrap ml-auto">
                         {new Date(doc.uploaded_at).toLocaleDateString()}
                       </span>
                     </label>
@@ -279,7 +285,7 @@ export default function SendEmailModal({
           <button type="button" onClick={onClose} disabled={sending} className="btn-secondary">
             Cancel
           </button>
-          <button type="button" onClick={handleSend} disabled={sending || !toEmail.trim()} className="btn-primary">
+          <button type="button" onClick={handleSend} disabled={sending || !toEmail.trim()} aria-busy={sending} className="btn-primary">
             {sending ? 'Sending…' : '✉ Send Email'}
           </button>
         </div>

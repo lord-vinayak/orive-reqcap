@@ -19,23 +19,39 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
   const dialogRef = useRef<HTMLDivElement>(null)
   const firstFocusableRef = useRef<HTMLButtonElement>(null)
   const fieldsRef = useRef<HTMLDivElement>(null)
+  const previousFocus = useRef<Element | null>(null)
+  const confirmEmailRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<Step>('template')
   const [emailType, setEmailType] = useState<string>(PROJECT_EMAIL_TEMPLATES[0]?.value ?? '')
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [email, setEmail] = useState('')
+  const [emailTouched, setEmailTouched] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [fetchingEmail, setFetchingEmail] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
 
+  // Capture trigger, focus dialog, restore on unmount
+  useEffect(() => {
+    previousFocus.current = document.activeElement
+    firstFocusableRef.current?.focus()
+    return () => { (previousFocus.current as HTMLElement)?.focus?.() }
+  }, [])
+
+  // Focus first confirm-step field when step changes
+  useEffect(() => {
+    if (step === 'confirm') confirmEmailRef.current?.focus()
+  }, [step])
+
   // Focus trap + Escape
   useEffect(() => {
-    firstFocusableRef.current?.focus()
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
       if (e.key === 'Tab') {
-        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+        const el = dialogRef.current
+        if (!el || !el.contains(document.activeElement)) return
+        const focusable = el.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         )
         if (!focusable || focusable.length === 0) return
@@ -91,6 +107,7 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
   }
 
   const handleSend = async () => {
+    setEmailTouched(true)
     if (!email.trim()) {
       setError('Please enter an email address.')
       return
@@ -130,6 +147,7 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
           </h2>
           <button
             ref={firstFocusableRef}
+            type="button"
             onClick={onClose}
             aria-label="Close send email dialog"
             className="text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white focus-visible:ring-2 focus-visible:ring-mustard rounded p-1"
@@ -142,7 +160,7 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
         <div className="px-6 py-5 space-y-5 overflow-y-auto max-h-[70vh]">
           <div className="text-sm text-black/70 dark:text-slate-300">
             To: <span className="font-medium text-black dark:text-white">{clientName}</span>
-            <span className="ml-2 text-xs font-mono text-black/40 dark:text-slate-500">{clientPhone}</span>
+            <span className="ml-2 text-xs font-mono text-black/60 dark:text-slate-400">{clientPhone}</span>
           </div>
 
           {step === 'template' ? (
@@ -181,15 +199,20 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
                   <p className="text-sm font-medium text-black dark:text-white">Email details</p>
                   {activeFields.map((field) => (
                     <div key={field.key}>
-                      <label className="block text-xs font-medium text-black/70 dark:text-slate-300 mb-1">
+                      <label
+                        htmlFor={`template-field-${field.key}`}
+                        className="block text-xs font-medium text-black/70 dark:text-slate-300 mb-1"
+                      >
                         {field.label}
                       </label>
                       {field.type === 'select' ? (
                         <select
+                          id={`template-field-${field.key}`}
                           value={fieldValues[field.key] ?? ''}
                           onChange={(e) => setFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                          required
+                          aria-required="true"
                           className="w-full text-sm border border-black/20 dark:border-white/20 rounded px-3 py-2 bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
-                          aria-label={field.label}
                         >
                           <option value="">Select…</option>
                           {field.options?.map((opt) => (
@@ -198,11 +221,13 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
                         </select>
                       ) : (
                         <input
+                          id={`template-field-${field.key}`}
                           type={field.type}
                           value={fieldValues[field.key] ?? ''}
                           onChange={(e) => setFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
                           placeholder={field.placeholder}
-                          aria-label={field.label}
+                          required
+                          aria-required="true"
                           className="w-full text-sm border border-black/20 dark:border-white/20 rounded px-3 py-2 bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
                         />
                       )}
@@ -219,28 +244,29 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
 
               {/* Email address */}
               <div>
-                <label className="block text-sm font-medium text-black dark:text-white mb-1">
+                <label htmlFor="confirm-email-input" className="block text-sm font-medium text-black dark:text-white mb-1">
                   Email address
                 </label>
                 {fetchingEmail ? (
-                  <div className="text-sm text-black/50 dark:text-slate-400">Loading…</div>
+                  <div role="status" aria-live="polite" className="text-sm text-black/50 dark:text-slate-400">Loading…</div>
                 ) : (
                   <>
                     <input
+                      id="confirm-email-input"
+                      ref={confirmEmailRef}
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter email address"
-                      aria-label={`Email address for ${clientName}`}
-                      aria-invalid={!email.trim()}
+                      aria-invalid={emailTouched && !email.trim()}
                       className={`w-full text-sm border rounded px-3 py-2 bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard ${
-                        !email.trim()
+                        emailTouched && !email.trim()
                           ? 'border-amber-400 dark:border-amber-500'
                           : 'border-black/20 dark:border-white/20'
                       }`}
                     />
                     {!email.trim() && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Required</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">Required</p>
                     )}
                   </>
                 )}
@@ -249,7 +275,7 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
               {/* File attachments */}
               <div>
                 <label htmlFor={fileInputId} className="block text-sm font-medium text-black dark:text-white mb-1">
-                  Attachments <span className="font-normal text-black/50 dark:text-slate-400">(optional — saved to Google Drive)</span>
+                  Attachments <span className="font-normal text-black/60 dark:text-slate-400">(optional — saved to Google Drive)</span>
                 </label>
                 <label
                   htmlFor={fileInputId}
@@ -296,6 +322,7 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
           )}
         </div>
 
+        <div role="status" aria-live="polite" className="sr-only">{sending ? 'Sending email…' : ''}</div>
         {/* Footer */}
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-black/10 dark:border-white/10">
           {step === 'confirm' && (
