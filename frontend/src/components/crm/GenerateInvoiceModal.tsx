@@ -17,7 +17,7 @@ type Step = 'template' | 'form' | 'generating' | 'done'
 const INVOICE_TYPES: InvoiceType[] = ['service', 'product_batch', 'product_simple', 'service_size']
 
 const BLANK_ITEM = (): InvoiceItem => ({
-  item_name: '', hsn: '998314', size_ml: 0,
+  item_name: '', hsn: '', size_ml: 0,
   batch_no: 'NA', exp_date: 'NA', rate_per_item: 0, qty: 0,
 })
 
@@ -56,10 +56,10 @@ export function GenerateInvoiceModal({
   const [invoiceDate, setInvoiceDate] = useState(todayStr())
   const [clientNameField, setClientNameField] = useState(clientName)
   const [companyName, setCompanyName] = useState(clientCompany)
-  const [clientGstin, setClientGstin] = useState('0')
-  const [billingAddress, setBillingAddress] = useState('0')
-  const [shippingAddress, setShippingAddress] = useState('0')
-  const [ewayBillNo, setEwayBillNo] = useState('XX')
+  const [clientGstin, setClientGstin] = useState('N/A')
+  const [billingAddress, setBillingAddress] = useState('N/A')
+  const [shippingAddress, setShippingAddress] = useState('N/A')
+  const [ewayBillNo, setEwayBillNo] = useState('N/A')
 
   // GST
   const [sgst, setSgst] = useState('0')
