@@ -431,9 +431,9 @@ export type InvoiceType = 'service' | 'product_batch' | 'product_simple' | 'serv
 
 export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
   service:        'Service Invoice',
-  product_batch:  'Product with Batch',
-  product_simple: 'Product Simple',
-  service_size:   'Service with Size',
+  product_batch:  'Advance Invoice',
+  product_simple: 'Sample Invoice',
+  service_size:   'Container Invoice',
 }
 
 export const INVOICE_TYPE_COLUMNS: Record<InvoiceType, string[]> = {

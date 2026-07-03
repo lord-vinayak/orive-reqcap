@@ -7,9 +7,9 @@ from django.conf import settings
 class Invoice(models.Model):
     TYPES = [
         ('service',        'Service Invoice'),
-        ('product_batch',  'Product with Batch'),
-        ('product_simple', 'Product Simple'),
-        ('service_size',   'Service with Size'),
+        ('product_batch',  'Advance Invoice'),
+        ('product_simple', 'Sample Invoice'),
+        ('service_size',   'Container Invoice'),
     ]
 
     id               = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

@@ -107,7 +107,7 @@ def _fmt(val):
     """Format decimal as ₹ X,XX,XXX.XX (Indian style)."""
     d = _d(val)
     # Simple formatting — locale not available in all envs
-    return f'₹{d:,.2f}'
+    return f'Rs. {d:,.2f}'
 
 
 def _get_cell(item, key):
@@ -336,7 +336,7 @@ def _build_items_table(invoice, w, styles):
         for label, key, _ in specs:
             raw = _get_cell(item, key)
             if key in ('rate_per_item', '_amount') or (key == 'qty' and raw != '0'):
-                row.append(Paragraph(raw if key == '_amount' else (f'₹{_d(raw):,.2f}' if key == "rate_per_item" else raw), num_s))
+                row.append(Paragraph(raw if key == '_amount' else (f'Rs. {_d(raw):,.2f}' if key == "rate_per_item" else raw), num_s))
             else:
                 row.append(Paragraph(raw, cell_s))
         data.append(row)
