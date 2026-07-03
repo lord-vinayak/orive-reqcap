@@ -21,4 +21,5 @@ urlpatterns = [
     path('api/audio/', include('apps.audio.urls')),
     path('api/crm/', include('apps.crm_projects.urls')),
     path('api/crm/', include('apps.crm_master_data.urls')),
+    path('api/invoices/', include('apps.invoices.urls')),
 ]

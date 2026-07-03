@@ -6,6 +6,7 @@ import type {
   VendorProjectPayment, DropdownOption, ProjectPayment, PaymentVendorOption,
   StageStatusResponse, StageCompletion, TaskItem, TaskStatus,
   TaskComment, StandaloneTaskCreate, ResampleNote,
+  Invoice, InvoiceCreatePayload,
 } from '@/types/crm'
 
 // ─── Projects ────────────────────────────────────────────────────────────────
@@ -330,4 +331,12 @@ export const crmApi = {
     api.post<ProjectPayment>(`/crm/project-payments/${id}/settle/`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+
+  // ─── Invoices ────────────────────────────────────────────────────────────
+
+  listInvoices: (params: { project?: string; client_phone?: string }) =>
+    api.get<PaginatedResponse<Invoice>>('/invoices/', { params }),
+
+  createInvoice: (data: InvoiceCreatePayload) =>
+    api.post<Invoice>('/invoices/', data),
 }

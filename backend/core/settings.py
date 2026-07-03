@@ -39,6 +39,7 @@ INSTALLED_APPS = [
 
     'apps.crm_master_data',
     'apps.crm_projects',
+    'apps.invoices',
 ]
 
 MIDDLEWARE = [

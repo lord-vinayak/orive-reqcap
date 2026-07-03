@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { clientService } from '@/services'
 import type { WelcomeEmailResult } from '@/services'
 import { PROJECT_EMAIL_TEMPLATES, TEMPLATE_FIELDS, type TemplateField } from '@/constants/emailTemplates'
+import { crmApi } from '@/services/crm'
+import type { Invoice } from '@/types/crm'
 
 interface Props {
   clientPhone: string
@@ -31,6 +33,8 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
   const [fetchingEmail, setFetchingEmail] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [projectInvoices, setProjectInvoices] = useState<Invoice[]>([])
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([])
 
   // Capture trigger, focus dialog, restore on unmount
   useEffect(() => {
@@ -67,6 +71,14 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [onClose])
+
+  // Fetch project invoices for attachment selection
+  useEffect(() => {
+    if (!projectId) return
+    crmApi.listInvoices({ project: projectId })
+      .then((r) => setProjectInvoices(r.data.results))
+      .catch(() => {})
+  }, [projectId])
 
   const activeFields: TemplateField[] = TEMPLATE_FIELDS[emailType] ?? []
 
@@ -116,7 +128,7 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
     setError('')
     try {
       await clientService.patch(clientPhone, { email: email.trim() })
-      const result = await clientService.sendProjectEmail(clientPhone, emailType, projectId, files, fieldValues)
+      const result = await clientService.sendProjectEmail(clientPhone, emailType, projectId, files, fieldValues, selectedInvoiceIds)
       onDone(result)
     } catch {
       setError('Failed to send email. Please try again.')
@@ -271,6 +283,33 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
                   </>
                 )}
               </div>
+
+              {/* Invoice attachment picker */}
+              {projectInvoices.length > 0 && (
+                <div>
+                  <p className="block text-sm font-medium text-black dark:text-white mb-1">
+                    Attach Invoices <span className="font-normal text-black/60 dark:text-slate-400">(optional)</span>
+                  </p>
+                  <div className="space-y-1">
+                    {projectInvoices.map((inv) => (
+                      <label key={inv.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedInvoiceIds.includes(inv.id)}
+                          onChange={(e) => {
+                            setSelectedInvoiceIds((prev) =>
+                              e.target.checked ? [...prev, inv.id] : prev.filter((id) => id !== inv.id)
+                            )
+                          }}
+                          className="rounded accent-mustard"
+                        />
+                        <span className="text-black dark:text-white font-mono text-xs">{inv.invoice_number}</span>
+                        <span className="text-black/50 dark:text-slate-400 text-xs">{inv.invoice_type_label} · {new Date(inv.date).toLocaleDateString('en-IN')}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* File attachments */}
               <div>

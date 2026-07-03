@@ -375,12 +375,15 @@ class ClientViewSet(viewsets.ModelViewSet):
             uploaded_files = request.FILES.getlist('files')
             raw_ctx = request.data.get('extra_ctx', '{}')
             extra_ctx = json.loads(raw_ctx) if isinstance(raw_ctx, str) else {}
+            raw_inv = request.data.get('invoice_ids', '[]')
+            invoice_ids = json.loads(raw_inv) if isinstance(raw_inv, str) else raw_inv
         else:
             phone_nos = request.data.get('phone_nos', [])
             email_type = request.data.get('email_type', 'welcome')
             project_id = request.data.get('project_id') or None
             uploaded_files = []
             extra_ctx = request.data.get('extra_ctx', {})
+            invoice_ids = request.data.get('invoice_ids', [])
 
         if not isinstance(phone_nos, list) or not phone_nos:
             return Response({'detail': 'phone_nos must be a non-empty list.'}, status=400)
@@ -416,6 +419,25 @@ class ClientViewSet(viewsets.ModelViewSet):
                     })
                 except Exception as exc:
                     return Response({'detail': f'Drive upload failed for {f.name}: {exc}'}, status=502)
+
+        # Attach selected generated invoices (download bytes from Drive)
+        if invoice_ids:
+            from apps.invoices.models import Invoice as InvoiceModel
+            from apps.files.drive_service import download_file as drive_download
+            for inv_id in invoice_ids:
+                try:
+                    inv = InvoiceModel.objects.get(pk=inv_id)
+                    if inv.drive_file_id:
+                        inv_bytes = drive_download(inv.drive_file_id)
+                        drive_attachments.append({
+                            'filename': f'{inv.invoice_number}.pdf',
+                            'drive_url': inv.drive_url,
+                            'drive_file_id': inv.drive_file_id,
+                            'content_type': 'application/pdf',
+                            'bytes': inv_bytes,
+                        })
+                except Exception:
+                    pass  # skip individual invoice attachment failures silently
 
         # Resolve project FK once
         project_obj = None

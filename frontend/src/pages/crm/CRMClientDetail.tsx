@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { api } from '@/services/api'
 import { crmApi } from '@/services/crm'
-import type { CRMProjectList } from '@/types/crm'
+import type { CRMProjectList, Invoice } from '@/types/crm'
+import { INVOICE_TYPE_LABELS } from '@/types/crm'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { StatusBadge } from '@/components/crm/StatusBadge'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
@@ -214,8 +215,64 @@ export default function CRMClientDetail() {
             </div>
           )}
         </section>
+
+        {/* ── Invoices ── */}
+        <ClientInvoicesSection clientPhone={client.phone_no} />
       </div>
     </Layout>
+  )
+}
+
+function ClientInvoicesSection({ clientPhone }: { clientPhone: string }) {
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    crmApi.listInvoices({ client_phone: clientPhone })
+      .then((r) => setInvoices(r.data.results))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [clientPhone])
+
+  return (
+    <section className="mt-8 bg-white dark:bg-slate-800 rounded-xl border border-black/10 dark:border-white/10 p-6">
+      <h2 className="text-base font-semibold text-black dark:text-white mb-4">Invoices</h2>
+      {loading ? (
+        <p className="text-sm text-gray-400">Loading…</p>
+      ) : invoices.length === 0 ? (
+        <p className="text-sm text-gray-400 dark:text-slate-500">No invoices for this client yet.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-gray-500 dark:text-gray-400 border-b border-black/10 dark:border-white/10">
+              <th className="pb-2 font-medium">Invoice #</th>
+              <th className="pb-2 font-medium">Type</th>
+              <th className="pb-2 font-medium">Date</th>
+              <th className="pb-2 font-medium">PDF</th>
+            </tr>
+          </thead>
+          <tbody>
+            {invoices.map((inv) => (
+              <tr key={inv.id} className="border-b border-black/5 dark:border-white/5 last:border-0">
+                <td className="py-2 font-mono text-xs">{inv.invoice_number}</td>
+                <td className="py-2 text-xs text-gray-600 dark:text-gray-300">{INVOICE_TYPE_LABELS[inv.invoice_type]}</td>
+                <td className="py-2 text-xs text-gray-600 dark:text-gray-300">
+                  {new Date(inv.date).toLocaleDateString('en-IN')}
+                </td>
+                <td className="py-2">
+                  {inv.drive_url ? (
+                    <a href={inv.drive_url} target="_blank" rel="noopener noreferrer"
+                       className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                      Open ↗
+                    </a>
+                  ) : <span className="text-xs text-gray-400">—</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
   )
 }
 

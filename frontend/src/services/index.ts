@@ -87,12 +87,14 @@ export const clientService = {
     projectId: string,
     files: File[],
     extraCtx: Record<string, string> = {},
+    invoiceIds: string[] = [],
   ): Promise<WelcomeEmailResult> => {
     const form = new FormData()
     form.append('phone_nos', JSON.stringify([phoneNo]))
     form.append('email_type', emailType)
     form.append('project_id', projectId)
     form.append('extra_ctx', JSON.stringify(extraCtx))
+    form.append('invoice_ids', JSON.stringify(invoiceIds))
     files.forEach((f) => form.append('files', f))
     return (await api.post<WelcomeEmailResult>('/clients/send-welcome-email/', form, {
       headers: { 'Content-Type': 'multipart/form-data' },

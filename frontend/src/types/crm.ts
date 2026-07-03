@@ -424,3 +424,75 @@ export interface PaginatedResponse<T> {
   previous: string | null
   results: T[]
 }
+
+// ─── Invoices ─────────────────────────────────────────────────────────────────
+
+export type InvoiceType = 'service' | 'product_batch' | 'product_simple' | 'service_size'
+
+export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
+  service:        'Service Invoice',
+  product_batch:  'Product with Batch',
+  product_simple: 'Product Simple',
+  service_size:   'Service with Size',
+}
+
+export const INVOICE_TYPE_COLUMNS: Record<InvoiceType, string[]> = {
+  service:        ['Item', 'HSN', 'Rate/Item', 'Qty', 'Amount', 'Payable'],
+  product_batch:  ['Item', 'Batch No', 'Exp Date', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Amount'],
+  product_simple: ['Item', 'Rate/Item', 'Qty', 'Amount', 'Payable'],
+  service_size:   ['Item', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Payable'],
+}
+
+export interface InvoiceItem {
+  item_name: string
+  hsn: string
+  size_ml: number | string
+  batch_no: string
+  exp_date: string
+  rate_per_item: number | string
+  qty: number | string
+}
+
+export interface Invoice {
+  id: string
+  project: string
+  invoice_type: InvoiceType
+  invoice_type_label: string
+  invoice_number: string
+  date: string
+  client_name: string
+  company_name: string
+  client_gstin: string
+  billing_address: string
+  shipping_address: string
+  eway_bill_no: string
+  sgst_rate: string
+  cgst_rate: string
+  igst_rate: string
+  shipping_cost: string
+  advance_rate: string
+  items: InvoiceItem[]
+  drive_file_id: string
+  drive_url: string
+  created_by_name: string | null
+  created_at: string
+}
+
+export interface InvoiceCreatePayload {
+  project: string
+  invoice_type: InvoiceType
+  invoice_number: string
+  date: string
+  client_name: string
+  company_name: string
+  client_gstin: string
+  billing_address: string
+  shipping_address: string
+  eway_bill_no: string
+  sgst_rate: string | number
+  cgst_rate: string | number
+  igst_rate: string | number
+  shipping_cost: string | number
+  advance_rate: string | number
+  items: InvoiceItem[]
+}
