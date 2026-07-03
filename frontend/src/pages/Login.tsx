@@ -113,9 +113,9 @@ export default function Login() {
               <h1
                 id="loginTitle"
                 tabIndex={-1}
-                className="text-lg font-semibold mb-4 outline-none"
+                className="text-lg font-semibold mb-4 outline-none text-center"
               >
-                Sign in
+                Login
               </h1>
 
               {/* Google Login */}
