@@ -200,12 +200,8 @@ def _build_invoice_meta(invoice, w, styles):
     val_s   = ParagraphStyle('MetaVal',   parent=styles['Normal'],
                               fontSize=8, textColor=BLACK)
 
-    date_str = invoice.date.strftime('%-d-%-m-%Y') if hasattr(invoice.date, 'strftime') else str(invoice.date)
-    # Windows doesn't support %-d; use %#d on Windows or strip leading zeros manually
-    try:
-        date_str = invoice.date.strftime('%-d-%-m-%Y')
-    except ValueError:
-        date_str = invoice.date.strftime('%#d-%#m-%Y')
+    d = invoice.date
+    date_str = f"{d.day}-{d.month}-{d.year}"
 
     row = [
         [Paragraph('INVOICE #', label_s), Paragraph(invoice.invoice_number, val_s)],
