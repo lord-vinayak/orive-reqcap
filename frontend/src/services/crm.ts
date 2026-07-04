@@ -6,7 +6,7 @@ import type {
   VendorProjectPayment, DropdownOption, ProjectPayment, PaymentVendorOption,
   StageStatusResponse, StageCompletion, TaskItem, TaskStatus,
   TaskComment, StandaloneTaskCreate, ResampleNote,
-  Invoice, InvoiceCreatePayload,
+  Invoice, InvoiceCreatePayload, VendorCategory,
 } from '@/types/crm'
 
 // ─── Projects ────────────────────────────────────────────────────────────────
@@ -260,6 +260,16 @@ export const crmApi = {
       '/crm/vendors/bulk-upload/', fd, { params: { vendor_type: vendorType }, headers: { 'Content-Type': 'multipart/form-data' } }
     )
   },
+
+  // Vendor Categories
+  listVendorCategories: () =>
+    api.get<VendorCategory[]>('/crm/vendor-categories/'),
+
+  createVendorCategory: (data: { name: string }) =>
+    api.post<VendorCategory>('/crm/vendor-categories/', data),
+
+  deleteVendorCategory: (id: number) =>
+    api.delete(`/crm/vendor-categories/${id}/`),
 
   // Internal Team
   listTeamMembers: (team?: 'formulation' | 'sales' | 'ops' | 'admin') =>

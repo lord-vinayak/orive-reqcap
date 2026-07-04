@@ -389,6 +389,7 @@ class VendorViewSet(viewsets.ModelViewSet):
 class VendorCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = VendorCategorySerializer
     http_method_names = ['get', 'post', 'delete', 'head', 'options']
+    pagination_class = None  # always a small list, never needs pagination
 
     def get_permissions(self):
         if self.action in ('create', 'destroy'):

@@ -2,97 +2,218 @@ import React, { useEffect, useRef, useState, useId } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
-import type { Manufacturer, Vendor, InternalTeamMember, VendorType, ProjectPayment } from '@/types/crm'
+import type { Manufacturer, Vendor, InternalTeamMember, VendorType, ProjectPayment, VendorCategory } from '@/types/crm'
 import { useAuthStore } from '@/store/authStore'
 import { Modal } from '@/components/crm/Modal'
 
-type Tab = 'manufacturers' | 'packaging' | 'printing' | 'testing' | 'designer' | 'ecommerce' | 'logistics' | 'formulation' | 'sales' | 'ops' | 'admin'
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'manufacturers', label: 'Manufacturers' },
-  { id: 'packaging', label: 'Packaging' },
-  { id: 'printing', label: 'Printing' },
-  { id: 'testing', label: 'Testing Services' },
-  { id: 'designer', label: 'Designers' },
-  { id: 'ecommerce', label: 'Ecommerce' },
-  { id: 'logistics', label: 'Logistics' },
-  { id: 'formulation', label: 'Formulation Team' },
-  { id: 'sales', label: 'Sales Team' },
-  { id: 'ops', label: 'Ops Team' },
-  { id: 'admin', label: 'Admin' },
-]
-
-const VENDOR_TABS: VendorType[] = ['packaging', 'printing', 'testing', 'designer', 'ecommerce', 'logistics']
 const INTERNAL_TABS = ['formulation', 'sales', 'ops', 'admin'] as const
 
 export default function CRMMasterData() {
   const { user } = useAuthStore()
   const isAdmin = user?.role === 'admin'
-  const [activeTab, setActiveTab] = useState<Tab>('manufacturers')
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
-  const tabValues = TABS.map((t) => t.id)
+  // Load vendor categories from API
+  const [vendorCategories, setVendorCategories] = useState<VendorCategory[]>([])
+  const [catsLoading, setCatsLoading] = useState(true)
+
+  const loadCategories = () => {
+    setCatsLoading(true)
+    crmApi.listVendorCategories()
+      .then((r) => setVendorCategories(r.data))
+      .finally(() => setCatsLoading(false))
+  }
+
+  useEffect(() => { loadCategories() }, [])
+
+  // Build the full tab list dynamically
+  const STATIC_FRONT = [{ id: 'manufacturers', label: 'Manufacturers' }]
+  const STATIC_BACK = [
+    { id: 'formulation', label: 'Formulation Team' },
+    { id: 'sales', label: 'Sales Team' },
+    { id: 'ops', label: 'Ops Team' },
+    { id: 'admin', label: 'Admin' },
+    ...(isAdmin ? [{ id: 'manage-categories', label: '⚙ Categories' }] : []),
+  ]
+  const vendorTabs = vendorCategories.map((c) => ({ id: c.slug, label: c.name }))
+  const allTabs = [...STATIC_FRONT, ...vendorTabs, ...STATIC_BACK]
+  const tabValues = allTabs.map((t) => t.id)
+
+  const [activeTab, setActiveTab] = useState('manufacturers')
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   const handleTabKeyDown = (e: React.KeyboardEvent, currentIndex: number) => {
     let next = -1
-    if (e.key === 'ArrowRight') {
-      e.preventDefault()
-      next = (currentIndex + 1) % tabValues.length
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault()
-      next = (currentIndex - 1 + tabValues.length) % tabValues.length
-    } else if (e.key === 'Home') {
-      e.preventDefault()
-      next = 0
-    } else if (e.key === 'End') {
-      e.preventDefault()
-      next = tabValues.length - 1
-    }
-    if (next >= 0) {
-      setActiveTab(tabValues[next])
-      tabRefs.current[next]?.focus()
-    }
+    if (e.key === 'ArrowRight') { e.preventDefault(); next = (currentIndex + 1) % tabValues.length }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); next = (currentIndex - 1 + tabValues.length) % tabValues.length }
+    else if (e.key === 'Home') { e.preventDefault(); next = 0 }
+    else if (e.key === 'End') { e.preventDefault(); next = tabValues.length - 1 }
+    if (next >= 0) { setActiveTab(tabValues[next]); tabRefs.current[next]?.focus() }
   }
+
+  const vendorSlugs = vendorCategories.map((c) => c.slug)
 
   return (
     <Layout title="Master Data">
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-black dark:text-white">Master Data</h1>
 
-        <div role="tablist" aria-label="Master data categories" className="flex flex-wrap gap-1 border-b border-black/10 dark:border-white/10">
-          {TABS.map((tab, index) => (
-            <button
-              key={tab.id}
-              ref={(el) => { tabRefs.current[index] = el }}
-              onClick={() => setActiveTab(tab.id)}
-              onKeyDown={(e) => handleTabKeyDown(e, index)}
-              tabIndex={activeTab === tab.id ? 0 : -1}
-              className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors focus-visible:ring-2 focus-visible:ring-mustard -mb-px ${
-                activeTab === tab.id
-                  ? 'border-mustard text-mustard'
-                  : 'border-transparent text-black/60 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-black/20'
-              }`}
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              aria-controls={`tabpanel-${tab.id}`}
-              id={`tab-${tab.id}`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {catsLoading ? (
+          <LoadingState />
+        ) : (
+          <>
+            <div role="tablist" aria-label="Master data categories" className="flex flex-wrap gap-1 border-b border-black/10 dark:border-white/10">
+              {allTabs.map((tab, index) => (
+                <button
+                  key={tab.id}
+                  ref={(el) => { tabRefs.current[index] = el }}
+                  onClick={() => setActiveTab(tab.id)}
+                  onKeyDown={(e) => handleTabKeyDown(e, index)}
+                  tabIndex={activeTab === tab.id ? 0 : -1}
+                  className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors focus-visible:ring-2 focus-visible:ring-mustard -mb-px ${
+                    activeTab === tab.id
+                      ? 'border-mustard text-mustard'
+                      : 'border-transparent text-black/60 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-black/20'
+                  }`}
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  aria-controls={`tabpanel-${tab.id}`}
+                  id={`tab-${tab.id}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
-        <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`} tabIndex={0}>
-          {activeTab === 'manufacturers' && <ManufacturerTab isAdmin={isAdmin} />}
-          {VENDOR_TABS.includes(activeTab as VendorType) && (
-            <VendorTab vendorType={activeTab as VendorType} isAdmin={isAdmin} />
-          )}
-          {INTERNAL_TABS.includes(activeTab as typeof INTERNAL_TABS[number]) && (
-            <InternalTeamTab team={activeTab as 'formulation' | 'sales' | 'ops'} isAdmin={isAdmin} />
-          )}
-        </div>
+            <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`} tabIndex={0}>
+              {activeTab === 'manufacturers' && <ManufacturerTab isAdmin={isAdmin} />}
+              {vendorSlugs.includes(activeTab) && (
+                <VendorTab vendorType={activeTab} isAdmin={isAdmin} />
+              )}
+              {INTERNAL_TABS.includes(activeTab as typeof INTERNAL_TABS[number]) && (
+                <InternalTeamTab team={activeTab as 'formulation' | 'sales' | 'ops'} isAdmin={isAdmin} />
+              )}
+              {activeTab === 'manage-categories' && isAdmin && (
+                <ManageCategoriesPanel
+                  categories={vendorCategories}
+                  onChanged={loadCategories}
+                />
+              )}
+            </div>
+          </>
+        )}
       </div>
     </Layout>
+  )
+}
+
+// ── Manage Categories Panel ───────────────────────────────────────────────────
+
+function ManageCategoriesPanel({ categories, onChanged }: {
+  categories: VendorCategory[]
+  onChanged: () => void
+}) {
+  const [newName, setNewName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [error, setError] = useState('')
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newName.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      await crmApi.createVendorCategory({ name: newName.trim() })
+      setNewName('')
+      onChanged()
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Failed to create category.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async (cat: VendorCategory) => {
+    if (!window.confirm(`Delete category "${cat.name}"? This cannot be undone.`)) return
+    setDeletingId(cat.id)
+    setError('')
+    try {
+      await crmApi.deleteVendorCategory(cat.id)
+      onChanged()
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Failed to delete category.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  return (
+    <div className="space-y-6 max-w-lg">
+      <div>
+        <h2 className="text-base font-semibold text-black dark:text-white mb-3">Vendor Categories</h2>
+        <div className="rounded border border-black/10 dark:border-white/10 overflow-hidden">
+          <table className="w-full text-sm" aria-label="Vendor categories list">
+            <thead>
+              <tr className="bg-black/5 dark:bg-white/5 text-left">
+                <th scope="col" className="px-4 py-2 font-semibold text-black dark:text-white">Name</th>
+                <th scope="col" className="px-4 py-2 font-semibold text-black dark:text-white">Slug</th>
+                <th scope="col" className="px-4 py-2 font-semibold text-black dark:text-white">Prefix</th>
+                <th scope="col" className="px-4 py-2"><span className="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black/5 dark:divide-white/5">
+              {categories.map((cat) => (
+                <tr key={cat.id} className="hover:bg-black/2 dark:hover:bg-white/2">
+                  <td className="px-4 py-2 text-black dark:text-white">{cat.name}</td>
+                  <td className="px-4 py-2 font-mono text-xs text-black/60 dark:text-slate-400">{cat.slug}</td>
+                  <td className="px-4 py-2 font-mono text-xs text-black/60 dark:text-slate-400">{cat.prefix}</td>
+                  <td className="px-4 py-2">
+                    <button
+                      onClick={() => handleDelete(cat)}
+                      disabled={deletingId === cat.id}
+                      className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+                      aria-label={`Delete category ${cat.name}`}
+                    >
+                      {deletingId === cat.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <form onSubmit={handleAdd} className="flex gap-2 items-end">
+        <div className="flex-1">
+          <label htmlFor="new-cat-name" className="block text-xs text-black/60 dark:text-slate-400 mb-1">
+            New category name
+          </label>
+          <input
+            id="new-cat-name"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="e.g. Distributor"
+            className="w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-mustard"
+            aria-required="true"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={saving || !newName.trim()}
+          className="btn-primary text-sm disabled:opacity-40"
+          aria-busy={saving}
+        >
+          {saving ? 'Adding…' : '+ Add'}
+        </button>
+      </form>
+
+      {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+      <p className="text-xs text-black/50 dark:text-slate-500">
+        Slug and prefix are auto-derived from the name. Deletion is blocked if any vendors exist in that category.
+      </p>
+    </div>
   )
 }
 

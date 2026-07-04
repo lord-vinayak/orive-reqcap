@@ -286,7 +286,14 @@ export interface Manufacturer {
   updated_at: string
 }
 
-export type VendorType = 'packaging' | 'printing' | 'testing' | 'designer' | 'ecommerce' | 'logistics'
+export interface VendorCategory {
+  id: number
+  name: string
+  slug: string
+  prefix: string
+}
+
+export type VendorType = string
 
 export interface Vendor {
   id: string
