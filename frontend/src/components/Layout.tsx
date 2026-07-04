@@ -103,7 +103,7 @@ export default function Layout({
           <nav className="flex items-center gap-2 flex-wrap" aria-label="Primary">
             <Link to="/home" className="btn-secondary text-sm" aria-label="Go to Home page" aria-current={isCurrent('/home')}>Home</Link>
             <Link to="/crm/clients" className="btn-secondary text-sm" aria-label="Go to CRM Clients" aria-current={isCurrent('/crm/clients')}>Clients</Link>
-            <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to CRM Dashboard" aria-current={isCurrent('/crm/dashboard')}>CRM</Link>
+            <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to CRM Dashboard" aria-current={isCurrent('/crm/dashboard')}>Dashboard</Link>
             <Link to="/tasks" className="btn-secondary text-sm" aria-label="Tasks — Task Tracker" aria-current={isCurrent('/tasks')}>Tasks</Link>
             <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data" aria-current={isCurrent('/crm/master-data')}>Master Data</Link>
             {user?.role === "admin" && (
