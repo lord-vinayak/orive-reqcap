@@ -124,10 +124,7 @@ function AddVendorPicker({ categories, onAdd, existingIds }: AddVendorPickerProp
   const handleAddVendor = (opt: DropdownOption) => {
     if (!selectedCat) return
     onAdd(opt, selectedCat.slug, selectedCat.name)
-    // Reset for next add
-    setSelectedCat(null)
-    setCatOptions([])
-    setOpen(false)
+    // Stay on step 2 — user can keep adding from the same category
   }
 
   if (!open) {
@@ -173,13 +170,22 @@ function AddVendorPicker({ categories, onAdd, existingIds }: AddVendorPickerProp
         <>
           <div className="flex items-center justify-between">
             <p className="text-xs text-black/60 dark:text-slate-400 font-medium">{selectedCat.name}</p>
-            <button
-              type="button"
-              onClick={() => { setSelectedCat(null); setCatOptions([]) }}
-              className="text-xs text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white"
-            >
-              ← Back
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setSelectedCat(null); setCatOptions([]) }}
+                className="text-xs text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white"
+              >
+                ← Back
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSelectedCat(null); setCatOptions([]); setOpen(false) }}
+                className="text-xs text-mustard hover:underline"
+              >
+                Done
+              </button>
+            </div>
           </div>
           {loadingCat ? (
             <p className="text-xs text-black/40 dark:text-slate-500">Loading…</p>
