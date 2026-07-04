@@ -11,6 +11,7 @@ class Invoice(models.Model):
         ('product_simple', 'Sample Invoice'),
         ('service_size',   'Container Invoice'),
         ('printing',       'Printing Invoice'),
+        ('final',          'Final Invoice'),
     ]
 
     id               = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -35,8 +36,10 @@ class Invoice(models.Model):
     igst_rate        = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     # Type-specific extras
-    shipping_cost    = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    advance_rate     = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    shipping_cost     = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    advance_rate      = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    dispatch_address  = models.TextField(blank=True, default='')
+    advance_received  = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     # Line items as JSON — never queried individually
     items            = models.JSONField(default=list)

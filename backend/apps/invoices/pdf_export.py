@@ -99,6 +99,16 @@ COLUMN_SPECS = {
         ('Qty',         'qty',          14),
         ('Payable',     '_amount',      32),
     ],
+    'final': [
+        ('Item',        'item_name',    44),
+        ('Batch No',    'batch_no',     18),
+        ('Exp Date',    'exp_date',     18),
+        ('Size (in ml)','size_ml',      18),
+        ('HSN',         'hsn',          16),
+        ('Rate / Item', 'rate_per_item',22),
+        ('Qty',         'qty',          12),
+        ('Payable',     '_amount',      22),
+    ],
 }
 
 
@@ -259,45 +269,60 @@ def _build_bill_to(invoice, w, styles):
     bold_s = ParagraphStyle('BillBold', parent=styles['Normal'],
                              fontSize=8, fontName='Helvetica-Bold', textColor=BLACK)
 
-    col1_w = w * 0.35
-    col2_w = w * 0.325
-    col3_w = w * 0.325
+    is_final = invoice.invoice_type == 'final'
 
-    # Header row
-    hdr_row = [
-        Paragraph('BILL TO', hdr_s),
-        Paragraph('BILLING ADDRESS', hdr_s),
-        Paragraph('SHIPPING ADDRESS', hdr_s),
-    ]
+    if is_final:
+        col1_w = w * 0.28
+        col2_w = w * 0.24
+        col3_w = w * 0.24
+        col4_w = w * 0.24
+        hdr_row = [
+            Paragraph('BILL TO', hdr_s),
+            Paragraph('BILLING ADDRESS', hdr_s),
+            Paragraph('SHIPPING ADDRESS', hdr_s),
+            Paragraph('DISPATCH ADDRESS', hdr_s),
+        ]
+        data_row = [
+            Table([
+                [Paragraph('CLIENT',  lbl_s), Paragraph(invoice.client_name, bold_s)],
+                [Paragraph('COMPANY', lbl_s), Paragraph(invoice.company_name or '0', val_s)],
+                [Paragraph('GSTIN:',  lbl_s), Paragraph(invoice.client_gstin or '0', val_s)],
+            ], colWidths=[col1_w * 0.4, col1_w * 0.6]),
+            Paragraph(invoice.billing_address or '0', val_s),
+            Paragraph(invoice.shipping_address or '0', val_s),
+            Paragraph(getattr(invoice, 'dispatch_address', '') or '0', val_s),
+        ]
+        col_widths = [col1_w, col2_w, col3_w, col4_w]
+        hdr_span = (0, 0), (3, 0)
+    else:
+        col1_w = w * 0.35
+        col2_w = w * 0.325
+        col3_w = w * 0.325
+        client_lbl = 'CLIENT NAME' if invoice.invoice_type == 'product_simple' else 'CLIENT'
+        comp_lbl   = 'COMPANY NAME' if invoice.invoice_type == 'product_simple' else 'COMPANY'
+        hdr_row = [
+            Paragraph('BILL TO', hdr_s),
+            Paragraph('BILLING ADDRESS', hdr_s),
+            Paragraph('SHIPPING ADDRESS', hdr_s),
+        ]
+        data_row = [
+            Table([
+                [Paragraph(client_lbl, lbl_s), Paragraph(invoice.client_name, bold_s)],
+                [Paragraph(comp_lbl,   lbl_s), Paragraph(invoice.company_name or '0', val_s)],
+                [Paragraph('GSTIN:',   lbl_s), Paragraph(invoice.client_gstin or '0', val_s)],
+            ], colWidths=[col1_w * 0.4, col1_w * 0.6]),
+            Paragraph(invoice.billing_address or '0', val_s),
+            Paragraph(invoice.shipping_address or '0', val_s),
+        ]
+        col_widths = [col1_w, col2_w, col3_w]
+        hdr_span = (0, 0), (2, 0)
 
-    rows = [hdr_row]
-
-    def _lbl_val(label, value, label_style=lbl_s, val_style=val_s):
-        return Table(
-            [[Paragraph(label, label_style), Paragraph(str(value), val_style)]],
-            colWidths=[col1_w * 0.45, col1_w * 0.55],
-        )
-
-    # CLIENT row
-    client_lbl = 'CLIENT NAME' if invoice.invoice_type == 'product_simple' else 'CLIENT'
-    comp_lbl   = 'COMPANY NAME' if invoice.invoice_type == 'product_simple' else 'COMPANY'
-
-    rows.append([
-        Table([
-            [Paragraph(client_lbl, lbl_s), Paragraph(invoice.client_name, bold_s)],
-            [Paragraph(comp_lbl,   lbl_s), Paragraph(invoice.company_name or '0', val_s)],
-            [Paragraph('GSTIN:',   lbl_s), Paragraph(invoice.client_gstin or '0', val_s)],
-        ], colWidths=[col1_w * 0.4, col1_w * 0.6]),
-        Paragraph(invoice.billing_address or '0', val_s),
-        Paragraph(invoice.shipping_address or '0', val_s),
-    ])
-
-    outer = Table(rows, colWidths=[col1_w, col2_w, col3_w])
+    outer = Table([hdr_row, data_row], colWidths=col_widths)
     outer.setStyle(TableStyle([
         ('BOX',      (0,0),(-1,-1), 0.5, colors.black),
         ('INNERGRID',(0,0),(-1,-1), 0.5, colors.black),
-        ('BACKGROUND',(0,0),(2,0),  LIGHT_BG),
-        ('FONTNAME', (0,0),(2,0),   'Helvetica-Bold'),
+        ('BACKGROUND', hdr_span[0], hdr_span[1], LIGHT_BG),
+        ('FONTNAME',   hdr_span[0], hdr_span[1], 'Helvetica-Bold'),
         ('VALIGN',   (0,0),(-1,-1), 'TOP'),
         ('TOPPADDING',   (0,0),(-1,-1), 2),
         ('BOTTOMPADDING',(0,0),(-1,-1), 2),
@@ -406,7 +431,19 @@ def _build_footer(invoice, w, styles):
 
     if invoice.invoice_type == 'product_batch' and _d(invoice.advance_rate):
         advance_amt = net * _d(invoice.advance_rate) / 100
-        data.append(_row(f'Advance to be paid', f'{invoice.advance_rate}%    {_fmt(advance_amt)}'))
+        data.append(_row('Advance to be paid', f'{invoice.advance_rate}%    {_fmt(advance_amt)}'))
+
+    if invoice.invoice_type == 'final':
+        shipping = _d(getattr(invoice, 'shipping_cost', 0))
+        advance_received = _d(getattr(invoice, 'advance_received', 0))
+        total_payable = net + shipping
+        net_payable = total_payable - advance_received
+        # Replace last row (Net Payable) with extended final structure
+        data[-1] = _row('Total Payable', _fmt(total_payable), bold=True)
+        if shipping:
+            data.insert(-1, _row('Shipping', _fmt(shipping)))
+        data.append(_row('Advance Received', _fmt(advance_received)))
+        data.append(_row('Net Payable', _fmt(net_payable), bold=True))
 
     tbl = Table(data, colWidths=[label_w, val_w])
     tbl.setStyle(TableStyle([

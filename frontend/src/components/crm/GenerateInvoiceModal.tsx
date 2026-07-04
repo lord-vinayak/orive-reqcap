@@ -14,7 +14,7 @@ interface Props {
 
 type Step = 'template' | 'form' | 'generating' | 'done'
 
-const INVOICE_TYPES: InvoiceType[] = ['service', 'product_batch', 'product_simple', 'service_size', 'printing']
+const INVOICE_TYPES: InvoiceType[] = ['service', 'product_batch', 'product_simple', 'service_size', 'printing', 'final']
 
 const BLANK_ITEM = (): InvoiceItem => ({
   item_name: '', hsn: '', size_ml: 0,
@@ -35,6 +35,7 @@ const TYPE_ITEM_FIELDS: Record<InvoiceType, (keyof InvoiceItem)[]> = {
   product_simple: ['item_name', 'rate_per_item', 'qty'],
   service_size:   ['item_name', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
   printing:       ['item_name', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
+  final:          ['item_name', 'batch_no', 'exp_date', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
 }
 
 const ITEM_FIELD_LABELS: Record<keyof InvoiceItem, string> = {
@@ -77,6 +78,8 @@ export function GenerateInvoiceModal({
   // Type-specific
   const [shippingCost, setShippingCost] = useState('0')
   const [advanceRate, setAdvanceRate] = useState('0')
+  const [dispatchAddress, setDispatchAddress] = useState('N/A')
+  const [advanceReceived, setAdvanceReceived] = useState('0')
 
   // Line items
   const [items, setItems] = useState<InvoiceItem[]>([BLANK_ITEM()])
@@ -134,8 +137,10 @@ export function GenerateInvoiceModal({
       sgst_rate: sgst,
       cgst_rate: cgst,
       igst_rate: igst,
-      shipping_cost: invoiceType === 'product_simple' ? shippingCost : 0,
+      shipping_cost: (invoiceType === 'product_simple' || invoiceType === 'final') ? shippingCost : 0,
       advance_rate: invoiceType === 'product_batch' ? advanceRate : 0,
+      dispatch_address: invoiceType === 'final' ? dispatchAddress : '',
+      advance_received: invoiceType === 'final' ? advanceReceived : 0,
       items: items.filter((it) => it.item_name),
     }
 
@@ -221,6 +226,9 @@ export function GenerateInvoiceModal({
                   <Field label="Eway Bill No" value={ewayBillNo} onChange={setEwayBillNo} />
                   <Field label="Billing Address" value={billingAddress} onChange={setBillingAddress} />
                   <Field label="Shipping Address" value={shippingAddress} onChange={setShippingAddress} />
+                  {invoiceType === 'final' && (
+                    <Field label="Dispatch Address" value={dispatchAddress} onChange={setDispatchAddress} />
+                  )}
                 </div>
               </div>
 
@@ -248,6 +256,15 @@ export function GenerateInvoiceModal({
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Extras</h3>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Advance to be paid (%)" value={advanceRate} onChange={setAdvanceRate} type="number" />
+                  </div>
+                </div>
+              )}
+              {invoiceType === 'final' && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Extras</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Shipping Cost (₹)" value={shippingCost} onChange={setShippingCost} type="number" />
+                    <Field label="Advance Received (₹)" value={advanceReceived} onChange={setAdvanceReceived} type="number" />
                   </div>
                 </div>
               )}

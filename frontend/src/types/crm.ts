@@ -427,7 +427,7 @@ export interface PaginatedResponse<T> {
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────
 
-export type InvoiceType = 'service' | 'product_batch' | 'product_simple' | 'service_size' | 'printing'
+export type InvoiceType = 'service' | 'product_batch' | 'product_simple' | 'service_size' | 'printing' | 'final'
 
 export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
   service:        'Service Invoice',
@@ -435,6 +435,7 @@ export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
   product_simple: 'Sample Invoice',
   service_size:   'Container Invoice',
   printing:       'Printing Invoice',
+  final:          'Final Invoice',
 }
 
 export const INVOICE_TYPE_COLUMNS: Record<InvoiceType, string[]> = {
@@ -443,6 +444,7 @@ export const INVOICE_TYPE_COLUMNS: Record<InvoiceType, string[]> = {
   product_simple: ['Item', 'Rate/Item', 'Qty', 'Amount', 'Payable'],
   service_size:   ['Item', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Payable'],
   printing:       ['Item', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Payable'],
+  final:          ['Item', 'Batch No', 'Exp Date', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Payable'],
 }
 
 export interface InvoiceItem {
@@ -467,12 +469,14 @@ export interface Invoice {
   client_gstin: string
   billing_address: string
   shipping_address: string
+  dispatch_address: string
   eway_bill_no: string
   sgst_rate: string
   cgst_rate: string
   igst_rate: string
   shipping_cost: string
   advance_rate: string
+  advance_received: string
   items: InvoiceItem[]
   drive_file_id: string
   drive_url: string
@@ -490,11 +494,13 @@ export interface InvoiceCreatePayload {
   client_gstin: string
   billing_address: string
   shipping_address: string
+  dispatch_address?: string
   eway_bill_no: string
   sgst_rate: string | number
   cgst_rate: string | number
   igst_rate: string | number
   shipping_cost: string | number
   advance_rate: string | number
+  advance_received?: string | number
   items: InvoiceItem[]
 }
