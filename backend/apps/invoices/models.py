@@ -10,6 +10,7 @@ class Invoice(models.Model):
         ('product_batch',  'Advance Invoice'),
         ('product_simple', 'Sample Invoice'),
         ('service_size',   'Container Invoice'),
+        ('printing',       'Printing Invoice'),
     ]
 
     id               = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

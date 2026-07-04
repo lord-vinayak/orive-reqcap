@@ -14,12 +14,19 @@ interface Props {
 
 type Step = 'template' | 'form' | 'generating' | 'done'
 
-const INVOICE_TYPES: InvoiceType[] = ['service', 'product_batch', 'product_simple', 'service_size']
+const INVOICE_TYPES: InvoiceType[] = ['service', 'product_batch', 'product_simple', 'service_size', 'printing']
 
 const BLANK_ITEM = (): InvoiceItem => ({
   item_name: '', hsn: '', size_ml: 0,
   batch_no: 'NA', exp_date: 'NA', rate_per_item: 0, qty: 0,
 })
+
+const PRINTING_DEFAULT_ITEMS: InvoiceItem[] = [
+  'FDA Approval', 'Content Creation', 'Logo Design', 'Label & Mono Carton Design',
+  'Dermatology Testing', 'Formulation Support', 'Market Research',
+  'Consumer Perception Testing', 'Ecommerce Launch Plan',
+  'Influencer Management', 'Social Media Management', 'Website Creation',
+].map((name) => ({ item_name: name, hsn: '998314', size_ml: 0, batch_no: 'NA', exp_date: 'NA', rate_per_item: 0, qty: 0 }))
 
 // Which item fields each template uses
 const TYPE_ITEM_FIELDS: Record<InvoiceType, (keyof InvoiceItem)[]> = {
@@ -27,6 +34,7 @@ const TYPE_ITEM_FIELDS: Record<InvoiceType, (keyof InvoiceItem)[]> = {
   product_batch:  ['item_name', 'batch_no', 'exp_date', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
   product_simple: ['item_name', 'rate_per_item', 'qty'],
   service_size:   ['item_name', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
+  printing:       ['item_name', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
 }
 
 const ITEM_FIELD_LABELS: Record<keyof InvoiceItem, string> = {
@@ -335,7 +343,11 @@ export function GenerateInvoiceModal({
                 Cancel
               </button>
               <button
-                onClick={() => setStep('form')}
+                onClick={() => {
+                  if (invoiceType === 'printing') setItems(PRINTING_DEFAULT_ITEMS.map((it) => ({ ...it })))
+                  else setItems([BLANK_ITEM()])
+                  setStep('form')
+                }}
                 className="px-4 py-2 text-sm rounded-lg bg-yellow-500 text-white font-semibold hover:bg-yellow-600"
               >
                 Next →

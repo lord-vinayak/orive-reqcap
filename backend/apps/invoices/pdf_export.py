@@ -91,6 +91,14 @@ COLUMN_SPECS = {
         ('Qty',         'qty',          14),
         ('Payable',     '_amount',      32),
     ],
+    'printing': [
+        ('Item',        'item_name',    56),
+        ('Size (in ml)','size_ml',      22),
+        ('HSN',         'hsn',          18),
+        ('Rate / Item', 'rate_per_item',26),
+        ('Qty',         'qty',          14),
+        ('Payable',     '_amount',      32),
+    ],
 }
 
 
