@@ -21,13 +21,6 @@ const BLANK_ITEM = (): InvoiceItem => ({
   batch_no: 'NA', exp_date: 'NA', rate_per_item: 0, qty: 0,
 })
 
-const PRINTING_DEFAULT_ITEMS: InvoiceItem[] = [
-  'FDA Approval', 'Content Creation', 'Logo Design', 'Label & Mono Carton Design',
-  'Dermatology Testing', 'Formulation Support', 'Market Research',
-  'Consumer Perception Testing', 'Ecommerce Launch Plan',
-  'Influencer Management', 'Social Media Management', 'Website Creation',
-].map((name) => ({ item_name: name, hsn: '998314', size_ml: 0, batch_no: 'NA', exp_date: 'NA', rate_per_item: 0, qty: 0 }))
-
 // Which item fields each template uses
 const TYPE_ITEM_FIELDS: Record<InvoiceType, (keyof InvoiceItem)[]> = {
   service:        ['item_name', 'hsn', 'rate_per_item', 'qty'],
@@ -361,8 +354,7 @@ export function GenerateInvoiceModal({
               </button>
               <button
                 onClick={() => {
-                  if (invoiceType === 'printing') setItems(PRINTING_DEFAULT_ITEMS.map((it) => ({ ...it })))
-                  else setItems([BLANK_ITEM()])
+                  setItems([BLANK_ITEM()])
                   setStep('form')
                 }}
                 className="px-4 py-2 text-sm rounded-lg bg-yellow-500 text-white font-semibold hover:bg-yellow-600"
