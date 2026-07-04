@@ -12,7 +12,8 @@ from .models import (
     ManufacturerRating, VendorRating, VendorProjectPayment,
 )
 from .serializers import (
-    ManufacturerSerializer, VendorSerializer, InternalTeamMemberSerializer,
+    ManufacturerSerializer, VendorSerializer, VendorCategorySerializer,
+    InternalTeamMemberSerializer,
     ManufacturerRatingSerializer, VendorRatingSerializer, VendorProjectPaymentSerializer,
 )
 
@@ -383,6 +384,35 @@ class VendorViewSet(viewsets.ModelViewSet):
             created.append({'row': row_num, 'company_name': name, 'vendor_id': v.vendor_id})
 
         return Response({'created': created, 'skipped': skipped}, status=200)
+
+
+class VendorCategoryViewSet(viewsets.ModelViewSet):
+    serializer_class = VendorCategorySerializer
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+
+    def get_permissions(self):
+        if self.action in ('create', 'destroy'):
+            return [permissions.IsAuthenticated(), IsAdmin()]
+        return [permissions.IsAuthenticated()]
+
+    def get_queryset(self):
+        return VendorCategory.objects.all()
+
+    def perform_create(self, serializer):
+        from django.utils.text import slugify
+        name = serializer.validated_data['name']
+        slug = slugify(name)
+        prefix = slug[:3].upper()
+        serializer.save(slug=slug, prefix=prefix)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if Vendor.objects.filter(vendor_type=instance.slug).exists():
+            return Response(
+                {'detail': f'Cannot delete: vendors of type "{instance.name}" exist.'},
+                status=400,
+            )
+        return super().destroy(request, *args, **kwargs)
 
 
 class InternalTeamMemberViewSet(viewsets.ModelViewSet):

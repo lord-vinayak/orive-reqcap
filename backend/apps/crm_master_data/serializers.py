@@ -1,8 +1,15 @@
 from rest_framework import serializers
 from .models import (
-    Manufacturer, Vendor, InternalTeamMember,
+    Manufacturer, Vendor, VendorCategory, InternalTeamMember,
     ManufacturerRating, VendorRating, VendorProjectPayment,
 )
+
+
+class VendorCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorCategory
+        fields = ['id', 'name', 'slug', 'prefix']
+        read_only_fields = ['id', 'slug', 'prefix']
 
 
 class ManufacturerSerializer(serializers.ModelSerializer):
