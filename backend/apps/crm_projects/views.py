@@ -346,8 +346,7 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
             'client', 'sales_poc', 'formulation_poc', 'created_by'
         ).prefetch_related(
             'stage_completions', 'milestones',
-            'manufacturers', 'designers', 'packaging_vendors',
-            'printers', 'batch_testing_vendors', 'derma_testing_vendors',
+            'manufacturers', 'vendor_links__vendor',
         )
         phase = self.request.query_params.get('phase')
         if phase:
@@ -813,8 +812,7 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
                         'planned_date', 'actual_date', 'status',
                     ),
                 ),
-                'manufacturers', 'designers', 'packaging_vendors',
-                'printers', 'batch_testing_vendors', 'derma_testing_vendors',
+                'manufacturers', 'vendor_links__vendor',
             )
         )
         return Response(CRMProjectListSerializer(qs, many=True).data)

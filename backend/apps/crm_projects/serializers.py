@@ -1,12 +1,13 @@
 from datetime import date
 from rest_framework import serializers
 from .models import (
-    CRMProject, StageCompletion, SubStageCompletion,
+    CRMProject, ProjectVendorLink, StageCompletion, SubStageCompletion,
     ProjectNote, ProjectFile, ProjectMilestone, KeyLearning, ProjectPayment,
     StandaloneTask, TaskComment, ResampleNote,
     TASK_STATUS_CHOICES,
 )
 from .stage_definitions import STAGE_DISPLAY_MAP
+from apps.crm_master_data.models import Vendor
 
 
 class StageCompletionSerializer(serializers.ModelSerializer):
@@ -374,11 +375,7 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
     sales_poc_name = serializers.CharField(source='sales_poc.name', read_only=True)
     formulation_poc_name = serializers.CharField(source='formulation_poc.name', read_only=True)
     manufacturers = ManufacturerMiniSerializer(many=True, read_only=True)
-    designers = VendorMiniSerializer(many=True, read_only=True)
-    packaging_vendors = VendorMiniSerializer(many=True, read_only=True)
-    printers = VendorMiniSerializer(many=True, read_only=True)
-    batch_testing_vendors = VendorMiniSerializer(many=True, read_only=True)
-    derma_testing_vendors = VendorMiniSerializer(many=True, read_only=True)
+    vendor_assignments = serializers.SerializerMethodField()
     progress_percentage = serializers.IntegerField(read_only=True)
     has_delays = serializers.SerializerMethodField()
     next_milestone = serializers.SerializerMethodField()
@@ -389,8 +386,7 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
             'id', 'project_no', 'client', 'client_name', 'client_company', 'client_phone',
             'client_lead_status', 'client_lead_sub_status',
             'no_of_products', 'moq', 'phase', 'project_stage',
-            'manufacturers', 'designers', 'packaging_vendors',
-            'printers', 'batch_testing_vendors', 'derma_testing_vendors',
+            'manufacturers', 'vendor_assignments',
             'sales_poc', 'sales_poc_name', 'formulation_poc', 'formulation_poc_name',
             'sample_booked_date', 'start_date', 'created_at',
             'progress_percentage', 'has_delays', 'next_milestone',
@@ -411,6 +407,21 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
         milestone = min(candidates, key=lambda m: m.planned_date or date(9999, 12, 31))
         return {'key': milestone.milestone_key, 'display': milestone.milestone_display,
                 'planned_date': milestone.planned_date}
+
+    def get_vendor_assignments(self, obj):
+        from apps.crm_master_data.models import VendorCategory
+        cat_map = {c.slug: c.name for c in VendorCategory.objects.all()}
+        return [
+            {
+                'id': str(link.vendor.id),
+                'vendor_id': link.vendor.vendor_id,
+                'company_name': link.vendor.company_name,
+                'city': link.vendor.city,
+                'category_slug': link.vendor.vendor_type,
+                'category_name': cat_map.get(link.vendor.vendor_type, link.vendor.vendor_type.replace('_', ' ').title()),
+            }
+            for link in obj.vendor_links.select_related('vendor').all()
+        ]
 
 
 class CRMProjectDetailSerializer(CRMProjectListSerializer):
@@ -438,36 +449,44 @@ class CRMProjectDetailSerializer(CRMProjectListSerializer):
 
 
 class CRMProjectWriteSerializer(serializers.ModelSerializer):
+    vendor_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Vendor.objects.all(), many=True, required=False, write_only=True,
+    )
+
     class Meta:
         model = CRMProject
         fields = [
             'id', 'project_no', 'client', 'no_of_products', 'moq',
-            'manufacturers', 'designers', 'packaging_vendors',
-            'printers', 'batch_testing_vendors', 'derma_testing_vendors',
+            'manufacturers', 'vendor_ids',
             'sales_poc', 'formulation_poc', 'sample_booked_date',
             'source_requirement',
         ]
         read_only_fields = ['id', 'project_no']
 
-    M2M_FIELDS = [
-        'manufacturers', 'designers', 'packaging_vendors',
-        'printers', 'batch_testing_vendors', 'derma_testing_vendors',
-    ]
-
     def create(self, validated_data):
         user = self.context['request'].user
-        m2m_data = {f: validated_data.pop(f, []) for f in self.M2M_FIELDS}
+        vendor_objs = validated_data.pop('vendor_ids', [])
+        manufacturers = validated_data.pop('manufacturers', [])
         project = CRMProject.objects.create(created_by=user, **validated_data)
-        for field, values in m2m_data.items():
-            getattr(project, field).set(values)
+        project.manufacturers.set(manufacturers)
+        ProjectVendorLink.objects.bulk_create(
+            [ProjectVendorLink(project=project, vendor=v) for v in vendor_objs],
+            ignore_conflicts=True,
+        )
         return project
 
     def update(self, instance, validated_data):
-        m2m_data = {f: validated_data.pop(f, None) for f in self.M2M_FIELDS}
+        vendor_objs = validated_data.pop('vendor_ids', None)
+        manufacturers = validated_data.pop('manufacturers', None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-        for field, values in m2m_data.items():
-            if values is not None:
-                getattr(instance, field).set(values)
+        if manufacturers is not None:
+            instance.manufacturers.set(manufacturers)
+        if vendor_objs is not None:
+            instance.vendor_links.all().delete()
+            ProjectVendorLink.objects.bulk_create(
+                [ProjectVendorLink(project=instance, vendor=v) for v in vendor_objs],
+                ignore_conflicts=True,
+            )
         return instance

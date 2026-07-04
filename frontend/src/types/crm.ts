@@ -212,6 +212,15 @@ export interface VendorMini {
   city: string
 }
 
+export interface VendorAssignment {
+  id: string
+  vendor_id: string
+  company_name: string
+  city: string
+  category_slug: string
+  category_name: string
+}
+
 export interface CRMProjectList {
   id: string
   project_no: string
@@ -226,11 +235,7 @@ export interface CRMProjectList {
   phase: ProjectPhase
   project_stage: string
   manufacturers: VendorMini[]
-  designers: VendorMini[]
-  packaging_vendors: VendorMini[]
-  printers: VendorMini[]
-  batch_testing_vendors: VendorMini[]
-  derma_testing_vendors: VendorMini[]
+  vendor_assignments: VendorAssignment[]
   sales_poc: string | null
   sales_poc_name: string | null
   formulation_poc: string | null

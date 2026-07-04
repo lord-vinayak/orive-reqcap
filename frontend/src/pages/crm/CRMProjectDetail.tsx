@@ -725,11 +725,17 @@ function ProjectInfoPanel({ project, onRefresh }: { project: CRMProject; onRefre
         <MetaField label="Products" value={project.no_of_products?.toString() ?? '—'} />
         <MetaField label="MOQ" value={project.moq?.toString() ?? '—'} />
         <MetaField label="Manufacturer" value={project.manufacturers?.length ? project.manufacturers.map((m) => m.company_name).join(', ') : '—'} />
-        <MetaField label="Designer" value={project.designers?.length ? project.designers.map((v) => v.company_name).join(', ') : '—'} />
-        <MetaField label="Packaging Vendor" value={project.packaging_vendors?.length ? project.packaging_vendors.map((v) => v.company_name).join(', ') : '—'} />
-        <MetaField label="Printer" value={project.printers?.length ? project.printers.map((v) => v.company_name).join(', ') : '—'} />
-        <MetaField label="Batch Testing" value={project.batch_testing_vendors?.length ? project.batch_testing_vendors.map((v) => v.company_name).join(', ') : '—'} />
-        <MetaField label="Derma Testing" value={project.derma_testing_vendors?.length ? project.derma_testing_vendors.map((v) => v.company_name).join(', ') : '—'} />
+        {project.vendor_assignments?.length
+          ? Object.entries(
+              project.vendor_assignments.reduce<Record<string, string[]>>((acc, va) => {
+                acc[va.category_name] = [...(acc[va.category_name] ?? []), va.company_name]
+                return acc
+              }, {})
+            ).map(([cat, names]) => (
+              <MetaField key={cat} label={cat} value={names.join(', ')} />
+            ))
+          : <MetaField label="Vendors" value="—" />
+        }
         <MetaField label="Sales POC" value={project.sales_poc_name ?? '—'} />
         <MetaField label="Formulation POC" value={project.formulation_poc_name ?? '—'} />
 

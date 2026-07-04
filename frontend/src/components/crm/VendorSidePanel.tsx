@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { crmApi } from '@/services/crm'
-import type { CRMProject, DropdownOption, VendorMini } from '@/types/crm'
+import type { CRMProject, DropdownOption, VendorAssignment, VendorCategory, VendorMini } from '@/types/crm'
 
 // ── Searchable multi-select ──────────────────────────────────────────────────
 
@@ -36,7 +36,6 @@ function MultiSelect({ options, selected, onAdd, onRemove, placeholder }: MultiS
 
   return (
     <div ref={containerRef} className="space-y-1.5">
-      {/* Selected chips */}
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {selected.map((s) => (
@@ -44,7 +43,6 @@ function MultiSelect({ options, selected, onAdd, onRemove, placeholder }: MultiS
               key={s.id}
               className="inline-flex items-center gap-1 px-2 py-0.5 bg-mustard/15 text-black dark:text-white text-xs rounded-full border border-mustard/30"
             >
-              {s.vendor_id && <span className="font-mono text-black/40 dark:text-slate-400">[{s.vendor_id}]</span>}
               {s.company_name}
               <button
                 type="button"
@@ -58,8 +56,6 @@ function MultiSelect({ options, selected, onAdd, onRemove, placeholder }: MultiS
           ))}
         </div>
       )}
-
-      {/* Search input */}
       <div className="relative">
         <input
           type="text"
@@ -100,6 +96,108 @@ function MultiSelect({ options, selected, onAdd, onRemove, placeholder }: MultiS
   )
 }
 
+// ── Add-vendor picker (category → vendor) ────────────────────────────────────
+
+interface AddVendorPickerProps {
+  categories: VendorCategory[]
+  onAdd: (vendor: DropdownOption, categorySlug: string, categoryName: string) => void
+  existingIds: Set<string>
+}
+
+function AddVendorPicker({ categories, onAdd, existingIds }: AddVendorPickerProps) {
+  const [open, setOpen] = useState(false)
+  const [selectedCat, setSelectedCat] = useState<VendorCategory | null>(null)
+  const [catOptions, setCatOptions] = useState<DropdownOption[]>([])
+  const [loadingCat, setLoadingCat] = useState(false)
+
+  const handleSelectCategory = async (cat: VendorCategory) => {
+    setSelectedCat(cat)
+    setLoadingCat(true)
+    try {
+      const res = await crmApi.vendorDropdown(cat.slug)
+      setCatOptions(res.data)
+    } finally {
+      setLoadingCat(false)
+    }
+  }
+
+  const handleAddVendor = (opt: DropdownOption) => {
+    if (!selectedCat) return
+    onAdd(opt, selectedCat.slug, selectedCat.name)
+    // Reset for next add
+    setSelectedCat(null)
+    setCatOptions([])
+    setOpen(false)
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-xs text-mustard hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard rounded"
+      >
+        + Add Vendor
+      </button>
+    )
+  }
+
+  return (
+    <div className="border border-black/10 dark:border-white/10 rounded p-3 space-y-2 bg-slate-50 dark:bg-slate-800">
+      {/* Step 1: pick category */}
+      {!selectedCat ? (
+        <>
+          <p className="text-xs text-black/60 dark:text-slate-400 font-medium">Select vendor category</p>
+          <div className="flex flex-wrap gap-1.5">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => handleSelectCategory(cat)}
+                className="px-2 py-1 text-xs rounded border border-black/15 dark:border-white/15 bg-white dark:bg-slate-700 text-black dark:text-white hover:border-mustard hover:bg-mustard/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard"
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="text-xs text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white"
+          >
+            Cancel
+          </button>
+        </>
+      ) : (
+        /* Step 2: pick vendor from category */
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-black/60 dark:text-slate-400 font-medium">{selectedCat.name}</p>
+            <button
+              type="button"
+              onClick={() => { setSelectedCat(null); setCatOptions([]) }}
+              className="text-xs text-black/40 dark:text-slate-500 hover:text-black dark:hover:text-white"
+            >
+              ← Back
+            </button>
+          </div>
+          {loadingCat ? (
+            <p className="text-xs text-black/40 dark:text-slate-500">Loading…</p>
+          ) : (
+            <MultiSelect
+              options={catOptions.filter((o) => !existingIds.has(o.id))}
+              selected={[]}
+              onAdd={handleAddVendor}
+              onRemove={() => {}}
+              placeholder={`Search ${selectedCat.name.toLowerCase()}…`}
+            />
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -108,99 +206,72 @@ interface Props {
   onSaved: (updated: CRMProject) => void
 }
 
-interface VendorDraft {
-  manufacturers: VendorMini[]
-  designers: VendorMini[]
-  packaging_vendors: VendorMini[]
-  printers: VendorMini[]
-  batch_testing_vendors: VendorMini[]
-  derma_testing_vendors: VendorMini[]
-}
-
-interface AllOptions {
-  manufacturers: DropdownOption[]
-  designers: DropdownOption[]
-  packaging: DropdownOption[]
-  printing: DropdownOption[]
-  testing: DropdownOption[]
-}
-
-const ROLE_ROWS: Array<{
-  key: keyof VendorDraft
-  label: string
-  optionsKey: keyof AllOptions
-}> = [
-  { key: 'manufacturers', label: 'Manufacturer', optionsKey: 'manufacturers' },
-  { key: 'designers', label: 'Designer', optionsKey: 'designers' },
-  { key: 'packaging_vendors', label: 'Packaging Vendor', optionsKey: 'packaging' },
-  { key: 'printers', label: 'Printer', optionsKey: 'printing' },
-  { key: 'batch_testing_vendors', label: 'Batch Testing', optionsKey: 'testing' },
-  { key: 'derma_testing_vendors', label: 'Derma Testing', optionsKey: 'testing' },
-]
-
 export function VendorSidePanel({ project, onClose, onSaved }: Props) {
-  const [draft, setDraft] = useState<VendorDraft>({
-    manufacturers: project.manufacturers ?? [],
-    designers: project.designers ?? [],
-    packaging_vendors: project.packaging_vendors ?? [],
-    printers: project.printers ?? [],
-    batch_testing_vendors: project.batch_testing_vendors ?? [],
-    derma_testing_vendors: project.derma_testing_vendors ?? [],
-  })
-  const [options, setOptions] = useState<AllOptions>({
-    manufacturers: [],
-    designers: [],
-    packaging: [],
-    printing: [],
-    testing: [],
-  })
+  const [manufacturers, setManufacturers] = useState<VendorMini[]>(project.manufacturers ?? [])
+  const [vendorAssignments, setVendorAssignments] = useState<VendorAssignment[]>(
+    project.vendor_assignments ?? []
+  )
+  const [mfrOptions, setMfrOptions] = useState<DropdownOption[]>([])
+  const [categories, setCategories] = useState<VendorCategory[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     Promise.all([
       crmApi.manufacturerDropdown(),
-      crmApi.vendorDropdown('designer'),
-      crmApi.vendorDropdown('packaging'),
-      crmApi.vendorDropdown('printing'),
-      crmApi.vendorDropdown('testing'),
-    ]).then(([mfr, des, pkg, prt, tst]) => {
-      setOptions({
-        manufacturers: mfr.data,
-        designers: des.data,
-        packaging: pkg.data,
-        printing: prt.data,
-        testing: tst.data,
-      })
+      crmApi.listVendorCategories(),
+    ]).then(([mfr, cats]) => {
+      setMfrOptions(mfr.data)
+      setCategories(cats.data)
     })
   }, [])
 
-  const addToRole = (key: keyof VendorDraft, opt: DropdownOption) => {
-    setDraft((d) => {
-      const already = d[key].some((s) => s.id === opt.id)
-      if (already) return d
-      return {
-        ...d,
-        [key]: [...d[key], { id: opt.id, vendor_id: opt.vendor_id ?? '', company_name: opt.company_name, city: opt.city ?? '' }],
-      }
+  const addManufacturer = (opt: DropdownOption) => {
+    setManufacturers((prev) => {
+      if (prev.some((m) => m.id === opt.id)) return prev
+      return [...prev, { id: opt.id, vendor_id: opt.vendor_id ?? '', company_name: opt.company_name, city: opt.city ?? '' }]
     })
   }
 
-  const removeFromRole = (key: keyof VendorDraft, id: string) => {
-    setDraft((d) => ({ ...d, [key]: d[key].filter((s) => s.id !== id) }))
+  const removeManufacturer = (id: string) => {
+    setManufacturers((prev) => prev.filter((m) => m.id !== id))
   }
+
+  const addVendor = (opt: DropdownOption, categorySlug: string, categoryName: string) => {
+    setVendorAssignments((prev) => {
+      if (prev.some((v) => v.id === opt.id)) return prev
+      return [...prev, {
+        id: opt.id,
+        vendor_id: opt.vendor_id ?? '',
+        company_name: opt.company_name,
+        city: opt.city ?? '',
+        category_slug: categorySlug,
+        category_name: categoryName,
+      }]
+    })
+  }
+
+  const removeVendor = (id: string) => {
+    setVendorAssignments((prev) => prev.filter((v) => v.id !== id))
+  }
+
+  // Group vendor assignments by category for display
+  const groupedVendors = vendorAssignments.reduce<Record<string, VendorAssignment[]>>((acc, va) => {
+    const key = va.category_name
+    if (!acc[key]) acc[key] = []
+    acc[key].push(va)
+    return acc
+  }, {})
+
+  const existingVendorIds = new Set(vendorAssignments.map((v) => v.id))
 
   const handleSave = async () => {
     setSaving(true)
     setError('')
     try {
       const payload = {
-        manufacturers: draft.manufacturers.map((s) => s.id),
-        designers: draft.designers.map((s) => s.id),
-        packaging_vendors: draft.packaging_vendors.map((s) => s.id),
-        printers: draft.printers.map((s) => s.id),
-        batch_testing_vendors: draft.batch_testing_vendors.map((s) => s.id),
-        derma_testing_vendors: draft.derma_testing_vendors.map((s) => s.id),
+        manufacturers: manufacturers.map((m) => m.id),
+        vendor_ids: vendorAssignments.map((v) => v.id),
       }
       const res = await crmApi.updateProject(project.id, payload as any)
       onSaved(res.data)
@@ -237,18 +308,57 @@ export function VendorSidePanel({ project, onClose, onSaved }: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {ROLE_ROWS.map((row) => (
-            <div key={row.key}>
-              <p className="text-xs font-medium text-black/60 dark:text-slate-400 mb-1.5">{row.label}</p>
-              <MultiSelect
-                options={options[row.optionsKey]}
-                selected={draft[row.key]}
-                onAdd={(opt) => addToRole(row.key, opt)}
-                onRemove={(id) => removeFromRole(row.key, id)}
-                placeholder={`Search ${row.label.toLowerCase()}…`}
+          {/* Manufacturers — always shown */}
+          <div>
+            <p className="text-sm font-semibold text-black dark:text-white mb-1.5">Manufacturer</p>
+            <MultiSelect
+              options={mfrOptions}
+              selected={manufacturers}
+              onAdd={addManufacturer}
+              onRemove={removeManufacturer}
+              placeholder="Search manufacturer…"
+            />
+          </div>
+
+          <hr className="border-black/10 dark:border-white/10" />
+
+          {/* Vendor assignments — dynamic by category */}
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-black dark:text-white">Vendors</p>
+
+            {/* Existing assignments grouped by category */}
+            {Object.entries(groupedVendors).map(([catName, vendors]) => (
+              <div key={catName}>
+                <p className="text-sm text-black/50 dark:text-slate-400 mb-1">{catName}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {vendors.map((v) => (
+                    <span
+                      key={v.id}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-mustard/15 text-black dark:text-white text-xs rounded-full border border-mustard/30"
+                    >
+                      {v.company_name}
+                      <button
+                        type="button"
+                        onClick={() => removeVendor(v.id)}
+                        className="text-black/40 dark:text-slate-400 hover:text-black dark:hover:text-white ml-0.5 text-sm leading-none"
+                        aria-label={`Remove ${v.company_name}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {categories.length > 0 && (
+              <AddVendorPicker
+                categories={categories}
+                onAdd={addVendor}
+                existingIds={existingVendorIds}
               />
-            </div>
-          ))}
+            )}
+          </div>
 
           {error && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{error}</p>}
         </div>

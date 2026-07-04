@@ -44,26 +44,6 @@ class CRMProject(models.Model):
     manufacturers = models.ManyToManyField(
         'crm_master_data.Manufacturer', blank=True, related_name='projects',
     )
-    designers = models.ManyToManyField(
-        'crm_master_data.Vendor', blank=True, related_name='projects_as_designer',
-        limit_choices_to={'vendor_type': 'designer'},
-    )
-    packaging_vendors = models.ManyToManyField(
-        'crm_master_data.Vendor', blank=True, related_name='projects_as_packaging_vendor',
-        limit_choices_to={'vendor_type': 'packaging'},
-    )
-    printers = models.ManyToManyField(
-        'crm_master_data.Vendor', blank=True, related_name='projects_as_printer',
-        limit_choices_to={'vendor_type': 'printing'},
-    )
-    batch_testing_vendors = models.ManyToManyField(
-        'crm_master_data.Vendor', blank=True, related_name='projects_as_batch_testing',
-        limit_choices_to={'vendor_type': 'testing'},
-    )
-    derma_testing_vendors = models.ManyToManyField(
-        'crm_master_data.Vendor', blank=True, related_name='projects_as_derma_testing',
-        limit_choices_to={'vendor_type': 'testing'},
-    )
 
     # Phase tracking
     phase = models.CharField(
@@ -164,6 +144,17 @@ class CRMProject(models.Model):
     @property
     def at_risk_stages(self):
         return self.milestones.filter(status='at_risk')
+
+
+class ProjectVendorLink(models.Model):
+    """Generic many-to-many between a project and a Vendor (any category)."""
+    project = models.ForeignKey(CRMProject, on_delete=models.CASCADE, related_name='vendor_links')
+    vendor = models.ForeignKey(
+        'crm_master_data.Vendor', on_delete=models.CASCADE, related_name='project_links',
+    )
+
+    class Meta:
+        unique_together = ('project', 'vendor')
 
 
 class ResampleNote(models.Model):
