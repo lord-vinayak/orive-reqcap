@@ -78,27 +78,22 @@ class Manufacturer(AbstractVendor):
         super().save(*args, **kwargs)
 
 
+class VendorCategory(models.Model):
+    """Dynamic vendor categories (replaces hardcoded VENDOR_TYPES on Vendor)."""
+    name   = models.CharField(max_length=100, unique=True)  # "Packaging"
+    slug   = models.SlugField(max_length=50, unique=True)   # "packaging"
+    prefix = models.CharField(max_length=10)                 # "PKG"
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class Vendor(AbstractVendor):
     """All non-manufacturer external vendors."""
-    VENDOR_TYPES = [
-        ('packaging', 'Packaging'),
-        ('printing', 'Printing'),
-        ('testing', 'Testing Services'),
-        ('designer', 'Designer'),
-        ('ecommerce', 'Ecommerce Agency'),
-        ('logistics', 'Logistics Agency'),
-    ]
-    VENDOR_TYPE_PREFIXES = {
-        'packaging': 'PKG',
-        'printing': 'PRT',
-        'testing': 'TST',
-        'designer': 'DES',
-        'ecommerce': 'ECM',
-        'logistics': 'LOG',
-    }
-    vendor_type = models.CharField(
-        max_length=20, choices=VENDOR_TYPES, db_index=True
-    )
+    vendor_type = models.CharField(max_length=50, db_index=True)
 
     class Meta(AbstractVendor.Meta):
         verbose_name = 'Vendor'
@@ -106,7 +101,8 @@ class Vendor(AbstractVendor):
 
     def save(self, *args, **kwargs):
         if not self.vendor_id:
-            prefix = self.VENDOR_TYPE_PREFIXES.get(self.vendor_type, 'VND')
+            cat = VendorCategory.objects.filter(slug=self.vendor_type).first()
+            prefix = cat.prefix if cat else (self.vendor_type[:3].upper() if self.vendor_type else 'VND')
             self.vendor_id = _next_vendor_id(Vendor, prefix)
         super().save(*args, **kwargs)
 

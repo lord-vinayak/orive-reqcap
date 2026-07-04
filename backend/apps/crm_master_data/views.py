@@ -8,7 +8,7 @@ from rest_framework.response import Response
 
 from apps.users.permissions import IsAdmin
 from .models import (
-    Manufacturer, Vendor, InternalTeamMember,
+    Manufacturer, Vendor, VendorCategory, InternalTeamMember,
     ManufacturerRating, VendorRating, VendorProjectPayment,
 )
 from .serializers import (
@@ -298,7 +298,7 @@ class VendorViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='bulk-upload')
     def bulk_upload(self, request):
         vendor_type = request.query_params.get('vendor_type', '')
-        valid_types = [t[0] for t in Vendor.VENDOR_TYPES]
+        valid_types = list(VendorCategory.objects.values_list('slug', flat=True))
         if vendor_type not in valid_types:
             return Response({'detail': f'Invalid vendor_type. Must be one of: {valid_types}'}, status=400)
 
