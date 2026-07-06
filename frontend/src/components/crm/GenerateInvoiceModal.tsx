@@ -63,10 +63,11 @@ export function GenerateInvoiceModal({
   const [shippingAddress, setShippingAddress] = useState('N/A')
   const [ewayBillNo, setEwayBillNo] = useState('N/A')
 
-  // GST
-  const [sgst, setSgst] = useState('0')
-  const [cgst, setCgst] = useState('0')
-  const [igst, setIgst] = useState('0')
+  // GST — derived from billing location choice
+  const [gstLocation, setGstLocation] = useState<'within' | 'outside'>('within')
+  const gstRates = gstLocation === 'within'
+    ? { sgst: '9', cgst: '9', igst: '0' }
+    : { sgst: '0', cgst: '0', igst: '18' }
 
   // Type-specific
   const [shippingCost, setShippingCost] = useState('0')
@@ -127,9 +128,9 @@ export function GenerateInvoiceModal({
       billing_address: billingAddress,
       shipping_address: shippingAddress,
       eway_bill_no: ewayBillNo,
-      sgst_rate: sgst,
-      cgst_rate: cgst,
-      igst_rate: igst,
+      sgst_rate: gstRates.sgst,
+      cgst_rate: gstRates.cgst,
+      igst_rate: gstRates.igst,
       shipping_cost: (invoiceType === 'product_simple' || invoiceType === 'final') ? shippingCost : 0,
       advance_rate: invoiceType === 'product_batch' ? advanceRate : 0,
       dispatch_address: invoiceType === 'final' ? dispatchAddress : '',
@@ -225,15 +226,32 @@ export function GenerateInvoiceModal({
                 </div>
               </div>
 
-              {/* GST */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">GST Rates (%)</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <Field label="SGST %" value={sgst} onChange={setSgst} type="number" />
-                  <Field label="CGST %" value={cgst} onChange={setCgst} type="number" />
-                  <Field label="IGST %" value={igst} onChange={setIgst} type="number" />
+              {/* GST — only shown for types that print tax rows */}
+              {invoiceType !== 'product_simple' && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Billing Location</h3>
+                  <div className="flex gap-2">
+                    {(['within', 'outside'] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setGstLocation(opt)}
+                        className={`flex-1 rounded-lg border-2 py-2 px-3 text-sm font-medium transition-colors ${
+                          gstLocation === opt
+                            ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400'
+                            : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:border-yellow-300'
+                        }`}
+                        aria-pressed={gstLocation === opt}
+                      >
+                        {opt === 'within' ? 'Within Haryana' : 'Outside Haryana'}
+                        <span className="block text-xs font-normal mt-0.5 opacity-70">
+                          {opt === 'within' ? 'SGST 9% + CGST 9%' : 'IGST 18%'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Type-specific extras */}
               {invoiceType === 'product_simple' && (

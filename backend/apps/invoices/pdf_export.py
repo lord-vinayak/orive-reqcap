@@ -16,6 +16,8 @@ from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, HRFlowable,
 )
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 # ── Brand colours ────────────────────────────────────────────────────────────
 MUSTARD   = colors.HexColor('#D6AE4D')
@@ -35,7 +37,42 @@ PAYMENT_LINK   = 'razorpay.me/@skinovationsciences'
 
 PDF_MIME = 'application/pdf'
 
-# ── Logo resolution (same logic as xlsx_export.py) ───────────────────────────
+# ── Unicode font for ₹ support ────────────────────────────────────────────────
+# Try platform font candidates; fall back to Helvetica if none found.
+_FONT_REGULAR_CANDIDATES = [
+    Path(r'C:/Windows/Fonts/arial.ttf'),
+    Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
+    Path('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'),
+    Path('/usr/share/fonts/truetype/freefont/FreeSans.ttf'),
+]
+_FONT_BOLD_CANDIDATES = [
+    Path(r'C:/Windows/Fonts/arialbd.ttf'),
+    Path('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
+    Path('/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'),
+    Path('/usr/share/fonts/truetype/freefont/FreeSansBold.ttf'),
+]
+
+_FONT      = 'Helvetica'
+_FONT_BOLD = 'Helvetica-Bold'
+_CURRENCY  = 'Rs. '
+
+def _try_register(name, candidates):
+    for p in candidates:
+        if p.exists():
+            try:
+                pdfmetrics.registerFont(TTFont(name, str(p)))
+                return True
+            except Exception:
+                pass
+    return False
+
+# ponytail: only upgrade fonts once at import time
+if _try_register('_InvFont', _FONT_REGULAR_CANDIDATES) and _try_register('_InvFontBold', _FONT_BOLD_CANDIDATES):
+    _FONT      = '_InvFont'
+    _FONT_BOLD = '_InvFontBold'
+    _CURRENCY  = '₹ '
+
+# ── Logo resolution ───────────────────────────────────────────────────────────
 _HERE = Path(__file__).resolve()
 _LOGO_CANDIDATES = [
     _HERE.parents[2] / 'logo.png',
@@ -55,8 +92,6 @@ def _find_logo():
 
 
 # ── Column specs per invoice type ────────────────────────────────────────────
-# Each spec: (header_label, item_key, col_width_mm)
-# item_key None → computed column
 COLUMN_SPECS = {
     'service': [
         ('Item',        'item_name',    60),
@@ -122,10 +157,8 @@ def _d(val):
 
 
 def _fmt(val):
-    """Format decimal as ₹ X,XX,XXX.XX (Indian style)."""
-    d = _d(val)
-    # Simple formatting — locale not available in all envs
-    return f'Rs. {d:,.2f}'
+    """Format decimal as currency (Indian style)."""
+    return f'{_CURRENCY}{_d(val):,.2f}'
 
 
 def _get_cell(item, key):
@@ -134,6 +167,8 @@ def _get_cell(item, key):
     v = item.get(key, '')
     if v is None or v == '':
         return '0'
+    if key == 'rate_per_item':
+        return _fmt(_d(v))
     return str(v)
 
 
@@ -169,15 +204,15 @@ def _build_header(w, styles):
 
     name_style = ParagraphStyle(
         'CoName', parent=styles['Normal'],
-        fontSize=16, textColor=MUSTARD, fontName='Helvetica-Bold', leading=20,
+        fontSize=16, textColor=MUSTARD, fontName=_FONT_BOLD, leading=20,
     )
     info_style = ParagraphStyle(
         'CoInfo', parent=styles['Normal'],
-        fontSize=8, textColor=BLACK, leading=11,
+        fontSize=8, textColor=BLACK, fontName=_FONT, leading=11,
     )
     bold_info = ParagraphStyle(
         'CoInfoB', parent=styles['Normal'],
-        fontSize=8, textColor=BLACK, fontName='Helvetica-Bold', leading=11,
+        fontSize=8, textColor=BLACK, fontName=_FONT_BOLD, leading=11,
     )
 
     left = [
@@ -214,18 +249,12 @@ def _build_header(w, styles):
 def _build_invoice_meta(invoice, w, styles):
     """INVOICE # | blank | DATE row."""
     label_s = ParagraphStyle('MetaLabel', parent=styles['Normal'],
-                              fontSize=8, textColor=MUSTARD, fontName='Helvetica-Bold')
+                              fontSize=8, textColor=MUSTARD, fontName=_FONT_BOLD)
     val_s   = ParagraphStyle('MetaVal',   parent=styles['Normal'],
-                              fontSize=8, textColor=BLACK)
+                              fontSize=8, textColor=BLACK, fontName=_FONT)
 
     d = invoice.date
     date_str = f"{d.day}-{d.month}-{d.year}"
-
-    row = [
-        [Paragraph('INVOICE #', label_s), Paragraph(invoice.invoice_number, val_s)],
-        Paragraph('', styles['Normal']),
-        [Paragraph('DATE', label_s), Paragraph(date_str, val_s)],
-    ]
 
     left_w  = w * 0.35
     mid_w   = w * 0.35
@@ -247,7 +276,6 @@ def _build_invoice_meta(invoice, w, styles):
     outer = Table([[inner_left, '', inner_right]], colWidths=[left_w, mid_w, right_w])
     outer.setStyle(TableStyle([
         ('BOX',    (0,0),(-1,-1), 0.5, colors.black),
-        ('INNERGRID',(0,0),(-1,-1), 0.5, colors.black),
         ('BACKGROUND', (0,0),(-1,-1), LIGHT_BG),
         ('VALIGN', (0,0),(-1,-1), 'MIDDLE'),
         ('TOPPADDING',   (0,0),(-1,-1), 2),
@@ -255,19 +283,19 @@ def _build_invoice_meta(invoice, w, styles):
         ('LEFTPADDING',  (0,0),(-1,-1), 3),
         ('RIGHTPADDING', (0,0),(-1,-1), 3),
     ]))
-    return [outer, Spacer(1, 0.5*mm)]
+    return [outer]
 
 
 def _build_bill_to(invoice, w, styles):
     """Bill To / Billing Address / Shipping Address block + Eway Bill."""
     hdr_s  = ParagraphStyle('BillHdr',  parent=styles['Normal'],
-                             fontSize=8, fontName='Helvetica-Bold', textColor=BLACK)
+                             fontSize=8, fontName=_FONT_BOLD, textColor=BLACK)
     lbl_s  = ParagraphStyle('BillLbl',  parent=styles['Normal'],
-                             fontSize=8, fontName='Helvetica-Bold', textColor=MUSTARD)
+                             fontSize=8, fontName=_FONT_BOLD, textColor=MUSTARD)
     val_s  = ParagraphStyle('BillVal',  parent=styles['Normal'],
-                             fontSize=8, textColor=BLACK)
+                             fontSize=8, textColor=BLACK, fontName=_FONT)
     bold_s = ParagraphStyle('BillBold', parent=styles['Normal'],
-                             fontSize=8, fontName='Helvetica-Bold', textColor=BLACK)
+                             fontSize=8, fontName=_FONT_BOLD, textColor=BLACK)
 
     is_final = invoice.invoice_type == 'final'
 
@@ -320,9 +348,9 @@ def _build_bill_to(invoice, w, styles):
     outer = Table([hdr_row, data_row], colWidths=col_widths)
     outer.setStyle(TableStyle([
         ('BOX',      (0,0),(-1,-1), 0.5, colors.black),
-        ('INNERGRID',(0,0),(-1,-1), 0.5, colors.black),
+        ('LINEBELOW',(0,0),(-1,0),  0.5, colors.black),
         ('BACKGROUND', hdr_span[0], hdr_span[1], LIGHT_BG),
-        ('FONTNAME',   hdr_span[0], hdr_span[1], 'Helvetica-Bold'),
+        ('FONTNAME',   hdr_span[0], hdr_span[1], _FONT_BOLD),
         ('VALIGN',   (0,0),(-1,-1), 'TOP'),
         ('TOPPADDING',   (0,0),(-1,-1), 2),
         ('BOTTOMPADDING',(0,0),(-1,-1), 2),
@@ -343,7 +371,7 @@ def _build_bill_to(invoice, w, styles):
         ('RIGHTPADDING', (0,0),(-1,-1), 3),
     ]))
 
-    return [outer, eway_tbl, Spacer(1, 1*mm)]
+    return [outer, eway_tbl]
 
 
 def _build_items_table(invoice, w, styles):
@@ -355,10 +383,10 @@ def _build_items_table(invoice, w, styles):
     col_widths = [cw * w / total_spec for cw in col_widths]
 
     hdr_s = ParagraphStyle('IHdr', parent=styles['Normal'],
-                            fontSize=8, fontName='Helvetica-Bold', textColor=MUSTARD)
-    cell_s = ParagraphStyle('ICell', parent=styles['Normal'], fontSize=8, textColor=BLACK)
+                            fontSize=8, fontName=_FONT_BOLD, textColor=MUSTARD)
+    cell_s = ParagraphStyle('ICell', parent=styles['Normal'], fontSize=8, textColor=BLACK, fontName=_FONT)
     num_s  = ParagraphStyle('INum',  parent=styles['Normal'],
-                             fontSize=8, textColor=MUSTARD, alignment=TA_RIGHT)
+                             fontSize=8, textColor=MUSTARD, fontName=_FONT, alignment=TA_LEFT)
 
     header_row = [Paragraph(s[0], hdr_s) for s in specs]
     data = [header_row]
@@ -369,7 +397,7 @@ def _build_items_table(invoice, w, styles):
         for label, key, _ in specs:
             raw = _get_cell(item, key)
             if key in ('rate_per_item', '_amount') or (key == 'qty' and raw != '0'):
-                row.append(Paragraph(raw if key == '_amount' else (f'Rs. {_d(raw):,.2f}' if key == "rate_per_item" else raw), num_s))
+                row.append(Paragraph(raw, num_s))
             else:
                 row.append(Paragraph(raw, cell_s))
         data.append(row)
@@ -377,7 +405,7 @@ def _build_items_table(invoice, w, styles):
     tbl = Table(data, colWidths=col_widths, repeatRows=1)
     style = TableStyle([
         ('BOX',       (0,0),(-1,-1), 0.5, colors.black),
-        ('INNERGRID', (0,0),(-1,-1), 0.3, colors.HexColor('#CCCCCC')),
+        ('LINEBELOW', (0,1),(-1,-2), 0.3, colors.HexColor('#CCCCCC')),
         ('BACKGROUND',(0,0),(-1,0),  LIGHT_BG),
         ('LINEBELOW', (0,0),(-1,0),  0.5, MUSTARD),
         ('VALIGN',    (0,0),(-1,-1), 'MIDDLE'),
@@ -387,25 +415,20 @@ def _build_items_table(invoice, w, styles):
         ('RIGHTPADDING', (0,0),(-1,-1), 3),
     ])
     tbl.setStyle(style)
-    return [tbl, Spacer(1, 0.5*mm)]
+    return [tbl]
 
 
 def _build_footer(invoice, w, styles):
-    """Sum Total, SGST, CGST, IGST, Net Payable, optional extras."""
+    """Sum rows — structure varies by invoice type."""
     lbl_s  = ParagraphStyle('FLbl', parent=styles['Normal'],
-                             fontSize=8, fontName='Helvetica-Bold', textColor=MUSTARD)
+                             fontSize=8, fontName=_FONT_BOLD, textColor=MUSTARD)
     val_s  = ParagraphStyle('FVal', parent=styles['Normal'],
-                             fontSize=8, textColor=BLACK, alignment=TA_RIGHT)
+                             fontSize=8, textColor=BLACK, fontName=_FONT, alignment=TA_LEFT)
     bold_s = ParagraphStyle('FBold', parent=styles['Normal'],
-                             fontSize=8, fontName='Helvetica-Bold', textColor=BLACK, alignment=TA_RIGHT)
+                             fontSize=8, fontName=_FONT_BOLD, textColor=BLACK, alignment=TA_LEFT)
 
     items = invoice.items or []
     sum_total = sum(_d(it.get('rate_per_item', 0)) * _d(it.get('qty', 0)) for it in items)
-
-    sgst = sum_total * _d(invoice.sgst_rate) / 100
-    cgst = sum_total * _d(invoice.cgst_rate) / 100
-    igst = sum_total * _d(invoice.igst_rate) / 100
-    net  = sum_total + sgst + cgst + igst
 
     label_w = w * 0.75
     val_w   = w * 0.25
@@ -416,39 +439,45 @@ def _build_footer(invoice, w, styles):
             Paragraph(value, bold_s if bold else val_s),
         ]
 
-    data = [
-        _row('Sum Total Amount', _fmt(sum_total)),
-        _row(f'SGST', f'{invoice.sgst_rate}%    {_fmt(sgst)}'),
-        _row(f'CGST', f'{invoice.cgst_rate}%    {_fmt(cgst)}'),
-        _row(f'IGST', f'{invoice.igst_rate}%    {_fmt(igst)}'),
-        _row('Net Payable', _fmt(net), bold=True),
-    ]
+    if invoice.invoice_type == 'product_simple':
+        shipping = _d(invoice.shipping_cost)
+        data = [
+            _row('Shipping', _fmt(shipping)),
+            _row('Net Payable', _fmt(sum_total + shipping), bold=True),
+        ]
+    else:
+        sgst = sum_total * _d(invoice.sgst_rate) / 100
+        cgst = sum_total * _d(invoice.cgst_rate) / 100
+        igst = sum_total * _d(invoice.igst_rate) / 100
+        net  = sum_total + sgst + cgst + igst
 
-    if invoice.invoice_type == 'product_simple' and _d(invoice.shipping_cost):
-        net_with_ship = net + _d(invoice.shipping_cost)
-        data.insert(-1, _row('Shipping', _fmt(invoice.shipping_cost)))
-        data[-1] = _row('Net Payable', _fmt(net_with_ship), bold=True)
+        data = [
+            _row('Sum Total Amount', _fmt(sum_total)),
+            _row('SGST', f'{invoice.sgst_rate}%    {_fmt(sgst)}'),
+            _row('CGST', f'{invoice.cgst_rate}%    {_fmt(cgst)}'),
+            _row('IGST', f'{invoice.igst_rate}%    {_fmt(igst)}'),
+            _row('Net Payable', _fmt(net), bold=True),
+        ]
 
-    if invoice.invoice_type == 'product_batch' and _d(invoice.advance_rate):
-        advance_amt = net * _d(invoice.advance_rate) / 100
-        data.append(_row('Advance to be paid', f'{invoice.advance_rate}%    {_fmt(advance_amt)}'))
+        if invoice.invoice_type == 'product_batch' and _d(invoice.advance_rate):
+            advance_amt = net * _d(invoice.advance_rate) / 100
+            data.append(_row('Advance to be paid', f'{invoice.advance_rate}%    {_fmt(advance_amt)}'))
 
-    if invoice.invoice_type == 'final':
-        shipping = _d(getattr(invoice, 'shipping_cost', 0))
-        advance_received = _d(getattr(invoice, 'advance_received', 0))
-        total_payable = net + shipping
-        net_payable = total_payable - advance_received
-        # Replace last row (Net Payable) with extended final structure
-        data[-1] = _row('Total Payable', _fmt(total_payable), bold=True)
-        if shipping:
-            data.insert(-1, _row('Shipping', _fmt(shipping)))
-        data.append(_row('Advance Received', _fmt(advance_received)))
-        data.append(_row('Net Payable', _fmt(net_payable), bold=True))
+        if invoice.invoice_type == 'final':
+            shipping = _d(getattr(invoice, 'shipping_cost', 0))
+            advance_received = _d(getattr(invoice, 'advance_received', 0))
+            total_payable = net + shipping
+            net_payable = total_payable - advance_received
+            data[-1] = _row('Total Payable', _fmt(total_payable), bold=True)
+            if shipping:
+                data.insert(-1, _row('Shipping', _fmt(shipping)))
+            data.append(_row('Advance Received', _fmt(advance_received)))
+            data.append(_row('Net Payable', _fmt(net_payable), bold=True))
 
     tbl = Table(data, colWidths=[label_w, val_w])
     tbl.setStyle(TableStyle([
         ('BOX',       (0,0),(-1,-1), 0.5, colors.black),
-        ('INNERGRID', (0,0),(-1,-1), 0.3, colors.HexColor('#CCCCCC')),
+        ('LINEBELOW', (0,0),(-1,-2), 0.3, colors.HexColor('#CCCCCC')),
         ('BACKGROUND',(0,-1),(-1,-1), LIGHT_BG),
         ('LINEABOVE', (0,-1),(-1,-1), 0.5, MUSTARD),
         ('TOPPADDING',   (0,0),(-1,-1), 2),
