@@ -182,6 +182,9 @@ RAG_RULES = {
     'shipment_created':   {'predecessor': 'sample_created',     'amber': 2,  'red': 4},
     'shipment_picked':    {'predecessor': 'shipment_created',   'amber': 1,  'red': 3},
     'shipment_delivered': {'predecessor': 'shipment_picked',    'amber': 4,  'red': 7},
+    # Packaging stage flags
+    'pkg_quotes_taken':    {'predecessor': 'pkg_req_captured',  'amber': 2,  'red': 4},
+    'pkg_approved_client': {'predecessor': 'pkg_quotes_taken',  'amber': 2,  'red': 4},
 }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

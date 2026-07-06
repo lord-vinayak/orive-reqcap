@@ -242,6 +242,7 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
         sec_stages = []
         for s in sec['stages']:
             info = _stage_info(s['key'], s['display'], stage_prev)
+            info['rag_status'] = _compute_rag(s['key'], 1, completion_map)
             sec_stages.append(info)
             stage_prev = info['is_complete']
         is_section_complete = all(s['is_complete'] for s in sec_stages)
