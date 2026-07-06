@@ -102,10 +102,11 @@ export default function Layout({
 
           <nav className="flex items-center gap-2 flex-wrap" aria-label="Primary">
             <Link to="/home" className="btn-secondary text-sm" aria-label="Go to Home page" aria-current={isCurrent('/home')}>Home</Link>
-            <Link to="/crm/clients" className="btn-secondary text-sm" aria-label="Go to CRM Clients" aria-current={isCurrent('/crm/clients')}>Clients</Link>
-            <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to CRM Dashboard" aria-current={isCurrent('/crm/dashboard')}>Dashboard</Link>
-            <Link to="/tasks" className="btn-secondary text-sm" aria-label="Tasks — Task Tracker" aria-current={isCurrent('/tasks')}>Tasks</Link>
-            <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data" aria-current={isCurrent('/crm/master-data')}>Master Data</Link>
+            <Link to="/crm/clients" className="btn-secondary text-sm" aria-label="Go to Clients list page" aria-current={isCurrent('/crm/clients')}>Clients</Link>
+            <Link to="/crm/projects" className="btn-secondary text-sm" aria-label="Go to Projects list page" aria-current={isCurrent('/crm/projects')}>Projects</Link>
+            <Link to="/crm/dashboard" className="btn-secondary text-sm" aria-label="Go to Dashboard" aria-current={isCurrent('/crm/dashboard')}>Dashboard</Link>
+            <Link to="/tasks" className="btn-secondary text-sm" aria-label="Go to Task Tracker" aria-current={isCurrent('/tasks')}>Tasks</Link>
+            <Link to="/crm/master-data" className="btn-secondary text-sm" aria-label="Go to Master Data page" aria-current={isCurrent('/crm/master-data')}>Master Data</Link>
             {user?.role === "admin" && (
               <>
                 <Link to="/admin/catalog" className="btn-secondary text-sm" aria-label="Go to Catalog" aria-current={isCurrent('/admin/catalog')}>Catalog</Link>

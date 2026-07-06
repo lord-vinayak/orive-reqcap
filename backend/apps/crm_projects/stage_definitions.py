@@ -126,7 +126,14 @@ ORDER_PHASE_SECTIONS = [
             {'key': 'filling_videos',                'display': 'Videos taken while filling'},
             {'key': 'batch_reports_client_folder',   'display': 'Batch testing reports updated in client folder'},
             {'key': 'report_shared',                 'display': 'Report shared with client'},
-            {'key': 'derma_initiated',               'display': 'Derma testing initiated'},
+        ],
+    },
+    {
+        'key': 'derma_testing',
+        'display': 'Derma Testing',
+        'stages': [
+            {'key': 'derma_not_needed',              'display': 'Not Needed'},
+            {'key': 'derma_initiated',               'display': 'Derma Testing Initiated'},
             {'key': 'derma_sample_sent',             'display': 'Sample send for testing'},
             {'key': 'derma_completed',               'display': 'Derma testing completed'},
             {'key': 'derma_docs_sent',               'display': 'Documents sent to client'},
