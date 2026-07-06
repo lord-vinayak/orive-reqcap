@@ -123,6 +123,12 @@ export function StageCheckbox({ stage, onToggle, saving, teamMembers = [], onAss
               ? 'line-through text-black/40 dark:text-slate-500'
               : stage.is_locked
               ? 'text-black/40 dark:text-slate-500 cursor-not-allowed'
+              : stage.rag_status === 'red'
+              ? 'text-red-800 dark:text-red-200 bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded font-medium'
+              : stage.rag_status === 'amber'
+              ? 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded font-medium'
+              : stage.rag_status === 'green'
+              ? 'text-green-800 dark:text-green-200 bg-green-100 dark:bg-green-900/40 px-1.5 py-0.5 rounded font-medium'
               : 'text-black dark:text-white'
           }`}
         >

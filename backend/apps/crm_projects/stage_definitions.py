@@ -113,18 +113,24 @@ ORDER_PHASE_SECTIONS = [
         'display': 'Production',
         # batch_initiated and batch_passed can be reset in-place on batch failure
         'stages': [
-            {'key': 'batch_initiated',     'display': 'Batch Testing Initiated'},
-            {'key': 'batch_passed',        'display': 'Batch Testing Passed'},
-            {'key': 'filling_initiated',   'display': 'Filling Initiated'},
-            {'key': 'filling_videos',      'display': 'Videos Taken While Filling'},
-            {'key': 'report_shared',       'display': 'Report Shared with Client'},
-            {'key': 'bmr_captured',        'display': 'BMR Captured'},
-            {'key': 'derma_initiated',     'display': 'Derma Testing Initiated'},
-            {'key': 'derma_sample_sent',   'display': 'Sample Sent for Testing'},
-            {'key': 'derma_completed',     'display': 'Derma Testing Completed'},
-            {'key': 'derma_docs_sent',     'display': 'Documents Sent to Client'},
-            {'key': 'ctri_captured',       'display': 'CTRI Document in Internal Tracker'},
-            {'key': 'client_feedback',     'display': 'Client Feedback Captured on Google'},
+            {'key': 'production_entry_tracker',     'display': 'Production entry done in manufacturer tracker'},
+            {'key': 'production_email_manufacturer', 'display': 'Production email sent to the manufacturer'},
+            {'key': 'production_batch_allocated',    'display': 'Batch no allocated and shared with printing team and captured in internal records'},
+            {'key': 'production_initiated',          'display': 'Production initiated'},
+            {'key': 'production_completed',          'display': 'Production completed'},
+            {'key': 'bmr_captured',                  'display': 'BMR captured'},
+            {'key': 'batch_initiated',               'display': 'Batch testing initiated'},
+            {'key': 'batch_completed',               'display': 'Batch testing completed'},
+            {'key': 'batch_passed',                  'display': 'Batch testing passed'},
+            {'key': 'filling_initiated',             'display': 'Filling initiated'},
+            {'key': 'filling_videos',                'display': 'Videos taken while filling'},
+            {'key': 'batch_reports_client_folder',   'display': 'Batch testing reports updated in client folder'},
+            {'key': 'report_shared',                 'display': 'Report shared with client'},
+            {'key': 'derma_initiated',               'display': 'Derma testing initiated'},
+            {'key': 'derma_sample_sent',             'display': 'Sample send for testing'},
+            {'key': 'derma_completed',               'display': 'Derma testing completed'},
+            {'key': 'derma_docs_sent',               'display': 'Documents sent to client'},
+            {'key': 'ctri_captured',                 'display': 'CTRI document in internal tracker'},
         ],
     },
     {
@@ -154,6 +160,20 @@ ORDER_PHASE_SECTIONS = [
 ]
 
 BATCH_RESET_KEYS = ['batch_initiated', 'batch_passed']
+
+# Flip to 'minutes' for testing; 'days' for production.
+RAG_UNIT = 'days'
+
+# RAG rules for resample loop stages (base keys, cycle suffix applied at runtime).
+# Timer starts when the predecessor stage is marked complete.
+# amber/red: threshold in RAG_UNIT to trigger that colour.
+RAG_RULES = {
+    'formula_reviewed':   {'predecessor': 'formula_made',       'amber': 2,  'red': 4},
+    'sample_created':     {'predecessor': 'sample_in_pipeline', 'amber': 6,  'red': 11},
+    'shipment_created':   {'predecessor': 'sample_created',     'amber': 2,  'red': 4},
+    'shipment_picked':    {'predecessor': 'shipment_created',   'amber': 1,  'red': 3},
+    'shipment_delivered': {'predecessor': 'shipment_picked',    'amber': 4,  'red': 7},
+}
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

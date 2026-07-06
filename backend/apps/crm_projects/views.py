@@ -25,7 +25,7 @@ from .serializers import (
 from .stage_definitions import (
     SAMPLE_PRE_LOOP, RESAMPLE_LOOP_BASE, SAMPLE_POST_APPROVAL,
     ORDER_PHASE_SECTIONS, SAMPLE_TOTAL_STAGES, ORDER_TOTAL_STAGES,
-    MAX_RESAMPLE_CYCLES, BATCH_RESET_KEYS, STAGE_DISPLAY_MAP,
+    MAX_RESAMPLE_CYCLES, BATCH_RESET_KEYS, STAGE_DISPLAY_MAP, RAG_RULES, RAG_UNIT,
     get_loop_key, get_loop_stage_keys_for_cycle, ALL_INITIAL_STAGE_KEYS,
     ALL_ORDER_STAGE_KEYS,
 )
@@ -121,18 +121,8 @@ def _build_standalone_task_payload(task):
 # ── Milestone helpers ─────────────────────────────────────────────────────────
 
 def _build_milestones(project: CRMProject):
-    if not project.sample_booked_date:
-        return
-    day0 = project.sample_booked_date
-    rules = [('sample_transit', 'Sample Transit', day0, 14)]
-    for key, display, trigger, offset in rules:
-        planned = _add_weekdays(trigger, offset)
-        obj, _ = ProjectMilestone.objects.update_or_create(
-            project=project, milestone_key=key,
-            defaults={'milestone_display': display, 'planned_date': planned},
-        )
-        obj.refresh_status()
-        obj.save(update_fields=['status'])
+    # ponytail: old date-based milestone rules removed; RAG now computed live per stage
+    pass
 
 
 def _refresh_milestone_statuses(project: CRMProject):
@@ -140,6 +130,29 @@ def _refresh_milestone_statuses(project: CRMProject):
     for m in milestones:
         m.refresh_status()
     ProjectMilestone.objects.bulk_update(milestones, ['status'])
+
+
+def _compute_rag(base_key: str, cycle: int, completion_map: dict) -> str | None:
+    rule = RAG_RULES.get(base_key)
+    if not rule:
+        return None
+    actual_key = get_loop_key(base_key, cycle)
+    pred_key = get_loop_key(rule['predecessor'], cycle)
+    sc = completion_map.get(actual_key)
+    if sc and sc.is_complete:
+        return None  # completed — no badge
+    pred = completion_map.get(pred_key)
+    if not pred or not pred.is_complete or not pred.completed_at:
+        return None  # predecessor not done — stage not yet active
+    if RAG_UNIT == 'minutes':
+        elapsed = (timezone.now() - pred.completed_at).total_seconds() / 60
+    else:
+        elapsed = (date.today() - pred.completed_at.date()).days
+    if elapsed >= rule['red']:
+        return 'red'
+    if elapsed >= rule['amber']:
+        return 'amber'
+    return 'green'
 
 
 # ── Stage status computation ──────────────────────────────────────────────────
@@ -193,6 +206,7 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
             key = get_loop_key(s['key'], c)
             extra = {'is_approval_gate': True} if s.get('is_approval_gate') else {}
             info = _stage_info(key, s['display'], cycle_prev, extra)
+            info['rag_status'] = _compute_rag(s['key'], c, completion_map)
             stages.append(info)
             cycle_prev = info['is_complete']
         loop_cycles.append({'cycle': c, 'is_active': is_active, 'stages': stages})

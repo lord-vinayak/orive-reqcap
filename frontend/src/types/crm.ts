@@ -90,6 +90,8 @@ export interface StandaloneTaskCreate {
   planned_closure_date?: string | null
 }
 
+export type RagStatus = 'red' | 'amber' | 'green'
+
 export interface StageStatusItem {
   key: string
   display: string
@@ -101,6 +103,7 @@ export interface StageStatusItem {
   assigned_to_id?: string | null
   assigned_to_name?: string | null
   task_status?: TaskStatus
+  rag_status?: RagStatus | null
 }
 
 export interface LoopCycle {
