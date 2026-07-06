@@ -71,10 +71,12 @@ ORDER_PHASE_SECTIONS = [
         'display': 'Content',
         'stages': [
             {'key': 'content_inci_created',         'display': 'INCI List Created'},
-            {'key': 'content_inci_approved',         'display': 'INCI List Approved'},
-            {'key': 'content_created',               'display': 'Content Created (Claims, Ingredients)'},
-            {'key': 'content_label_reviewed',        'display': 'Content Reviewed – Label'},
-            {'key': 'content_monocarton_reviewed',   'display': 'Content Reviewed – Mono Carton'},
+            {'key': 'content_inci_approved',        'display': 'INCI List Approved'},
+            {'key': 'content_created',              'display': 'Content Created – Claims, Ingredients'},
+            {'key': 'content_label_reviewed',       'display': 'Content Reviewed - Label'},
+            {'key': 'content_monocarton_reviewed',  'display': 'Content Reviewed - Mono Carton'},
+            {'key': 'content_review_email_sent',    'display': 'Content review and approval email sent to the client'},
+            {'key': 'content_approval_received',    'display': 'Content approval received from the client'},
         ],
     },
     {
