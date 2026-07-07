@@ -22,22 +22,27 @@ interface PaginatedClients {
   results: Client[]
 }
 
+const PAGE_SIZE = 50
+
 export default function CRMClientList() {
   const searchId = useId()
   const [clients, setClients] = useState<Client[]>([])
+  const [count, setCount] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
 
-  const fetchClients = (q = '') => {
+  const fetchClients = (q = '', p = 1) => {
     setLoading(true)
-    api.get<PaginatedClients>('/clients/', { params: q ? { q } : {} })
+    api.get<PaginatedClients>('/clients/', { params: { ...(q ? { q } : {}), page: p, page_size: PAGE_SIZE } })
       .then((r) => {
         setClients(r.data.results)
+        setCount(r.data.count)
         if (q) {
-          const count = r.data.results.length
-          setStatusMessage(count > 0 ? `${count} client${count !== 1 ? 's' : ''} found.` : 'No clients found.')
+          const found = r.data.count
+          setStatusMessage(found > 0 ? `${found} client${found !== 1 ? 's' : ''} found.` : 'No clients found.')
           setTimeout(() => setStatusMessage(''), 3000)
         }
       })
@@ -45,11 +50,12 @@ export default function CRMClientList() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchClients() }, [])
+  useEffect(() => { fetchClients(search, page) }, [page])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    fetchClients(search.trim())
+    setPage(1)
+    fetchClients(search.trim(), 1)
   }
 
   return (
@@ -147,6 +153,32 @@ export default function CRMClientList() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {count > PAGE_SIZE && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-black/60 dark:text-slate-400" role="status" aria-live="polite">
+              Page {page} of {Math.ceil(count / PAGE_SIZE)} · {count} clients
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || loading}
+                className="px-3 py-1.5 rounded border border-black/15 dark:border-white/15 disabled:opacity-40 hover:bg-black/5 dark:hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-mustard"
+              >
+                ← Prev
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={page >= Math.ceil(count / PAGE_SIZE) || loading}
+                className="px-3 py-1.5 rounded border border-black/15 dark:border-white/15 disabled:opacity-40 hover:bg-black/5 dark:hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-mustard"
+              >
+                Next →
+              </button>
+            </div>
           </div>
         )}
       </div>
