@@ -16,7 +16,7 @@ const BLANK_DRAFT: DraftRow = {
 }
 
 function fmtDate(d: string | null) {
-  return d ? new Date(d).toLocaleDateString('en-IN') : '—'
+  return d ? new Date(d).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '—'
 }
 
 // ── Row editor — used for both the "add new" row and inline edit ────────────
