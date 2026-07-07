@@ -24,6 +24,7 @@ import CRMFinancials from '@/pages/crm/CRMFinancials'
 import ClientBulkUpload from '@/pages/ClientBulkUpload'
 import RequirementsAdd from '@/pages/RequirementsAdd'
 import TaskTracker from '@/pages/crm/TaskTracker'
+import BatchRegister from '@/pages/BatchRegister'
 
 export default function App() {
   return (
@@ -60,6 +61,7 @@ export default function App() {
       <Route path="/crm/master-data" element={<ProtectedRoute><CRMMasterData /></ProtectedRoute>} />
       <Route path="/crm/financials" element={<ProtectedRoute adminOnly><CRMFinancials /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><TaskTracker /></ProtectedRoute>} />
+      <Route path="/batch-register" element={<ProtectedRoute><BatchRegister /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>

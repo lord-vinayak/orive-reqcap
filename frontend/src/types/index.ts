@@ -160,3 +160,19 @@ export interface Proposal {
   updated_at: string
   last_exported_at: string | null
 }
+
+export interface BatchRecord {
+  id: string
+  client_name: string
+  brand_name: string
+  product_type: string
+  product_name: string
+  packaging_type: string
+  pack_size: string
+  moq: number | null
+  batch_number: string
+  manufacturing_date: string | null
+  expiry_date: string | null
+  created_at: string
+  updated_at: string
+}

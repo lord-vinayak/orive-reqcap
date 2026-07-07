@@ -1,7 +1,7 @@
 import { api } from './api'
 import type {
   Client, Requirement, RequirementProduct, Note, FileRecord,
-  CatalogItem, Proposal, ProposalItem, User, ProposalDocument,
+  CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord,
 } from '@/types'
 import type { LeadBucket } from '@/constants/clientStatus'
 
@@ -270,4 +270,50 @@ export const userService = {
     (await api.post<User>('/users/', data)).data,
   update: async (id: string, data: Partial<User>) => (await api.patch<User>(`/users/${id}/`, data)).data,
   delete: async (id: string) => api.delete(`/users/${id}/`),
+}
+
+export interface BatchUploadRow {
+  row: number
+  client_name: string
+  batch_number: string
+  warning?: string
+}
+
+export interface BatchUploadSkipRow {
+  row: number
+  client_name: string
+  batch_number: string
+  reason: string
+}
+
+export interface BatchUploadResult {
+  created: BatchUploadRow[]
+  skipped: BatchUploadSkipRow[]
+}
+
+export const batchRecordService = {
+  list: async (params: { q?: string; page?: number; page_size?: number } = {}) =>
+    (await api.get<{ count: number; next: string | null; previous: string | null; results: BatchRecord[] } | BatchRecord[]>('/batch-records/', { params })).data,
+  create: async (data: Partial<BatchRecord>) => (await api.post<BatchRecord>('/batch-records/', data)).data,
+  update: async (id: string, data: Partial<BatchRecord>) =>
+    (await api.patch<BatchRecord>(`/batch-records/${id}/`, data)).data,
+  remove: async (id: string) => api.delete(`/batch-records/${id}/`),
+
+  bulkUpload: async (file: File): Promise<BatchUploadResult> => {
+    const form = new FormData()
+    form.append('file', file)
+    return (await api.post<BatchUploadResult>('/batch-records/bulk-upload/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data
+  },
+
+  downloadTemplate: () =>
+    api.get('/batch-records/upload-template/', { responseType: 'blob' }).then((r) => {
+      const url = URL.createObjectURL(new Blob([r.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'batch_register_template.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+    }),
 }
