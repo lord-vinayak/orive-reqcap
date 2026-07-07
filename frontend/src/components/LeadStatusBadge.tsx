@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { Client } from '@/types'
 import {
   LEAD_STATUS_COLOR, LEAD_STATUS_OPTIONS, LEAD_SUB_STATUS_OPTIONS,
@@ -20,6 +21,20 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
   const ref = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuContainerRef = useRef<HTMLDivElement>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; openUpward: boolean } | null>(null)
+
+  // Position the menu in the viewport (via a portal) so it can't be clipped by a
+  // scrollable ancestor like a table wrapper with overflow-x-auto.
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) { setMenuPos(null); return }
+    const rect = triggerRef.current.getBoundingClientRect()
+    const openUpward = rect.bottom + 320 > window.innerHeight && rect.top > 320
+    setMenuPos({
+      top: openUpward ? rect.top : rect.bottom,
+      left: rect.left,
+      openUpward,
+    })
+  }, [open, step])
 
   // Focus first menu item when open; return focus to trigger when closed (skip initial mount)
   const didOpen = useRef(false)
@@ -38,7 +53,9 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
     if (!open) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closePopover() }
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) closePopover()
+      const target = e.target as Node
+      if (ref.current?.contains(target) || menuContainerRef.current?.contains(target)) return
+      closePopover()
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('mousedown', onClick)
@@ -103,10 +120,16 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
         {!readOnly && <span aria-hidden="true" className="opacity-50">▾</span>}
       </button>
 
-      {open && (
+      {open && menuPos && createPortal(
         <div
           ref={menuContainerRef}
-          className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-xl shadow-xl w-64 py-1"
+          style={{
+            position: 'fixed',
+            top: menuPos.openUpward ? undefined : menuPos.top + 4,
+            bottom: menuPos.openUpward ? window.innerHeight - menuPos.top + 4 : undefined,
+            left: menuPos.left,
+          }}
+          className="z-50 bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-xl shadow-xl w-64 py-1"
           onKeyDown={(e) => {
             const items = Array.from(
               menuContainerRef.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]:not(:disabled), [role="menuitem"]:not(:disabled)') ?? []
@@ -196,7 +219,8 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
               </div>
             </>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
