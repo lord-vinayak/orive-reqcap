@@ -36,17 +36,19 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
     })
   }, [open, step])
 
-  // Focus first menu item when open; return focus to trigger when closed (skip initial mount)
+  // Focus first menu item once the portal has actually mounted (menuPos set); return
+  // focus to trigger when closed. Keying on `open` alone fires before the portal
+  // exists, since menuPos (and thus the portal) lands one render later.
   const didOpen = useRef(false)
   useEffect(() => {
-    if (open) {
+    if (open && menuPos) {
       didOpen.current = true
       const first = menuContainerRef.current?.querySelector<HTMLElement>('[role="menuitemradio"], [role="menuitem"]')
       first?.focus()
-    } else if (didOpen.current) {
+    } else if (!open && didOpen.current) {
       triggerRef.current?.focus()
     }
-  }, [open])
+  }, [open, menuPos])
 
   // Close on outside click / Escape
   useEffect(() => {
