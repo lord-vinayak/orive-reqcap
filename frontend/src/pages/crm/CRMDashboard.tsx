@@ -725,11 +725,15 @@ function PhasePieChart<K extends string>({ data, activeSegment, onSegmentClick, 
           <Legend
             iconType="circle"
             iconSize={10}
-            formatter={(value, entry: any) => (
+            formatter={(value, entry: any) => {
+              const seg = data.find(d => d.name === value)
+              const pct = !isEmpty && total > 0 ? Math.round(((seg?.value ?? 0) / total) * 100) : 0
+              return (
               <span
                 role={isEmpty ? undefined : 'button'}
                 tabIndex={isEmpty ? -1 : 0}
                 aria-pressed={isEmpty ? undefined : (activeIndex >= 0 && data.findIndex(d => d.name === value) === activeIndex)}
+                aria-label={isEmpty ? undefined : `${value}: ${seg?.value ?? 0} ${unitLabel} (${pct}%)`}
                 style={{
                   fontSize: '0.8125rem',
                   opacity: activeIndex >= 0 && data.findIndex(d => d.name === value) !== activeIndex ? 0.4 : 1,
@@ -752,7 +756,8 @@ function PhasePieChart<K extends string>({ data, activeSegment, onSegmentClick, 
               >
                 {value}
               </span>
-            )}
+              )
+            }}
           />
         </PieChart>
       </ResponsiveContainer>
