@@ -39,9 +39,6 @@ export const crmApi = {
   getDashboardStats: () =>
     api.get<DashboardStats>('/crm/projects/dashboard_stats/'),
 
-  getHealthTable: () =>
-    api.get<CRMProjectList[]>('/crm/projects/health_table/'),
-
   getPipelineProjects: (filter: 'formula_pending' | 'sample_in_pipeline') =>
     api.get<CRMProjectList[]>(`/crm/projects/pipeline-projects/?filter=${filter}`),
 

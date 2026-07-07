@@ -37,6 +37,12 @@ export default function CRMDashboard() {
   const [error, setError] = useState('')
   const [activeSegment, setActiveSegment] = useState<SegmentKey | null>(null)
   const [activeTab, setActiveTab] = useState<DashboardTab>('projects')
+  const [projectCount, setProjectCount] = useState(0)
+  const [projectsLoading, setProjectsLoading] = useState(true)
+  const [projectSearchInput, setProjectSearchInput] = useState('')
+  const [projectSearch, setProjectSearch] = useState('')
+  const [projectPage, setProjectPage] = useState(1)
+  const PROJECT_PAGE_SIZE = 50
   const [clientBucketCounts, setClientBucketCounts] = useState<Record<LeadBucket, number> | null>(null)
   const [activeClientBucket, setActiveClientBucket] = useState<LeadBucket | null>(null)
   const [clientBucketRows, setClientBucketRows] = useState<Client[]>([])
@@ -76,11 +82,8 @@ export default function CRMDashboard() {
   }, [isPipelineModalOpen])
 
   useEffect(() => {
-    Promise.all([crmApi.getDashboardStats(), crmApi.getHealthTable()])
-      .then(([statsRes, projectsRes]) => {
-        setStats(statsRes.data)
-        setProjects(projectsRes.data)
-      })
+    crmApi.getDashboardStats()
+      .then((res) => setStats(res.data))
       .catch(() => setError('Failed to load dashboard. Please try again.'))
       .finally(() => setLoading(false))
 
@@ -88,6 +91,38 @@ export default function CRMDashboard() {
       .then(setClientBucketCounts)
       .catch(() => {})
   }, [])
+
+  // Debounce the project search box, and reset to page 1 when it changes.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setProjectSearch(projectSearchInput)
+      setProjectPage(1)
+    }, 300)
+    return () => clearTimeout(t)
+  }, [projectSearchInput])
+
+  // Reset to page 1 whenever the pipeline segment filter changes.
+  useEffect(() => {
+    setProjectPage(1)
+  }, [activeSegment])
+
+  useEffect(() => {
+    setProjectsLoading(true)
+    // 'order_active'/'completed' are both phase='order' — split further client-side below.
+    const phase = activeSegment === 'sample' ? 'sample' : activeSegment ? 'order' : undefined
+    crmApi.listProjects({
+      ...(projectSearch ? { search: projectSearch } : {}),
+      ...(phase ? { phase } : {}),
+      page: String(projectPage),
+      page_size: String(PROJECT_PAGE_SIZE),
+    })
+      .then((res) => {
+        setProjects(res.data.results)
+        setProjectCount(res.data.count)
+      })
+      .catch(() => { setProjects([]); setProjectCount(0) })
+      .finally(() => setProjectsLoading(false))
+  }, [activeSegment, projectSearch, projectPage])
 
   // Debounce the search box into `clientSearch`, and reset to page 1 when it changes.
   useEffect(() => {
@@ -264,27 +299,43 @@ export default function CRMDashboard() {
 
               {activeTab === 'projects' && (
                 <div id="panel-projects" role="tabpanel" aria-labelledby="tab-projects" tabIndex={0}>
-                  {activeSegment && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <span
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white"
-                        style={{ backgroundColor: PHASE_COLORS[activeSegment] }}
-                      >
-                        {SEGMENT_LABELS[activeSegment]}
-                        <span className="text-white/70">· {filteredProjects.length}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setActiveSegment(null)}
-                        className="text-xs text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white focus-visible:ring-2 focus-visible:ring-mustard rounded"
-                        aria-label="Clear filter"
-                      >
-                        Clear ✕
-                      </button>
-                    </div>
-                  )}
-                  {filteredProjects.length === 0 ? (
-                    <p className="text-black/60 dark:text-slate-300 text-sm">No projects to display.</p>
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    {activeSegment && (
+                      <>
+                        <span
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white"
+                          style={{ backgroundColor: PHASE_COLORS[activeSegment] }}
+                        >
+                          {SEGMENT_LABELS[activeSegment]}
+                          <span className="text-white/70">· {activeSegment === 'sample' ? projectCount : filteredProjects.length}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveSegment(null)}
+                          className="text-xs text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                          aria-label="Clear filter"
+                        >
+                          Clear ✕
+                        </button>
+                      </>
+                    )}
+                    <label className="relative ml-auto">
+                      <span className="sr-only">Search projects by project number, client name or phone</span>
+                      <input
+                        type="search"
+                        value={projectSearchInput}
+                        onChange={(e) => setProjectSearchInput(e.target.value)}
+                        placeholder="Search project no, client name or phone…"
+                        className="text-sm h-9 px-3 rounded border border-black/15 dark:border-white/15 bg-white dark:bg-slate-900 text-black dark:text-white focus-visible:ring-2 focus-visible:ring-mustard w-64"
+                      />
+                    </label>
+                  </div>
+                  {projectsLoading ? (
+                    <p className="text-black/60 dark:text-slate-300 text-sm" role="status" aria-live="polite">Loading…</p>
+                  ) : filteredProjects.length === 0 ? (
+                    <p className="text-black/60 dark:text-slate-300 text-sm" role="status" aria-live="polite">
+                      {projectSearch ? 'No projects match your search.' : 'No projects to display.'}
+                    </p>
                   ) : (
                     <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
                       <table className="w-full text-sm" aria-label="Project health overview">
@@ -337,6 +388,31 @@ export default function CRMDashboard() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  )}
+                  {projectCount > PROJECT_PAGE_SIZE && (
+                    <div className="flex items-center justify-between mt-3 text-sm">
+                      <span className="text-black/60 dark:text-slate-400" role="status" aria-live="polite">
+                        Page {projectPage} of {Math.ceil(projectCount / PROJECT_PAGE_SIZE)} · {projectCount} projects
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setProjectPage((p) => Math.max(1, p - 1))}
+                          disabled={projectPage <= 1 || projectsLoading}
+                          className="px-3 py-1.5 rounded border border-black/15 dark:border-white/15 disabled:opacity-40 hover:bg-black/5 dark:hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-mustard"
+                        >
+                          ← Prev
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProjectPage((p) => p + 1)}
+                          disabled={projectPage >= Math.ceil(projectCount / PROJECT_PAGE_SIZE) || projectsLoading}
+                          className="px-3 py-1.5 rounded border border-black/15 dark:border-white/15 disabled:opacity-40 hover:bg-black/5 dark:hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-mustard"
+                        >
+                          Next →
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
