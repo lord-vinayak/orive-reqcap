@@ -20,6 +20,7 @@ export function OrderPhaseView({
   onResetBatch, saving, teamMembers = [], onAssign, onUpload,
 }: Props) {
   const { order_phase } = stageStatus
+  const [openSectionKey, setOpenSectionKey] = useState<string | null>(null)
 
   if (order_phase.locked) {
     return (
@@ -45,6 +46,8 @@ export function OrderPhaseView({
           section={section}
           activeKey={activeStageKey}
           setActiveKey={setActiveStageKey}
+          open={openSectionKey === section.key}
+          setOpen={(v) => setOpenSectionKey(v ? section.key : null)}
           onToggle={onCompleteStage}
           onCompleteSection={onCompleteSection}
           onResetBatch={section.key === 'production' ? onResetBatch : undefined}
@@ -61,11 +64,13 @@ export function OrderPhaseView({
 // ── Section accordion ─────────────────────────────────────────────────────────
 
 function SectionAccordion({
-  section, activeKey, setActiveKey, onToggle, onCompleteSection, onResetBatch, saving, teamMembers, onAssign, onUpload,
+  section, activeKey, setActiveKey, open, setOpen, onToggle, onCompleteSection, onResetBatch, saving, teamMembers, onAssign, onUpload,
 }: {
   section: SectionStatus
   activeKey: string | null
   setActiveKey: (k: string) => void
+  open: boolean
+  setOpen: (v: boolean) => void
   onToggle: (k: string, v: boolean) => Promise<void>
   onCompleteSection: (sectionKey: string) => Promise<void>
   onResetBatch?: () => Promise<void>
@@ -74,7 +79,6 @@ function SectionAccordion({
   onAssign?: (key: string, memberId: string) => Promise<void>
   onUpload?: (stageKey: string, file: File) => Promise<void>
 }) {
-  const [open, setOpen] = useState(!section.is_locked && !section.is_section_complete)
   const [resetting, setResetting] = useState(false)
   const [markingAll, setMarkingAll] = useState(false)
 
@@ -116,7 +120,7 @@ function SectionAccordion({
       {/* Section header */}
       <button
         type="button"
-        onClick={() => !section.is_locked && setOpen((v) => !v)}
+        onClick={() => !section.is_locked && setOpen(!open)}
         disabled={section.is_locked}
         aria-expanded={open}
         aria-controls={`section-${section.key}`}

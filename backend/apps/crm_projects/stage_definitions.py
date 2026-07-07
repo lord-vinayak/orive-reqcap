@@ -132,7 +132,6 @@ ORDER_PHASE_SECTIONS = [
         'key': 'derma_testing',
         'display': 'Derma Testing',
         'stages': [
-            {'key': 'derma_not_needed',              'display': 'Not Needed'},
             {'key': 'derma_initiated',               'display': 'Derma Testing Initiated'},
             {'key': 'derma_sample_sent',             'display': 'Sample send for testing'},
             {'key': 'derma_completed',               'display': 'Derma testing completed'},
