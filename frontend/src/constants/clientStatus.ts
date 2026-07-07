@@ -156,6 +156,25 @@ export function getPipelineLeadStatus(leadStatus: LeadStatus | string): Pipeline
   return PROJECT_TO_PIPELINE[leadStatus as LeadStatus] ?? 'new_lead'
 }
 
+// Mirrors LEAD_BUCKETS in backend/apps/clients/views.py — keep in sync.
+export type LeadBucket = 'prospective' | 'sample' | 'converted' | 'business_earned' | 'lost'
+
+export const LEAD_BUCKET_LABEL: Record<LeadBucket, string> = {
+  prospective:     'Prospective',
+  sample:          'Sample',
+  converted:       'Converted',
+  business_earned: 'Business Earned',
+  lost:            'Lost',
+}
+
+export const LEAD_BUCKET_COLOR: Record<LeadBucket, string> = {
+  prospective:     '#8b5cf6',  // purple
+  sample:          '#f97316',  // orange
+  converted:       '#14b8a6',  // teal
+  business_earned: '#22c55e',  // green
+  lost:            '#ef4444',  // red
+}
+
 export function formatLeadStatus(leadStatus: LeadStatus | string, subStatus?: string): string {
   const main = LEAD_STATUS_LABEL[leadStatus as LeadStatus] ?? leadStatus
   if (!subStatus) return main

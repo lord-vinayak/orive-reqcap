@@ -2,11 +2,12 @@ import { useRef, useState } from 'react'
 
 interface Props {
   cycleFrom: number
+  mode?: 'resample' | 'reject'
   onConfirm: (reason: string) => Promise<void>
   onClose: () => void
 }
 
-export default function ResampleModal({ cycleFrom, onConfirm, onClose }: Props) {
+export default function ResampleModal({ cycleFrom, mode = 'resample', onConfirm, onClose }: Props) {
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -41,16 +42,20 @@ export default function ResampleModal({ cycleFrom, onConfirm, onClose }: Props) 
             </svg>
           </div>
           <div>
-            <h2 id="resample-title" className="text-base font-bold text-black dark:text-white">Confirm Resample — Cycle {cycleFrom + 1}</h2>
+            <h2 id="resample-title" className="text-base font-bold text-black dark:text-white">
+              {mode === 'reject' ? 'Confirm Sample Rejected — No Resample' : `Confirm Resample — Cycle ${cycleFrom + 1}`}
+            </h2>
             <p className="text-sm text-black/60 dark:text-slate-400 mt-0.5">
-              This will start a new development cycle. Enter the reason below — it will be visible to all team members.
+              {mode === 'reject'
+                ? 'This ends the sample phase — no further resample cycle will be started. Enter the reason below.'
+                : 'This will start a new development cycle. Enter the reason below — it will be visible to all team members.'}
             </p>
           </div>
         </div>
 
         <div>
           <label htmlFor="resample-reason" className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
-            Reason for resampling <span aria-hidden="true" className="text-red-500">*</span>
+            Reason {mode === 'reject' ? 'for rejection' : 'for resampling'} <span aria-hidden="true" className="text-red-500">*</span>
           </label>
           <textarea
             id="resample-reason"
@@ -60,7 +65,7 @@ export default function ResampleModal({ cycleFrom, onConfirm, onClose }: Props) 
             autoFocus
             rows={4}
             aria-required="true"
-            placeholder="e.g. Texture too thick, client requested lighter consistency…"
+            placeholder={mode === 'reject' ? 'e.g. Client no longer wants to proceed with this product…' : 'e.g. Texture too thick, client requested lighter consistency…'}
             className="w-full text-sm border border-black/20 dark:border-white/20 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-black dark:text-white placeholder-black/30 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-mustard resize-none"
           />
         </div>
@@ -80,7 +85,7 @@ export default function ResampleModal({ cycleFrom, onConfirm, onClose }: Props) 
             disabled={saving || !reason.trim()}
             className="flex-1 py-2.5 text-sm bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl disabled:opacity-40 transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
           >
-            {saving ? 'Submitting…' : 'Confirm Resample'}
+            {saving ? 'Submitting…' : mode === 'reject' ? 'Confirm Rejection' : 'Confirm Resample'}
           </button>
         </div>
       </div>

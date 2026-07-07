@@ -154,7 +154,7 @@ export default function CRMProjectDetail() {
     }
   }
 
-  const handleApproveSample = async (approved: boolean, reason?: string) => {
+  const handleApproveSample = async (approved: boolean | 'other', reason?: string) => {
     if (!id) return
     setActionSaving(true)
     try {

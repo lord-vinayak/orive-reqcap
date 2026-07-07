@@ -9,7 +9,7 @@ interface Props {
   activeStageKey: string | null
   setActiveStageKey: (key: string) => void
   onCompleteStage: (key: string, complete: boolean) => Promise<void>
-  onApproveSample: (approved: boolean, reason?: string) => Promise<void>
+  onApproveSample: (approved: boolean | 'other', reason?: string) => Promise<void>
   onSetOrderGate: (data: { order_booking_steps: Record<string, boolean>; order_booked: boolean }) => Promise<void>
   saving: boolean
   teamMembers?: InternalTeamMember[]
@@ -22,7 +22,7 @@ export function SamplePhaseView({
   onCompleteStage, onApproveSample, onSetOrderGate, saving,
   teamMembers = [], onAssign, onUpload,
 }: Props) {
-  const { sample_phase, order_booking_steps, order_booked, sample_phase_complete, resample_cycle, max_cycles, resample_notes } = stageStatus
+  const { sample_phase, order_booking_steps, order_booked, sample_phase_complete, sample_rejected, resample_cycle, max_cycles, resample_notes } = stageStatus
 
   return (
     <div className="space-y-6">
@@ -71,6 +71,7 @@ export function SamplePhaseView({
                     stage={stage}
                     cycle={cycle.cycle}
                     maxCycles={max_cycles}
+                    sampleRejected={sample_rejected}
                     onApprove={onApproveSample}
                     saving={saving}
                   />
@@ -178,16 +179,18 @@ function StageSection({
 // ── Sample approval gate ──────────────────────────────────────────────────────
 
 function ApprovalGate({
-  stage, cycle, maxCycles, onApprove, saving,
+  stage, cycle, maxCycles, sampleRejected, onApprove, saving,
 }: {
   stage: StageStatusResponse['sample_phase']['pre_loop'][number]
   cycle: number
   maxCycles: number
-  onApprove: (approved: boolean, reason?: string) => Promise<void>
+  sampleRejected?: boolean
+  onApprove: (approved: boolean | 'other', reason?: string) => Promise<void>
   saving: boolean
 }) {
   const [confirmingYes, setConfirmingYes] = useState(false)
   const [showResampleModal, setShowResampleModal] = useState(false)
+  const [showRejectModal, setShowRejectModal] = useState(false)
   const canResample = cycle < maxCycles
 
   if (stage.is_complete) {
@@ -203,6 +206,17 @@ function ApprovalGate({
             </p>
           )}
         </div>
+      </div>
+    )
+  }
+
+  if (sampleRejected) {
+    return (
+      <div className="flex items-center gap-3 px-3 py-2.5 bg-red-50 dark:bg-red-900/10">
+        <span className="text-red-600 dark:text-red-400 text-lg" aria-hidden="true">✕</span>
+        <p className="text-sm font-medium text-red-700 dark:text-red-300">
+          Sample Rejected by Client — no resample requested
+        </p>
       </div>
     )
   }
@@ -250,6 +264,15 @@ function ApprovalGate({
                 Max {maxCycles} cycles reached
               </p>
             )}
+            <button
+              type="button"
+              onClick={() => setShowRejectModal(true)}
+              disabled={saving}
+              title="Client rejected the sample and doesn't want a resample"
+              className="px-4 py-1.5 rounded-lg text-sm font-medium bg-black/70 text-white hover:bg-black/80 dark:bg-white/10 dark:hover:bg-white/20 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-mustard"
+            >
+              Others — Rejected
+            </button>
           </div>
         ) : (
           <div className="flex items-center gap-2">
@@ -282,6 +305,18 @@ function ApprovalGate({
             setShowResampleModal(false)
           }}
           onClose={() => setShowResampleModal(false)}
+        />
+      )}
+
+      {showRejectModal && (
+        <ResampleModal
+          cycleFrom={cycle}
+          mode="reject"
+          onConfirm={async (reason) => {
+            await onApprove('other', reason)
+            setShowRejectModal(false)
+          }}
+          onClose={() => setShowRejectModal(false)}
         />
       )}
     </>

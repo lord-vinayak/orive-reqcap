@@ -136,6 +136,7 @@ export interface StageStatusResponse {
   order_booking_steps: Record<string, boolean>
   order_booked: boolean
   sample_phase_complete: boolean
+  sample_rejected: boolean
   resample_notes: Record<string, ResampleNote>  // keyed by cycle_from as string
   sample_phase: {
     pre_loop: StageStatusItem[]

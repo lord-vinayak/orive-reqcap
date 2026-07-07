@@ -28,6 +28,14 @@ from . import printing_confirmation_email_template as printing_confirmation_tpl
 from . import printing_payment_confirmation_email_template as printing_payment_tpl
 from . import final_order_shipment_email_template as final_order_shipment_tpl
 
+LEAD_BUCKETS = {
+    'prospective':      ['initial_conversation', 'proposal', 'costing'],
+    'sample':           ['sample'],
+    'converted':        ['order'],
+    'business_earned':  ['production', 'testing', 'filling', 'order_dispatch', 'order_closed'],
+    'lost':             ['lead_closed'],
+}
+
 _TEMPLATE_MAP = {
     'welcome': welcome_tpl,
     'reminder': reminder_tpl,
@@ -143,6 +151,10 @@ class ClientViewSet(viewsets.ModelViewSet):
         lead_status = params.get('lead_status')
         if lead_status:
             qs = qs.filter(lead_status=lead_status)
+
+        lead_bucket = params.get('lead_bucket')
+        if lead_bucket:
+            qs = qs.filter(lead_status__in=LEAD_BUCKETS.get(lead_bucket, []))
 
         created_after = params.get('created_after')
         if created_after:
@@ -511,6 +523,18 @@ class ClientViewSet(viewsets.ModelViewSet):
             .order_by('-sent_at')
         )
         return Response(EmailLogSerializer(logs, many=True).data)
+
+    # ------------------------------------------------------------------
+    # GET /api/clients/lead-bucket-counts/
+    # ------------------------------------------------------------------
+    @action(detail=False, methods=['get'], url_path='lead-bucket-counts')
+    def lead_bucket_counts(self, request):
+        qs = self.get_queryset()
+        counts = {
+            bucket: qs.filter(lead_status__in=statuses).count()
+            for bucket, statuses in LEAD_BUCKETS.items()
+        }
+        return Response(counts)
 
     # ------------------------------------------------------------------
     # PATCH /api/clients/bulk-update-status/

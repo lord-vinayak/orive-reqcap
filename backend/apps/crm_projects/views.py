@@ -285,6 +285,7 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
         'order_booking_steps': project.order_booking_steps or {},
         'order_booked': project.order_booked,
         'sample_phase_complete': sample_phase_complete,
+        'sample_rejected': project.sample_rejected,
         'resample_notes': notes_map,
         'sample_phase': {
             'pre_loop': pre_loop,
@@ -514,14 +515,15 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='approve-sample')
     def approve_sample(self, request, pk=None):
         """
-        Mark sample as approved (Yes) or rejected (No).
-        Rejection initiates the next resample cycle if cycles remain.
+        Mark sample as approved (Yes), rejected with resample (No), or rejected
+        permanently with no resample (Other — client doesn't want to resample).
         """
         project = self.get_object()
         approved_raw = request.data.get('approved')
         if approved_raw is None:
             return Response({'detail': 'approved (bool) is required.'}, status=400)
-            
+
+        is_other = isinstance(approved_raw, str) and approved_raw.lower() == 'other'
         if isinstance(approved_raw, str):
             approved = approved_raw.lower() in ('true', '1', 't', 'y', 'yes')
         else:
@@ -530,7 +532,24 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         cycle = project.resample_cycle
         approval_key = get_loop_key('sample_approved', cycle)
 
-        if approved:
+        if is_other:
+            reason = (request.data.get('reason') or '').strip()
+            if not reason:
+                return Response({'detail': 'A reason is required.'}, status=400)
+
+            sc, _ = StageCompletion.objects.get_or_create(project=project, stage_key=approval_key)
+            sc.is_complete = False
+            sc.save(update_fields=['is_complete'])
+
+            project.sample_rejected = True
+            project.save(update_fields=['sample_rejected', 'updated_at'])
+
+            ProjectNote.objects.create(
+                project=project,
+                text=f'[SAMPLE REJECTED] {reason}',
+                added_by=request.user,
+            )
+        elif approved:
             sc, _ = StageCompletion.objects.get_or_create(project=project, stage_key=approval_key)
             sc.is_complete = True
             sc.completed_at = timezone.now()

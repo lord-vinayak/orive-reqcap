@@ -3,6 +3,7 @@ import type {
   Client, Requirement, RequirementProduct, Note, FileRecord,
   CatalogItem, Proposal, ProposalItem, User, ProposalDocument,
 } from '@/types'
+import type { LeadBucket } from '@/constants/clientStatus'
 
 export interface SendEmailPayload {
   to_email: string
@@ -58,8 +59,12 @@ export interface EmailLog {
 }
 
 export const clientService = {
-  list: async (params: { q?: string; poc?: string; lead_status?: string; created_after?: string; created_before?: string; page_size?: number; page?: number } = {}) =>
+  list: async (params: { q?: string; poc?: string; lead_status?: string; lead_bucket?: string; created_after?: string; created_before?: string; page_size?: number; page?: number } = {}) =>
     (await api.get<{ count: number; next: string | null; previous: string | null; results: Client[] } | Client[]>('/clients/', { params })).data,
+
+  /** Client counts grouped into the 5 lead-status buckets used on the dashboard pie chart. */
+  getLeadBucketCounts: async (): Promise<Record<LeadBucket, number>> =>
+    (await api.get<Record<LeadBucket, number>>('/clients/lead-bucket-counts/')).data,
   get: async (phone: string) => (await api.get<Client>(`/clients/${phone}/`)).data,
   create: async (data: Partial<Client>) => (await api.post<Client>('/clients/', data)).data,
   update: async (phone: string, data: Partial<Client>) =>
