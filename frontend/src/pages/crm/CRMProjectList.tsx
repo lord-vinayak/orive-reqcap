@@ -134,7 +134,7 @@ export default function CRMProjectList() {
                       <ProgressBar value={p.progress_percentage} size="sm" />
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge hasDelays={p.has_delays} />
+                      <StatusBadge status={p.overall_status} />
                     </td>
                   </tr>
                 ))}
