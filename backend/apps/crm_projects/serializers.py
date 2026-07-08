@@ -378,6 +378,7 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
     vendor_assignments = serializers.SerializerMethodField()
     progress_percentage = serializers.IntegerField(read_only=True)
     has_delays = serializers.SerializerMethodField()
+    overall_status = serializers.SerializerMethodField()
     next_milestone = serializers.SerializerMethodField()
 
     class Meta:
@@ -389,13 +390,21 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
             'manufacturers', 'vendor_assignments',
             'sales_poc', 'sales_poc_name', 'formulation_poc', 'formulation_poc_name',
             'sample_booked_date', 'start_date', 'created_at',
-            'progress_percentage', 'has_delays', 'next_milestone',
+            'progress_percentage', 'has_delays', 'overall_status', 'next_milestone',
             'source_requirement',
         ]
         read_only_fields = ['id', 'project_no', 'start_date', 'created_at', 'phase', 'project_stage']
 
     def get_has_delays(self, obj):
         return any(m.status == 'delayed' for m in obj.milestones.all())
+
+    def get_overall_status(self, obj):
+        statuses = {m.status for m in obj.milestones.all()}
+        if 'delayed' in statuses:
+            return 'delayed'
+        if 'at_risk' in statuses:
+            return 'at_risk'
+        return 'on_track'
 
     def get_next_milestone(self, obj):
         candidates = [

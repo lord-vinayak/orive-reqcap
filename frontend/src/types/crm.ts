@@ -249,6 +249,7 @@ export interface CRMProjectList {
   created_at: string
   progress_percentage: number
   has_delays: boolean
+  overall_status: MilestoneStatus
   next_milestone: NextMilestone | null
 }
 

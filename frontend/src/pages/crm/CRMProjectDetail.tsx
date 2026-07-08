@@ -454,6 +454,7 @@ export default function CRMProjectDetail() {
                 teamMembers={teamMembers}
                 onAssign={handleAssignStage}
                 onUpload={handleUploadStageFile}
+                files={project.files}
               />
             )}
             {stageStatus && activePhase === 'order' && (

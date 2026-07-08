@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import type { StageStatusResponse, InternalTeamMember } from '@/types/crm'
+import type { StageStatusResponse, InternalTeamMember, ProjectFile } from '@/types/crm'
 import { StageCheckbox } from './StageCheckbox'
 import ResampleModal from './ResampleModal'
 
@@ -15,12 +15,13 @@ interface Props {
   teamMembers?: InternalTeamMember[]
   onAssign?: (key: string, memberId: string, comment?: string) => Promise<void>
   onUpload?: (stageKey: string, file: File) => Promise<void>
+  files?: ProjectFile[]
 }
 
 export function SamplePhaseView({
   stageStatus, projectId: _projectId, activeStageKey, setActiveStageKey,
   onCompleteStage, onApproveSample, onSetOrderGate, saving,
-  teamMembers = [], onAssign, onUpload,
+  teamMembers = [], onAssign, onUpload, files = [],
 }: Props) {
   const { sample_phase, order_booking_steps, order_booked, sample_phase_complete, sample_rejected, resample_cycle, max_cycles, resample_notes } = stageStatus
 
@@ -133,6 +134,8 @@ export function SamplePhaseView({
           orderBooked={order_booked}
           onSave={onSetOrderGate}
           saving={saving}
+          files={files}
+          onUpload={onUpload}
         />
       )}
     </div>
@@ -337,12 +340,14 @@ const ORDER_BOOKING_STEPS: { key: string; label: string }[] = [
 ]
 
 function OrderGate({
-  steps, orderBooked, onSave, saving,
+  steps, orderBooked, onSave, saving, files, onUpload,
 }: {
   steps: Record<string, boolean>
   orderBooked: boolean
   onSave: (data: { order_booking_steps: Record<string, boolean>; order_booked: boolean }) => Promise<void>
   saving: boolean
+  files: ProjectFile[]
+  onUpload?: (stageKey: string, file: File) => Promise<void>
 }) {
   const [localSteps, setLocalSteps] = useState<Record<string, boolean>>(steps)
   const [localBooked, setLocalBooked] = useState(orderBooked)
@@ -384,16 +389,16 @@ function OrderGate({
 
       <div className="space-y-2">
         {ORDER_BOOKING_STEPS.map(({ key, label }) => (
-          <label key={key} className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={!!localSteps[key]}
-              onChange={toggle(key)}
-              disabled={saving || saving2}
-              className="w-4 h-4 accent-mustard"
-            />
-            <span className="text-sm text-black dark:text-white">{label}</span>
-          </label>
+          <OrderStepRow
+            key={key}
+            stepKey={key}
+            label={label}
+            checked={!!localSteps[key]}
+            onToggle={toggle(key)}
+            disabled={saving || saving2}
+            files={files.filter((f) => f.stage_key === key)}
+            onUpload={onUpload}
+          />
         ))}
       </div>
 
@@ -437,6 +442,85 @@ function OrderGate({
       >
         {saving2 ? 'Saving…' : 'Save Order Status'}
       </button>
+    </div>
+  )
+}
+
+// ── Order booking step row (checkbox + attach + inline file list) ─────────────
+
+function OrderStepRow({
+  stepKey, label, checked, onToggle, disabled, files, onUpload,
+}: {
+  stepKey: string
+  label: string
+  checked: boolean
+  onToggle: (e: React.ChangeEvent<HTMLInputElement>) => void
+  disabled: boolean
+  files: ProjectFile[]
+  onUpload?: (stageKey: string, file: File) => Promise<void>
+}) {
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-2 cursor-pointer flex-1">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={onToggle}
+            disabled={disabled}
+            className="w-4 h-4 accent-mustard"
+          />
+          <span className="text-sm text-black dark:text-white">{label}</span>
+        </label>
+
+        {onUpload && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                setUploading(true)
+                try { await onUpload(stepKey, file) } finally {
+                  setUploading(false)
+                  e.target.value = ''
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="text-xs px-2 py-0.5 rounded border border-black/15 dark:border-white/15 text-black/50 dark:text-slate-400 hover:border-mustard hover:text-mustard transition-colors focus-visible:ring-2 focus-visible:ring-mustard disabled:opacity-50 shrink-0"
+              aria-label={`Attach file to ${label}`}
+            >
+              {uploading ? '…' : '📎'}
+            </button>
+          </>
+        )}
+      </div>
+
+      {files.length > 0 && (
+        <ul className="pl-6 space-y-0.5">
+          {files.map((f) => (
+            <li key={f.id}>
+              <a
+                href={f.drive_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-mustard hover:underline inline-flex items-center gap-1"
+              >
+                <span aria-hidden="true">📎</span> {f.filename}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
