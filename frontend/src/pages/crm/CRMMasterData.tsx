@@ -242,6 +242,7 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
   const [showModal, setShowModal] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [editing, setEditing] = useState<Manufacturer | null>(null)
+  const [viewing, setViewing] = useState<Manufacturer | null>(null)
   const [txnEntity, setTxnEntity] = useState<{ id: string; vendor_id: string; company_name: string; kind: 'manufacturer' | 'vendor' } | null>(null)
 
   const load = () => {
@@ -302,6 +303,30 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
         <VendorTransactionModal entity={txnEntity} onClose={() => setTxnEntity(null)} isAdmin={isAdmin} />
       )}
 
+      {viewing && (
+        <DetailsModal
+          title={viewing.company_name}
+          onClose={() => setViewing(null)}
+          rows={[
+            { label: 'Vendor ID', value: viewing.vendor_id },
+            { label: 'POC Name', value: viewing.poc_name },
+            { label: 'Phone No', value: viewing.phone_no },
+            { label: 'Email', value: viewing.email },
+            { label: 'City', value: viewing.city },
+            { label: 'State', value: viewing.state },
+            { label: 'Address', value: viewing.address },
+            { label: 'GST No', value: viewing.gst_no },
+            { label: 'PAN No', value: viewing.pan_no },
+            { label: 'Bank Name', value: viewing.bank_name },
+            { label: 'Bank Account No', value: viewing.bank_account_no },
+            { label: 'IFSC Code', value: viewing.bank_ifsc },
+            { label: 'Certifications', value: CERT_FIELDS.filter((f) => viewing[f.key]).map((f) => f.label).join(', ') || 'None' },
+            { label: 'Rating', value: viewing.average_rating != null ? `${viewing.average_rating} / 5` : 'No ratings' },
+            { label: 'Notes', value: viewing.notes },
+          ]}
+        />
+      )}
+
       {items.length === 0 ? (
         <EmptyState label="manufacturers" />
       ) : (
@@ -346,7 +371,14 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
                     </div>
                   </td>
                   <td className="px-4 py-3"><StarRating value={m.average_rating} /></td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-3 space-x-3" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setViewing(m)}
+                      className="text-xs text-mustard hover:underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                      aria-label={`View details of ${m.company_name}`}
+                    >
+                      View Details
+                    </button>
                     {isAdmin && (
                       <button
                         onClick={() => { setEditing(m); setShowModal(true) }}
@@ -502,6 +534,7 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
   const [showModal, setShowModal] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [editing, setEditing] = useState<Vendor | null>(null)
+  const [viewing, setViewing] = useState<Vendor | null>(null)
   const [txnEntity, setTxnEntity] = useState<{ id: string; vendor_id: string; company_name: string; kind: 'manufacturer' | 'vendor' } | null>(null)
 
   const load = () => {
@@ -563,6 +596,28 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
         <VendorTransactionModal entity={txnEntity} onClose={() => setTxnEntity(null)} isAdmin={isAdmin} />
       )}
 
+      {viewing && (
+        <DetailsModal
+          title={viewing.company_name}
+          onClose={() => setViewing(null)}
+          rows={[
+            { label: 'Vendor ID', value: viewing.vendor_id },
+            { label: 'Vendor Type', value: viewing.vendor_type },
+            { label: 'POC Name', value: viewing.poc_name },
+            { label: 'Phone No', value: viewing.phone_no },
+            { label: 'Email', value: viewing.email },
+            { label: 'City', value: viewing.city },
+            { label: 'GST No', value: viewing.gst_no },
+            { label: 'PAN No', value: viewing.pan_no },
+            { label: 'Bank Name', value: viewing.bank_name },
+            { label: 'Bank Account No', value: viewing.bank_account_no },
+            { label: 'IFSC Code', value: viewing.bank_ifsc },
+            { label: 'Rating', value: viewing.average_rating != null ? `${viewing.average_rating} / 5` : 'No ratings' },
+            { label: 'Notes', value: viewing.notes },
+          ]}
+        />
+      )}
+
       {items.length === 0 ? (
         <EmptyState label={`${vendorType} vendors`} />
       ) : (
@@ -597,7 +652,14 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
                     {v.email && <div className="text-xs">{v.email}</div>}
                   </td>
                   <td className="px-4 py-3"><StarRating value={v.average_rating} /></td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-3 space-x-3" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setViewing(v)}
+                      className="text-xs text-mustard hover:underline focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                      aria-label={`View details of ${v.company_name}`}
+                    >
+                      View Details
+                    </button>
                     {isAdmin && (
                       <button
                         onClick={() => { setEditing(v); setShowModal(true) }}
@@ -1174,6 +1236,23 @@ function StarRating({ value }: { value: number | null }) {
       {'★'.repeat(Math.round(value))}{'☆'.repeat(5 - Math.round(value))}
       <span className="text-black/70 dark:text-slate-300 text-xs ml-1">({value})</span>
     </span>
+  )
+}
+
+function DetailsModal({
+  title, rows, onClose,
+}: { title: string; rows: Array<{ label: string; value: React.ReactNode }>; onClose: () => void }) {
+  return (
+    <Modal title={title} onClose={onClose} size="md">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+        {rows.map((r) => (
+          <div key={r.label}>
+            <dt className="text-xs font-medium text-black/60 dark:text-slate-300">{r.label}</dt>
+            <dd className="text-black dark:text-white break-words">{r.value || '—'}</dd>
+          </div>
+        ))}
+      </dl>
+    </Modal>
   )
 }
 
