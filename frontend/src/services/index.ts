@@ -1,7 +1,7 @@
 import { api } from './api'
 import type {
   Client, Requirement, RequirementProduct, Note, FileRecord,
-  CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord,
+  CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, IngredientRecord,
 } from '@/types'
 import type { LeadBucket } from '@/constants/clientStatus'
 
@@ -313,6 +313,52 @@ export const batchRecordService = {
       const a = document.createElement('a')
       a.href = url
       a.download = 'batch_register_template.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+    }),
+}
+
+export interface IngredientUploadRow {
+  row: number
+  client_name: string
+  vendor_name: string
+  warning?: string
+}
+
+export interface IngredientUploadSkipRow {
+  row: number
+  client_name: string
+  vendor_name: string
+  reason: string
+}
+
+export interface IngredientUploadResult {
+  created: IngredientUploadRow[]
+  skipped: IngredientUploadSkipRow[]
+}
+
+export const ingredientRecordService = {
+  list: async (params: { q?: string; page?: number; page_size?: number } = {}) =>
+    (await api.get<{ count: number; next: string | null; previous: string | null; results: IngredientRecord[] } | IngredientRecord[]>('/ingredient-records/', { params })).data,
+  create: async (data: Partial<IngredientRecord>) => (await api.post<IngredientRecord>('/ingredient-records/', data)).data,
+  update: async (id: string, data: Partial<IngredientRecord>) =>
+    (await api.patch<IngredientRecord>(`/ingredient-records/${id}/`, data)).data,
+  remove: async (id: string) => api.delete(`/ingredient-records/${id}/`),
+
+  bulkUpload: async (file: File): Promise<IngredientUploadResult> => {
+    const form = new FormData()
+    form.append('file', file)
+    return (await api.post<IngredientUploadResult>('/ingredient-records/bulk-upload/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data
+  },
+
+  downloadTemplate: () =>
+    api.get('/ingredient-records/upload-template/', { responseType: 'blob' }).then((r) => {
+      const url = URL.createObjectURL(new Blob([r.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'ingredient_inventory_template.xlsx'
       a.click()
       URL.revokeObjectURL(url)
     }),
