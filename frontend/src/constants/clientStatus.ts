@@ -48,6 +48,7 @@ export interface SubStatusOption { value: string; label: string }
 export const LEAD_SUB_STATUS_OPTIONS: Partial<Record<LeadStatus, SubStatusOption[]>> = {
   initial_conversation: [
     { value: 'initial_conversation__product_requirement_captured', label: 'Product Requirement Captured' },
+    { value: 'initial_conversation__need_follow_up',               label: 'Need Follow-up' },
   ],
   proposal: [
     { value: 'proposal__requested', label: 'Requested' },

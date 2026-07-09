@@ -39,6 +39,7 @@ class Client(models.Model):
     LEAD_SUB_STATUS_CHOICES = [
         # Initial Conversation
         ('initial_conversation__product_requirement_captured', 'Product Requirement Captured'),
+        ('initial_conversation__need_follow_up', 'Need Follow-up'),
         # Proposal
         ('proposal__requested',            'Requested'),
         ('proposal__send',                 'Send'),
@@ -94,7 +95,7 @@ class Client(models.Model):
 
     # Valid sub-statuses per main status — used for validation
     VALID_SUB_STATUSES: dict = {
-        'initial_conversation': ['initial_conversation__product_requirement_captured'],
+        'initial_conversation': ['initial_conversation__product_requirement_captured', 'initial_conversation__need_follow_up'],
         'proposal':      ['proposal__requested', 'proposal__send', 'proposal__approved'],
         'costing':       ['costing__requested', 'costing__send', 'costing__approved'],
         'sample':        ['sample__invoice_shared', 'sample__sample_booked', 'sample__approval_email_sent',
