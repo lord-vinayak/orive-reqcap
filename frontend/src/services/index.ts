@@ -82,7 +82,7 @@ export const clientService = {
   },
 
   /** Send a welcome or reminder email to the given clients (by phone_no). JSON — no attachments. */
-  sendWelcomeEmail: async (phoneNos: string[], emailType: 'welcome' | 'reminder_1' | 'reminder_2' = 'welcome'): Promise<WelcomeEmailResult> =>
+  sendWelcomeEmail: async (phoneNos: string[], emailType: 'welcome' | 'reminder_1' | 'reminder_2' | 'closure' = 'welcome'): Promise<WelcomeEmailResult> =>
     (await api.post<WelcomeEmailResult>('/clients/send-welcome-email/', { phone_nos: phoneNos, email_type: emailType })).data,
 
   /** Send a project email (multipart — supports file attachments and extra template fields). */

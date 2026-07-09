@@ -19,6 +19,7 @@ from .serializers import ClientSerializer, EmailLogSerializer
 from . import welcome_email_template as welcome_tpl
 from . import reminder_email_template_1 as reminder1_tpl
 from . import reminder_email_template_2 as reminder2_tpl
+from . import closure_email_template as closure_tpl
 from . import sample_initiation_email_template as sample_initiation_tpl
 from . import sample_payment_confirmation_email_template as sample_payment_tpl
 from . import sample_approval_email_template as sample_approval_tpl
@@ -41,6 +42,7 @@ _TEMPLATE_MAP = {
     'welcome': welcome_tpl,
     'reminder_1': reminder1_tpl,
     'reminder_2': reminder2_tpl,
+    'closure': closure_tpl,
     'sample_initiation': sample_initiation_tpl,
     'sample_payment_confirmation': sample_payment_tpl,
     'sample_approval': sample_approval_tpl,
@@ -56,6 +58,7 @@ _TEMPLATE_LABELS = {
     'welcome': 'Welcome Email',
     'reminder_1': 'Reminder Email 1',
     'reminder_2': 'Reminder Email 2',
+    'closure': 'Closure Email',
     'sample_initiation': 'Sample Initiation Email',
     'sample_payment_confirmation': 'Sample Payment Confirmation Email',
     'sample_approval': 'Sample Approval Email',

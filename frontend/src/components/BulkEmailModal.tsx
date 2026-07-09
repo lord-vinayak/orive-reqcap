@@ -109,7 +109,7 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 dark:border-white/10 shrink-0">
           <h2 id={titleId} className="text-lg font-semibold text-black dark:text-white">
-            {emailType === 'welcome' ? 'Send Welcome Email' : 'Send Reminder Email'}
+            Send {EMAIL_TEMPLATES.find((t) => t.value === emailType)?.label ?? 'Email'}
           </h2>
           <button
             ref={firstFocusableRef}

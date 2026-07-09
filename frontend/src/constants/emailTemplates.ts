@@ -3,6 +3,7 @@ export const EMAIL_TEMPLATES = [
   { value: 'welcome', label: 'Welcome Email' },
   { value: 'reminder_1', label: 'Reminder Email 1' },
   { value: 'reminder_2', label: 'Reminder Email 2' },
+  { value: 'closure', label: 'Closure Email' },
 ] as const
 
 export type EmailTemplateKey = typeof EMAIL_TEMPLATES[number]['value']
