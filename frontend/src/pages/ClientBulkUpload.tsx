@@ -55,7 +55,7 @@ function ImportTab() {
     <div className="max-w-2xl space-y-8">
       <p className="text-sm text-black/60 dark:text-slate-300">
         Upload a <code className="bg-black/5 dark:bg-white/10 px-1 rounded">.xlsx</code> file to bulk-create clients.
-        The logged-in user is automatically set as the POC for all imported clients.
+        POC is matched from the "poc" column (name or email); rows without a match default to you.
       </p>
 
       {/* ── Column reference ── */}
@@ -76,6 +76,12 @@ function ImportTab() {
               ['email',        'Optional', 'Stored as-is; invalid emails are flagged with a warning'],
               ['company_name', 'Optional', ''],
               ['city',         'Optional', ''],
+              ['no_of_products', 'Optional', 'Integer, e.g. 5'],
+              ['planned_selling_price_range', 'Optional', 'Free text, e.g. ₹100–₹500'],
+              ['how_many_units_per_product', 'Optional', 'Integer, e.g. 1000'],
+              ['physical_address', 'Optional', ''],
+              ['gst_details',  'Optional', ''],
+              ['poc',          'Optional', 'Full name or email of an existing user. Leave blank to default to you.'],
               ['lead_status',  'Optional', 'Initial Conversation · Product Requirement Captured · Proposal · Costing · Sample · Order · Production · Testing · Filling · Order Dispatch · Order Closed · On Hold · Lead Closed  (defaults to Initial Conversation)'],
               ['sub_status',   'Optional', 'Sub-status matching the lead_status column, e.g. "Formula Created" when lead_status is "Sample"'],
             ].map(([col, req, note]) => (
