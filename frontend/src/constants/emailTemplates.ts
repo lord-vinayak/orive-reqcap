@@ -30,6 +30,7 @@ export const PROJECT_EMAIL_TEMPLATES: { value: string; label: string }[] = [
   { value: 'printing_confirmation', label: 'Printing Confirmation Email' },
   { value: 'printing_payment_confirmation', label: 'Printing Payment Confirmation Email' },
   { value: 'final_order_shipment', label: 'Final Order Shipment Email with Final Invoice' },
+  { value: 'invoice', label: 'Invoice Email (Packaging / Printing / Order)' },
 ]
 
 // Dynamic fields per template — only define for templates that need user input
@@ -105,6 +106,17 @@ export const TEMPLATE_FIELDS: Record<string, TemplateField[]> = {
   ],
   printing_confirmation: [
     { key: 'product_name', label: 'Product / Brand Name', type: 'text', placeholder: 'e.g. Glow Serum' },
+  ],
+  invoice: [
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
+    {
+      key: 'payment_type',
+      label: 'Payment Type',
+      type: 'select',
+      options: ['Product Sample', 'Packaging Sample', 'Order'],
+    },
+    { key: 'amount', label: 'Payment Amount (Rs.)', type: 'text', placeholder: 'e.g. 22,500' },
+    { key: 'date', label: 'Date of Invoice', type: 'date' },
   ],
   packaging_payment_confirmation: [
     { key: 'product_name', label: 'Product / Brand Name', type: 'text', placeholder: 'e.g. Glow Serum' },
