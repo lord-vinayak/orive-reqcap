@@ -1,43 +1,35 @@
 # ============================================================
-# Sample Initiation Email Template
-# Base tokens: {client_name}, {company_name}, {sent_by_name}
-# Template-specific tokens: {brand_name}
+# Reminder Email Template 2 — quick follow-up nudge
+# Edit this file to change email content — no code changes needed.
+#
+# Available tokens (use {token_name} in SUBJECT, HTML_BODY, TEXT_BODY):
+#   {client_name}   — client's full name
+#   {company_name}  — client's company name (or empty string if not set)
+#   {sent_by_name}  — name of the person sending the email
 # ============================================================
 
-SUBJECT = "Sample Initiation Invoice & Sample Detail Confirmation - {brand_name}"
+SUBJECT = "Quick follow-up — your skincare brand idea"
 
 # ── HTML version (shown in modern email clients) ─────────────────────────────
 HTML_BODY = """\
 <html>
 <body style="font-family: Arial, sans-serif; font-size: 14px; color: #333333; line-height: 1.7; max-width: 680px; margin: 0 auto; padding: 24px;">
 
-  <p>Dear {client_name},</p>
+  <p>Hi {client_name},</p>
 
   <p>
-    Thank you for confirming your interest in initiating the sample development process with Skinovation Sciences.
-  </p>
-
-  <p>Please find attached</p>
-  <ol>
-    <li>Sample Sheet</li>
-    <li>Sample invoice</li>
-  </ol>
-
-  <p>
-    Please go through the Sample Sheet in detail, review and confirm the information captured for each product. This is very critical as the sample will be made as per the attached specifications.
+    Just floating my earlier email back to the top of your inbox — I know how busy things get!
   </p>
 
   <p>
-    Also, please clear the sample invoice to book your sample.
+    We'd love to learn more about the brand you're envisioning. Whether you're still exploring or ready to dive in, a quick 15-minute chat could give you real clarity on formulations, timelines, and costs — no strings attached.
   </p>
 
   <p>
-    <strong>Please Note:</strong> The payment should be made only to the bank account details in the invoice. Any payments made on the phone number will not be considered.
+    With 500+ market-ready formulas and access to 1000+ globally patented actives, chances are we already have a head start on what you're dreaming up.
   </p>
 
-  <p>
-    We request you to kindly share the payment confirmation screenshot once processed.
-  </p>
+  <p>Would this week or next work for a quick call?</p>
 
   <p>Best Wishes,<br/>
   <strong>Team Skinovation Sciences</strong><br/>
@@ -61,21 +53,15 @@ HTML_BODY = """\
 
 # ── Plain-text fallback ───────────────────────────────────────────────────────
 TEXT_BODY = """\
-Dear {client_name},
+Hi {client_name},
 
-Thank you for confirming your interest in initiating the sample development process with Skinovation Sciences.
+Just floating my earlier email back to the top of your inbox — I know how busy things get!
 
-Please find attached
-1. Sample Sheet
-2. Sample invoice
+We'd love to learn more about the brand you're envisioning. Whether you're still exploring or ready to dive in, a quick 15-minute chat could give you real clarity on formulations, timelines, and costs — no strings attached.
 
-Please go through the Sample Sheet in detail, review and confirm the information captured for each product. This is very critical as the sample will be made as per the attached specifications.
+With 500+ market-ready formulas and access to 1000+ globally patented actives, chances are we already have a head start on what you're dreaming up.
 
-Also, please clear the sample invoice to book your sample.
-
-Please Note: The payment should be made only to the bank account details in the invoice. Any payments made on the phone number will not be considered.
-
-We request you to kindly share the payment confirmation screenshot once processed.
+Would this week or next work for a quick call?
 
 Best Wishes,
 Team Skinovation Sciences

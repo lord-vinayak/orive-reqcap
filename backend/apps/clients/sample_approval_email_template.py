@@ -1,10 +1,12 @@
 # ============================================================
 # Sample Approval Email Template
 # Base tokens: {client_name}, {company_name}, {sent_by_name}
-# Template-specific tokens: {sample_number}, {product_name}
+# Template-specific tokens: {brand_name}, {product1_name}, {sample1_number},
+#   {product2_name}, {sample2_number}, {product3_name}, {sample3_number}
+#   (product2/3 slots are optional — leave blank if not applicable)
 # ============================================================
 
-SUBJECT = "Sample Approval Confirmation - Sample No. {sample_number} Approved"
+SUBJECT = "Sample Approval Confirmation - {brand_name}"
 
 HTML_BODY = """\
 <html>
@@ -12,27 +14,42 @@ HTML_BODY = """\
 
   <p>Dear {client_name},</p>
 
-  <p>Thank you for confirming your approval of the sample for <strong>{product_name}</strong>.</p>
+  <p>We are glad to share that the below samples are approved by you.</p>
 
   <p>
-    We are pleased to note that <strong>Sample No. {sample_number}</strong> has been approved from your end.
-    Based on this confirmation, the approved sample will now be considered as the final reference sample for further order planning and production alignment.
+    Kindly review the details below and flag any discrepancies within 2 days, as this exact sample version will go into bulk production. This is critical as same sample version will go in bulk production.
   </p>
 
   <p>
-    At this stage, we request you to kindly confirm the final order details, including SKU name, pack size, quantity, packaging preference, label/artwork readiness, and any final compliance or claim-related inputs.
+    Product 1 Name: {product1_name}<br/>
+    Sample No: {sample1_number}<br/>
+    <br/>
+    Product 2 Name: {product2_name}<br/>
+    Sample No: {sample2_number}<br/>
+    <br/>
+    Product 3 Name: {product3_name}<br/>
+    Sample No: {sample3_number}
   </p>
 
   <p>
-    Please note that any major change requested after sample approval, including changes in texture, fragrance, colour, active positioning, product claims, or formulation direction, may require additional review and may impact timelines, cost, or development scope.
-  </p>
-
-  <p>
-    Once the order details are finalized, we will move ahead with the order initiation process and share the required commercial documents for the next stage.
+    Please note that any future changes in the sample whether texture, fragrance, color, active positioning, product claims, or formulation direction, may require additional review and may impact timelines, cost, or development scope.
   </p>
 
   <p>Best Wishes,<br/>
-  <strong>Team Skinovation Sciences</strong></p>
+  <strong>Team Skinovation Sciences</strong><br/>
+  Your Skincare Brand Architect – Idea to Shelf</p>
+
+  <p>
+    Brand Ideation • Formulation Development • Packaging Support • Compliance • Private Label Manufacturing • Brand Launch
+  </p>
+
+  <p>
+    For more information on product and process pls refer to this link - <a href="https://shorturl.at/roha4">https://shorturl.at/roha4</a>
+  </p>
+
+  <p>
+    Reach out to us at - Hello@skinovationsciences.com | +91-9818467515 | Sector 48, Gurgaon, Haryana
+  </p>
 
 </body>
 </html>
@@ -41,16 +58,28 @@ HTML_BODY = """\
 TEXT_BODY = """\
 Dear {client_name},
 
-Thank you for confirming your approval of the sample for {product_name}.
+We are glad to share that the below samples are approved by you.
 
-We are pleased to note that Sample No. {sample_number} has been approved from your end. Based on this confirmation, the approved sample will now be considered as the final reference sample for further order planning and production alignment.
+Kindly review the details below and flag any discrepancies within 2 days, as this exact sample version will go into bulk production. This is critical as same sample version will go in bulk production.
 
-At this stage, we request you to kindly confirm the final order details, including SKU name, pack size, quantity, packaging preference, label/artwork readiness, and any final compliance or claim-related inputs.
+Product 1 Name: {product1_name}
+Sample No: {sample1_number}
 
-Please note that any major change requested after sample approval, including changes in texture, fragrance, colour, active positioning, product claims, or formulation direction, may require additional review and may impact timelines, cost, or development scope.
+Product 2 Name: {product2_name}
+Sample No: {sample2_number}
 
-Once the order details are finalized, we will move ahead with the order initiation process and share the required commercial documents for the next stage.
+Product 3 Name: {product3_name}
+Sample No: {sample3_number}
+
+Please note that any future changes in the sample whether texture, fragrance, color, active positioning, product claims, or formulation direction, may require additional review and may impact timelines, cost, or development scope.
 
 Best Wishes,
 Team Skinovation Sciences
+Your Skincare Brand Architect – Idea to Shelf
+
+Brand Ideation • Formulation Development • Packaging Support • Compliance • Private Label Manufacturing • Brand Launch
+
+For more information on product and process pls refer to this link - https://shorturl.at/roha4
+
+Reach out to us at - Hello@skinovationsciences.com | +91-9818467515 | Sector 48, Gurgaon, Haryana
 """

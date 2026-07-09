@@ -8,7 +8,7 @@
 #   {sent_by_name}  — name of the person sending the email
 # ============================================================
 
-SUBJECT = "Introduction to Skinovation Sciences - Idea-to-Shelf Skincare Brand Launch Support"
+SUBJECT = "Skinovation Sciences — Your Skincare Brand Partner"
 
 # ── HTML version (shown in modern email clients) ─────────────────────────────
 HTML_BODY = """\
@@ -17,31 +17,49 @@ HTML_BODY = """\
 
   <p>Dear {client_name},</p>
 
-  <p>Thank you for connecting with <strong>Skinovation Sciences</strong>.</p>
-
   <p>
-    Skinovation Sciences is India's idea-to-shelf skincare innovation partner, helping founders, doctors, clinics, and emerging brands launch high-quality skincare, haircare, body care, and personal care products through a structured ecosystem covering R&amp;D, formulation, compliance, testing, packaging, manufacturing, and launch support.
+    Building a skincare brand is exciting — but let's be honest, it's also overwhelming. That's where we come in.
   </p>
 
-  <p>For your reference, please find attached our</p>
+  <p>
+    At Skinovation Sciences, we turn your dream skincare brand into reality. Market research, R&amp;D, manufacturing, packaging, design, compliance, clinical testing, digital growth — we handle it all, so you can focus on building your brand. Our clients span PAN India, and here's what they get access to:
+  </p>
   <ul>
-    <li>Client Deck</li>
-    <li>FAQ Document</li>
-    <li>Product Catalog</li>
+    <li>500+ new-age, market-ready formulas</li>
+    <li>A repository of 1000+ globally patented actives</li>
+    <li>A verified network of 100+ vendors</li>
   </ul>
 
   <p>
-    These documents will give you a clear overview of our capabilities, product categories, process flow, timelines, and engagement model.
+    But here's what we believe matters most: getting the product right. It's the hardest, most time-consuming part of the journey — and it's where we roll up our sleeves and work with you on customized, personalized formulations that are truly yours.
+  </p>
+
+  <p>And through it all, three values guide us:</p>
+  <p>
+    🌿 Care for the planet — clean formulations, always<br/>
+    📈 Growth — when your brand grows, we grow<br/>
+    🤝 Transparency — every term and condition shared upfront, because we're in this for the long haul
   </p>
 
   <p>
-    We request you to kindly share your product requirements over email or WhatsApp so our team can evaluate the scope and guide you with the next steps. Alternatively, we would be happy to connect over a call to understand your brand vision, product expectations, MOQ, packaging preference, and launch timeline.
+    Let's build something great together. Reply to this email or give us a call — we'd love to build your brand story.
   </p>
 
-  <p>Looking forward to supporting your skincare brand journey.</p>
-
   <p>Best Wishes,<br/>
-  <strong>Team Skinovation Sciences</strong></p>
+  <strong>Team Skinovation Sciences</strong><br/>
+  Your Skincare Brand Architect – Idea to Shelf</p>
+
+  <p>
+    Brand Ideation • Formulation Development • Packaging Support • Compliance • Private Label Manufacturing • Brand Launch
+  </p>
+
+  <p>
+    For more information on product and process pls refer to this link - <a href="https://shorturl.at/roha4">https://shorturl.at/roha4</a>
+  </p>
+
+  <p>
+    Reach out to us at - Hello@skinovationsciences.com | +91-9818467515 | Sector 48, Gurgaon, Haryana
+  </p>
 
 </body>
 </html>
@@ -51,21 +69,29 @@ HTML_BODY = """\
 TEXT_BODY = """\
 Dear {client_name},
 
-Thank you for connecting with Skinovation Sciences.
+Building a skincare brand is exciting — but let's be honest, it's also overwhelming. That's where we come in.
 
-Skinovation Sciences is India's idea-to-shelf skincare innovation partner, helping founders, doctors, clinics, and emerging brands launch high-quality skincare, haircare, body care, and personal care products through a structured ecosystem covering R&D, formulation, compliance, testing, packaging, manufacturing, and launch support.
+At Skinovation Sciences, we turn your dream skincare brand into reality. Market research, R&D, manufacturing, packaging, design, compliance, clinical testing, digital growth — we handle it all, so you can focus on building your brand. Our clients span PAN India, and here's what they get access to:
+- 500+ new-age, market-ready formulas
+- A repository of 1000+ globally patented actives
+- A verified network of 100+ vendors
 
-For your reference, please find attached our
-- Client Deck
-- FAQ Document
-- Product Catalog
+But here's what we believe matters most: getting the product right. It's the hardest, most time-consuming part of the journey — and it's where we roll up our sleeves and work with you on customized, personalized formulations that are truly yours.
 
-These documents will give you a clear overview of our capabilities, product categories, process flow, timelines, and engagement model.
+And through it all, three values guide us:
+🌿 Care for the planet — clean formulations, always
+📈 Growth — when your brand grows, we grow
+🤝 Transparency — every term and condition shared upfront, because we're in this for the long haul
 
-We request you to kindly share your product requirements over email or WhatsApp so our team can evaluate the scope and guide you with the next steps. Alternatively, we would be happy to connect over a call to understand your brand vision, product expectations, MOQ, packaging preference, and launch timeline.
-
-Looking forward to supporting your skincare brand journey.
+Let's build something great together. Reply to this email or give us a call — we'd love to build your brand story.
 
 Best Wishes,
 Team Skinovation Sciences
+Your Skincare Brand Architect – Idea to Shelf
+
+Brand Ideation • Formulation Development • Packaging Support • Compliance • Private Label Manufacturing • Brand Launch
+
+For more information on product and process pls refer to this link - https://shorturl.at/roha4
+
+Reach out to us at - Hello@skinovationsciences.com | +91-9818467515 | Sector 48, Gurgaon, Haryana
 """

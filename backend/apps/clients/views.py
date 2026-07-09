@@ -18,7 +18,9 @@ from apps.users.models import User
 from .models import Client, EmailLog
 from .serializers import ClientSerializer, EmailLogSerializer
 from . import welcome_email_template as welcome_tpl
-from . import reminder_email_template as reminder_tpl
+from . import reminder_email_template_1 as reminder1_tpl
+from . import reminder_email_template_2 as reminder2_tpl
+from . import closure_email_template as closure_tpl
 from . import sample_initiation_email_template as sample_initiation_tpl
 from . import sample_payment_confirmation_email_template as sample_payment_tpl
 from . import sample_approval_email_template as sample_approval_tpl
@@ -28,6 +30,9 @@ from . import packaging_payment_confirmation_email_template as packaging_payment
 from . import printing_confirmation_email_template as printing_confirmation_tpl
 from . import printing_payment_confirmation_email_template as printing_payment_tpl
 from . import final_order_shipment_email_template as final_order_shipment_tpl
+from . import invoice_email_template as invoice_tpl
+from . import payment_confirmation_email_template as payment_confirmation_tpl
+from . import order_confirmation_email_template as order_confirmation_tpl
 
 LEAD_BUCKETS = {
     'prospective':      ['initial_conversation', 'proposal', 'costing'],
@@ -39,7 +44,9 @@ LEAD_BUCKETS = {
 
 _TEMPLATE_MAP = {
     'welcome': welcome_tpl,
-    'reminder': reminder_tpl,
+    'reminder_1': reminder1_tpl,
+    'reminder_2': reminder2_tpl,
+    'closure': closure_tpl,
     'sample_initiation': sample_initiation_tpl,
     'sample_payment_confirmation': sample_payment_tpl,
     'sample_approval': sample_approval_tpl,
@@ -49,11 +56,16 @@ _TEMPLATE_MAP = {
     'printing_confirmation': printing_confirmation_tpl,
     'printing_payment_confirmation': printing_payment_tpl,
     'final_order_shipment': final_order_shipment_tpl,
+    'invoice': invoice_tpl,
+    'payment_confirmation': payment_confirmation_tpl,
+    'order_confirmation': order_confirmation_tpl,
 }
 
 _TEMPLATE_LABELS = {
     'welcome': 'Welcome Email',
-    'reminder': 'Reminder Email',
+    'reminder_1': 'Reminder Email 1',
+    'reminder_2': 'Reminder Email 2',
+    'closure': 'Closure Email',
     'sample_initiation': 'Sample Initiation Email',
     'sample_payment_confirmation': 'Sample Payment Confirmation Email',
     'sample_approval': 'Sample Approval Email',
@@ -63,6 +75,9 @@ _TEMPLATE_LABELS = {
     'printing_confirmation': 'Printing Confirmation Email',
     'printing_payment_confirmation': 'Printing Payment Confirmation Email',
     'final_order_shipment': 'Final Order Shipment Email with Final Invoice',
+    'invoice': 'Invoice Email',
+    'payment_confirmation': 'Payment Confirmation Email',
+    'order_confirmation': 'Order Confirmation Email',
 }
 
 # ---------------------------------------------------------------------------
@@ -100,6 +115,12 @@ POC_HINT = (
 )
 
 PHONE_RE = re.compile(r'\d{10}$')
+
+
+class _SafeDict(dict):
+    """Lets templates reference optional tokens (e.g. unused product slots) without KeyError."""
+    def __missing__(self, key):
+        return ''
 
 
 def _parse_phone(raw) -> str | None:
@@ -503,9 +524,10 @@ class ClientViewSet(viewsets.ModelViewSet):
                 **extra_ctx,
             }
 
-            subject = tpl.SUBJECT.format(**ctx)
-            html_body = tpl.HTML_BODY.format(**ctx)
-            text_body = tpl.TEXT_BODY.format(**ctx)
+            safe_ctx = _SafeDict(ctx)
+            subject = tpl.SUBJECT.format_map(safe_ctx)
+            html_body = tpl.HTML_BODY.format_map(safe_ctx)
+            text_body = tpl.TEXT_BODY.format_map(safe_ctx)
 
             try:
                 msg = EmailMultiAlternatives(subject=subject, body=text_body, to=[client.email])
