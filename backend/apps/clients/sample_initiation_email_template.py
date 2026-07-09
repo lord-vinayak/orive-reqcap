@@ -1,14 +1,10 @@
 # ============================================================
 # Sample Initiation Email Template
-# Edit this file to change email content — no code changes needed.
-#
-# Available tokens (use {token_name} in SUBJECT, HTML_BODY, TEXT_BODY):
-#   {client_name}   — client's full name
-#   {company_name}  — client's company name (or empty string if not set)
-#   {sent_by_name}  — name of the person sending the email
+# Base tokens: {client_name}, {company_name}, {sent_by_name}
+# Template-specific tokens: {brand_name}
 # ============================================================
 
-SUBJECT = "Sample Initiation Invoice & Sample Detail Confirmation"
+SUBJECT = "Sample Initiation Invoice & Sample Detail Confirmation - {brand_name}"
 
 # ── HTML version (shown in modern email clients) ─────────────────────────────
 HTML_BODY = """\
@@ -21,36 +17,43 @@ HTML_BODY = """\
     Thank you for confirming your interest in initiating the sample development process with Skinovation Sciences.
   </p>
 
+  <p>Please find attached</p>
+  <ol>
+    <li>Sample Sheet</li>
+    <li>Sample invoice</li>
+  </ol>
+
   <p>
-    Please find attached the sample initiation invoice along with the Sample Details Sheet for the product samples to be developed.
+    Please go through the Sample Sheet in detail, review and confirm the information captured for each product. This is very critical as the sample will be made as per the attached specifications.
   </p>
 
   <p>
-    The attached sheet captures key product-level inputs such as product name, category, texture, key benefits, active ingredients, fragrance preference, colour preference, packaging direction, benchmark reference, quantity expectations, and other execution details required by our formulation and project team.
+    Also, please clear the sample invoice to book your sample.
   </p>
 
   <p>
-    We request you to kindly review the attached Sample Details Sheet carefully and provide your confirmation, so that the samples can be developed accordingly and aligned with the approved product brief.
+    <strong>Please Note:</strong> The payment should be made only to the bank account details in the invoice. Any payments made on the phone number will not be considered.
   </p>
 
   <p>
-    The sample initiation payment may be processed under either of the following models, as applicable to your project:
-  </p>
-  <ul>
-    <li>Sample development payment only</li>
-    <li>10% advance payment against the final order value, which will confirm priority sample development and order booking alignment</li>
-  </ul>
-
-  <p>
-    Upon receipt of the payment confirmation and approval of the Sample Details Sheet, our team will initiate the internal workflow for formulation review, ingredient mapping, sample planning, and execution scheduling.
-  </p>
-
-  <p>
-    We request you to kindly share the payment confirmation screenshot once processed, along with confirmation on the attached Sample Details Sheet.
+    We request you to kindly share the payment confirmation screenshot once processed.
   </p>
 
   <p>Best Wishes,<br/>
-  <strong>Team Skinovation Sciences</strong></p>
+  <strong>Team Skinovation Sciences</strong><br/>
+  Your Skincare Brand Architect – Idea to Shelf</p>
+
+  <p>
+    Brand Ideation • Formulation Development • Packaging Support • Compliance • Private Label Manufacturing • Brand Launch
+  </p>
+
+  <p>
+    For more information on product and process pls refer to this link - <a href="https://shorturl.at/roha4">https://shorturl.at/roha4</a>
+  </p>
+
+  <p>
+    Reach out to us at - Hello@skinovationsciences.com | +91-9818467515 | Sector 48, Gurgaon, Haryana
+  </p>
 
 </body>
 </html>
@@ -62,20 +65,25 @@ Dear {client_name},
 
 Thank you for confirming your interest in initiating the sample development process with Skinovation Sciences.
 
-Please find attached the sample initiation invoice along with the Sample Details Sheet for the product samples to be developed.
+Please find attached
+1. Sample Sheet
+2. Sample invoice
 
-The attached sheet captures key product-level inputs such as product name, category, texture, key benefits, active ingredients, fragrance preference, colour preference, packaging direction, benchmark reference, quantity expectations, and other execution details required by our formulation and project team.
+Please go through the Sample Sheet in detail, review and confirm the information captured for each product. This is very critical as the sample will be made as per the attached specifications.
 
-We request you to kindly review the attached Sample Details Sheet carefully and provide your confirmation, so that the samples can be developed accordingly and aligned with the approved product brief.
+Also, please clear the sample invoice to book your sample.
 
-The sample initiation payment may be processed under either of the following models, as applicable to your project:
-- Sample development payment only
-- 10% advance payment against the final order value, which will confirm priority sample development and order booking alignment
+Please Note: The payment should be made only to the bank account details in the invoice. Any payments made on the phone number will not be considered.
 
-Upon receipt of the payment confirmation and approval of the Sample Details Sheet, our team will initiate the internal workflow for formulation review, ingredient mapping, sample planning, and execution scheduling.
-
-We request you to kindly share the payment confirmation screenshot once processed, along with confirmation on the attached Sample Details Sheet.
+We request you to kindly share the payment confirmation screenshot once processed.
 
 Best Wishes,
 Team Skinovation Sciences
+Your Skincare Brand Architect – Idea to Shelf
+
+Brand Ideation • Formulation Development • Packaging Support • Compliance • Private Label Manufacturing • Brand Launch
+
+For more information on product and process pls refer to this link - https://shorturl.at/roha4
+
+Reach out to us at - Hello@skinovationsciences.com | +91-9818467515 | Sector 48, Gurgaon, Haryana
 """

@@ -33,6 +33,9 @@ export const PROJECT_EMAIL_TEMPLATES: { value: string; label: string }[] = [
 
 // Dynamic fields per template — only define for templates that need user input
 export const TEMPLATE_FIELDS: Record<string, TemplateField[]> = {
+  sample_initiation: [
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
+  ],
   sample_payment_confirmation: [
     { key: 'product_name', label: 'Product / Brand Name', type: 'text', placeholder: 'e.g. Glow Serum' },
     { key: 'payment_amount', label: 'Payment Amount Received (₹)', type: 'text', placeholder: 'e.g. 15,000' },
