@@ -67,22 +67,7 @@ export const TEMPLATE_FIELDS: Record<string, TemplateField[]> = {
     { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
   ],
   final_order_shipment: [
-    { key: 'product_name', label: 'Product / Brand Name', type: 'text', placeholder: 'e.g. Glow Serum' },
-    { key: 'final_payment_amount', label: 'Final Payment Due (Rs.)', type: 'text', placeholder: 'e.g. 50,000' },
-    { key: 'payment_completion_date', label: 'Payment Completion Date', type: 'date' },
-    { key: 'sku_details', label: 'Order / SKU Details', type: 'text', placeholder: 'e.g. Glow Serum 50ml × 500 units' },
-    {
-      key: 'shipment_mode',
-      label: 'Shipment Mode',
-      type: 'select',
-      options: ['Courier', 'Transport', 'Client Pickup'],
-    },
-    {
-      key: 'insurance_status',
-      label: 'Insurance Status',
-      type: 'select',
-      options: ['To be activated post payment', 'Activated'],
-    },
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
   ],
   printing_payment_confirmation: [
     { key: 'product_name', label: 'Product / Brand Name', type: 'text', placeholder: 'e.g. Glow Serum' },
