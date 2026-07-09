@@ -444,7 +444,7 @@ export default function RequirementForm() {
         no_of_products: client.no_of_products ?? null,
         planned_selling_price_range: client.planned_selling_price_range || '',
         how_many_units_per_product: client.how_many_units_per_product ?? null,
-        poc: currentUser?.id || null,
+        poc: client.poc ?? currentUser?.id ?? null,
         lead_status: client.lead_status,
         lead_sub_status: client.lead_sub_status,
       };
