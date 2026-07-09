@@ -16,6 +16,7 @@ export interface TemplateField {
   type: 'text' | 'date' | 'select'
   options?: string[]   // for select type
   placeholder?: string
+  optional?: boolean   // if true, field can be left blank
 }
 
 // Used in CRM project detail (SendEmailModal) — add entries here as templates are provided
@@ -48,8 +49,13 @@ export const TEMPLATE_FIELDS: Record<string, TemplateField[]> = {
     },
   ],
   sample_approval: [
-    { key: 'product_name', label: 'Product Name', type: 'text', placeholder: 'e.g. Glow Serum' },
-    { key: 'sample_number', label: 'Sample Number', type: 'text', placeholder: 'e.g. 3' },
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
+    { key: 'product1_name', label: 'Product 1 Name', type: 'text', placeholder: 'e.g. Glow Serum' },
+    { key: 'sample1_number', label: 'Product 1 — Sample No.', type: 'text', placeholder: 'e.g. 3' },
+    { key: 'product2_name', label: 'Product 2 Name', type: 'text', optional: true },
+    { key: 'sample2_number', label: 'Product 2 — Sample No.', type: 'text', optional: true },
+    { key: 'product3_name', label: 'Product 3 Name', type: 'text', optional: true },
+    { key: 'sample3_number', label: 'Product 3 — Sample No.', type: 'text', optional: true },
   ],
   order_initiation: [
     { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },

@@ -103,6 +103,12 @@ SUB_STATUS_HINT = (
 PHONE_RE = re.compile(r'\d{10}$')
 
 
+class _SafeDict(dict):
+    """Lets templates reference optional tokens (e.g. unused product slots) without KeyError."""
+    def __missing__(self, key):
+        return ''
+
+
 def _parse_phone(raw) -> str | None:
     """Extract trailing 10-digit Indian mobile from any common format."""
     if raw is None:
@@ -489,9 +495,10 @@ class ClientViewSet(viewsets.ModelViewSet):
                 **extra_ctx,
             }
 
-            subject = tpl.SUBJECT.format(**ctx)
-            html_body = tpl.HTML_BODY.format(**ctx)
-            text_body = tpl.TEXT_BODY.format(**ctx)
+            safe_ctx = _SafeDict(ctx)
+            subject = tpl.SUBJECT.format_map(safe_ctx)
+            html_body = tpl.HTML_BODY.format_map(safe_ctx)
+            text_body = tpl.TEXT_BODY.format_map(safe_ctx)
 
             try:
                 msg = EmailMultiAlternatives(subject=subject, body=text_body, to=[client.email])

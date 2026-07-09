@@ -90,7 +90,7 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
 
   const goToConfirm = async () => {
     // Validate required template fields
-    const missing = activeFields.filter((f) => !fieldValues[f.key]?.trim())
+    const missing = activeFields.filter((f) => !f.optional && !fieldValues[f.key]?.trim())
     if (missing.length > 0) {
       setError(`Please fill in: ${missing.map((f) => f.label).join(', ')}`)
       return
@@ -216,14 +216,17 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
                         className="block text-xs font-medium text-black/70 dark:text-slate-300 mb-1"
                       >
                         {field.label}
+                        {field.optional && (
+                          <span className="font-normal text-black/50 dark:text-slate-400"> (optional)</span>
+                        )}
                       </label>
                       {field.type === 'select' ? (
                         <select
                           id={`template-field-${field.key}`}
                           value={fieldValues[field.key] ?? ''}
                           onChange={(e) => setFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                          required
-                          aria-required="true"
+                          required={!field.optional}
+                          aria-required={!field.optional}
                           className="w-full text-sm border border-black/20 dark:border-white/20 rounded px-3 py-2 bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
                         >
                           <option value="">Select…</option>
@@ -238,8 +241,8 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
                           value={fieldValues[field.key] ?? ''}
                           onChange={(e) => setFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
                           placeholder={field.placeholder}
-                          required
-                          aria-required="true"
+                          required={!field.optional}
+                          aria-required={!field.optional}
                           className="w-full text-sm border border-black/20 dark:border-white/20 rounded px-3 py-2 bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
                         />
                       )}
