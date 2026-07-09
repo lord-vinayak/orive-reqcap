@@ -14,6 +14,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.users.models import User
 from .models import Client, EmailLog
 from .serializers import ClientSerializer, EmailLogSerializer
 from . import welcome_email_template as welcome_tpl
@@ -82,6 +83,7 @@ TEMPLATE_COLUMNS = [
     'how_many_units_per_product',
     'physical_address',
     'gst_details',
+    'poc',
     'lead_status',
     'sub_status',
 ]
@@ -92,6 +94,9 @@ LEAD_STATUS_HINT = (
 )
 SUB_STATUS_HINT = (
     'Optional. Depends on Lead Status. E.g. for Sample: Formula Created, Sample Made, Approved …'
+)
+POC_HINT = (
+    'Optional. Full name or email of an existing user. Leave blank to default to your account.'
 )
 
 PHONE_RE = re.compile(r'\d{10}$')
@@ -184,8 +189,8 @@ class ClientViewSet(viewsets.ModelViewSet):
             cell.font = header_font
             cell.fill = header_fill
 
-        # Column widths: name  phone email company city  noprod price  units  addr   gst    lead_status  sub_status
-        widths = [       25,   20,   30,   25,     15,   14,    28,    22,    35,    20,    45,          45        ]
+        # Column widths: name  phone email company city  noprod price  units  addr   gst    poc    lead_status  sub_status
+        widths = [       25,   20,   30,   25,     15,   14,    28,    22,    35,    20,    22,    45,          45        ]
         for col_idx, width in enumerate(widths, start=1):
             ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
@@ -201,6 +206,8 @@ class ClientViewSet(viewsets.ModelViewSet):
         ws.cell(row=2, column=units_col, value='Integer, e.g. 1000').font = hint_font
         price_col = TEMPLATE_COLUMNS.index('planned_selling_price_range') + 1
         ws.cell(row=2, column=price_col, value='Free text, e.g. ₹100–₹500').font = hint_font
+        poc_col = TEMPLATE_COLUMNS.index('poc') + 1
+        ws.cell(row=2, column=poc_col, value=POC_HINT).font = hint_font
 
         # One example row
         ws.cell(row=3, column=1, value='John Doe')
@@ -213,8 +220,9 @@ class ClientViewSet(viewsets.ModelViewSet):
         ws.cell(row=3, column=8, value=1000)
         ws.cell(row=3, column=9, value='123 MG Road, Mumbai 400001')
         ws.cell(row=3, column=10, value='27AAPFU0939F1ZV')
-        ws.cell(row=3, column=11, value='Initial Conversation')
-        ws.cell(row=3, column=12, value='')
+        ws.cell(row=3, column=11, value='')
+        ws.cell(row=3, column=12, value='Initial Conversation')
+        ws.cell(row=3, column=13, value='')
 
         buf = io.BytesIO()
         wb.save(buf)
@@ -266,8 +274,20 @@ class ClientViewSet(viewsets.ModelViewSet):
         idx_units   = col('how_many_units_per_product')
         idx_address = col('physical_address')
         idx_gst     = col('gst_details')
+        idx_poc     = col('poc')
         idx_lead_status = col('lead_status')
         idx_sub_status  = col('sub_status')
+
+        active_users = list(User.objects.filter(is_active=True))
+        users_by_name = {u.name.strip().lower(): u for u in active_users}
+        users_by_email = {u.email.strip().lower(): u for u in active_users}
+
+        def _resolve_poc(row_data, idx):
+            raw = cell(row_data, idx)
+            if not raw:
+                return request.user
+            key = raw.strip().lower()
+            return users_by_name.get(key) or users_by_email.get(key) or request.user
 
         if idx_name is None or idx_phone is None:
             return Response(
@@ -340,7 +360,7 @@ class ClientViewSet(viewsets.ModelViewSet):
                 'gst_details': cell(row_data, idx_gst) or '',
                 'lead_status': lead_status,
                 'lead_sub_status': _parse_sub_status(cell(row_data, idx_sub_status), lead_status),
-                'poc': request.user,
+                'poc': _resolve_poc(row_data, idx_poc),
             }, email_warning))
 
         # Single query to find all phones that already exist
