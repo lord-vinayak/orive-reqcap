@@ -1,7 +1,8 @@
-import { useState } from "react";
-import type { Client, RequirementProduct } from "@/types";
+import { useEffect, useState } from "react";
+import type { Client, RequirementProduct, User } from "@/types";
 import { PRODUCT_COUNTS } from "@/utils/dropdownOptions";
 import { useAuthStore } from "@/store/authStore";
+import { userService } from "@/services";
 import AudioCaptureButton from "./AudioCaptureButton";
 import { LEAD_STATUS_OPTIONS, LEAD_SUB_STATUS_OPTIONS, type LeadStatus } from "@/constants/clientStatus";
 
@@ -19,8 +20,9 @@ interface Props {
  * Required: name, phone_no.
  * Optional: company_name, email, city, no_of_products,
  *           planned_selling_price_range, how_many_units_per_product,
- *           physical_address, gst_details.
- * Auto-set: poc (logged-in user), status.
+ *           physical_address, gst_details, poc.
+ * Defaults: poc defaults to the logged-in user for a brand-new client, but is
+ *           editable and doesn't get overwritten on later saves.
  */
 export default function ClientInfoForm({
   client,
@@ -32,9 +34,24 @@ export default function ClientInfoForm({
 }: Props) {
   const currentUser = useAuthStore((s) => s.user);
   const [optionalOpen, setOptionalOpen] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    userService.list().then((data) => {
+      setUsers(Array.isArray(data) ? data : data.results);
+    }).catch(() => {});
+  }, []);
 
   const patch = (fields: Partial<Client>) =>
     onClientChange({ ...client, ...fields });
+
+  // New client (no poc set yet) defaults to the logged-in user, once.
+  useEffect(() => {
+    if (!client.phone_no && !client.poc && currentUser) {
+      patch({ poc: currentUser.id });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
 
   return (
     <section className="card" aria-labelledby="client-info-heading">
@@ -138,16 +155,20 @@ export default function ClientInfoForm({
           <label htmlFor="ci_poc" className="block mb-1">
             Point of Contact
           </label>
-          <input
+          <select
             id="ci_poc"
-            value={currentUser?.name || ""}
-            readOnly
-            className="w-full bg-black/[0.04] dark:bg-white/[0.06] cursor-not-allowed"
-            aria-readonly="true"
+            value={client.poc || ""}
+            onChange={(e) => patch({ poc: e.target.value || null })}
+            className="w-full"
             aria-describedby="poc-help"
-          />
+          >
+            <option value="">— None —</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
           <p id="poc-help" className="text-xs text-black/60 dark:text-slate-300 mt-1">
-            Automatically set to the logged-in user.
+            Defaults to you for new clients; only changes if you pick someone else.
           </p>
         </div>
 
