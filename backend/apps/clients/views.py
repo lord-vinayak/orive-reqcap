@@ -17,7 +17,8 @@ from rest_framework.response import Response
 from .models import Client, EmailLog
 from .serializers import ClientSerializer, EmailLogSerializer
 from . import welcome_email_template as welcome_tpl
-from . import reminder_email_template as reminder_tpl
+from . import reminder_email_template_1 as reminder1_tpl
+from . import reminder_email_template_2 as reminder2_tpl
 from . import sample_initiation_email_template as sample_initiation_tpl
 from . import sample_payment_confirmation_email_template as sample_payment_tpl
 from . import sample_approval_email_template as sample_approval_tpl
@@ -38,7 +39,8 @@ LEAD_BUCKETS = {
 
 _TEMPLATE_MAP = {
     'welcome': welcome_tpl,
-    'reminder': reminder_tpl,
+    'reminder_1': reminder1_tpl,
+    'reminder_2': reminder2_tpl,
     'sample_initiation': sample_initiation_tpl,
     'sample_payment_confirmation': sample_payment_tpl,
     'sample_approval': sample_approval_tpl,
@@ -52,7 +54,8 @@ _TEMPLATE_MAP = {
 
 _TEMPLATE_LABELS = {
     'welcome': 'Welcome Email',
-    'reminder': 'Reminder Email',
+    'reminder_1': 'Reminder Email 1',
+    'reminder_2': 'Reminder Email 2',
     'sample_initiation': 'Sample Initiation Email',
     'sample_payment_confirmation': 'Sample Payment Confirmation Email',
     'sample_approval': 'Sample Approval Email',
