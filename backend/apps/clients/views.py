@@ -31,6 +31,7 @@ from . import printing_payment_confirmation_email_template as printing_payment_t
 from . import final_order_shipment_email_template as final_order_shipment_tpl
 from . import invoice_email_template as invoice_tpl
 from . import payment_confirmation_email_template as payment_confirmation_tpl
+from . import order_confirmation_email_template as order_confirmation_tpl
 
 LEAD_BUCKETS = {
     'prospective':      ['initial_conversation', 'proposal', 'costing'],
@@ -56,6 +57,7 @@ _TEMPLATE_MAP = {
     'final_order_shipment': final_order_shipment_tpl,
     'invoice': invoice_tpl,
     'payment_confirmation': payment_confirmation_tpl,
+    'order_confirmation': order_confirmation_tpl,
 }
 
 _TEMPLATE_LABELS = {
@@ -74,6 +76,7 @@ _TEMPLATE_LABELS = {
     'final_order_shipment': 'Final Order Shipment Email with Final Invoice',
     'invoice': 'Invoice Email',
     'payment_confirmation': 'Payment Confirmation Email',
+    'order_confirmation': 'Order Confirmation Email',
 }
 
 # ---------------------------------------------------------------------------
