@@ -70,6 +70,7 @@ export default function CRMProjectDetail() {
   const [activePhase, setActivePhase] = useState<'sample' | 'order'>('sample')
   const [activeStageKey, setActiveStageKey] = useState<string | null>(null)
   const [notesView, setNotesView] = useState<'stage' | 'all'>('stage')
+  const [filesView, setFilesView] = useState<'stage' | 'all'>('stage')
   const [vendorPanelOpen, setVendorPanelOpen] = useState(false)
   const [paymentPanelOpen, setPaymentPanelOpen] = useState(false)
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false)
@@ -241,6 +242,9 @@ export default function CRMProjectDetail() {
     : []
   const allNotes = [...project.notes].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
+  const allFiles = [...project.files].sort(
+    (a, b) => new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime()
   )
 
   return (
@@ -552,6 +556,63 @@ export default function CRMProjectDetail() {
           )}
         </section>
 
+        {/* ── Consolidated Files ── */}
+        <section aria-labelledby="files-heading">
+          <div className="flex items-center justify-between mb-3">
+            <h2 id="files-heading" className="text-lg font-semibold text-black dark:text-white">All Files</h2>
+            <div role="group" aria-label="Files view toggle" className="flex border border-black/10 dark:border-white/10 rounded overflow-hidden">
+              {(['stage', 'all'] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setFilesView(v)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-mustard ${
+                    filesView === v ? 'bg-mustard text-black' : 'text-black/60 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
+                  }`}
+                  aria-pressed={filesView === v}
+                >
+                  {v === 'stage' ? 'By Stage' : 'Timeline'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filesView === 'stage' ? (
+            <div className="space-y-3">
+              {Array.from(new Set(project.files.map((f) => f.stage_key || ''))).map((stageKey) => {
+                const stageFiles = project.files.filter((f) => (f.stage_key || '') === stageKey)
+                const label = stageKey ? stageKey.replace(/_c[23]$/, '').replace(/_/g, ' ') : 'Project level'
+                return (
+                  <details key={stageKey || '__project__'} className="border border-black/10 dark:border-white/10 rounded-lg">
+                    <summary className="px-4 py-3 cursor-pointer font-medium text-black dark:text-white text-sm select-none hover:bg-black/2 dark:hover:bg-white/2 capitalize">
+                      {label} ({stageFiles.length})
+                    </summary>
+                    <div className="px-4 pb-4 space-y-2">
+                      {stageFiles.map((file) => <FileItem key={file.id} file={file} />)}
+                    </div>
+                  </details>
+                )
+              })}
+              {project.files.length === 0 && (
+                <p className="text-black/60 dark:text-slate-300 text-sm">No files yet.</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {allFiles.length === 0 && (
+                <p className="text-black/60 dark:text-slate-300 text-sm">No files yet.</p>
+              )}
+              {allFiles.map((file) => (
+                <div key={file.id} className="flex gap-3">
+                  <div className="text-xs text-mustard font-medium w-32 shrink-0 pt-1 capitalize">
+                    {file.stage_key ? file.stage_key.replace(/_c[23]$/, '').replace(/_/g, ' ') : 'Project'}
+                  </div>
+                  <FileItem file={file} />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* ── P&L ── */}
         <PLSection payments={payments} />
 
@@ -816,6 +877,31 @@ function NoteItem({ note }: { note: ProjectNote }) {
         <span className="mx-1">·</span>
         <time dateTime={note.created_at}>
           {new Date(note.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+        </time>
+      </footer>
+    </article>
+  )
+}
+
+function FileItem({ file }: { file: import('@/types/crm').ProjectFile }) {
+  return (
+    <article
+      className="bg-black/3 dark:bg-white/3 rounded p-3 text-sm flex items-center justify-between gap-3"
+      aria-label={`File uploaded by ${file.uploaded_by_name || 'Unknown'}`}
+    >
+      <a
+        href={file.drive_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-mustard hover:underline flex items-center gap-1.5 min-w-0"
+      >
+        <span className="truncate" title={file.filename}>{file.filename}</span>
+      </a>
+      <footer className="text-xs text-black/50 dark:text-slate-300 shrink-0 text-right">
+        <span>{file.uploaded_by_name || 'Unknown'}</span>
+        <span className="mx-1">·</span>
+        <time dateTime={file.uploaded_at}>
+          {new Date(file.uploaded_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
         </time>
       </footer>
     </article>
