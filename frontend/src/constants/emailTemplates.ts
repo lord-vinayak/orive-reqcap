@@ -64,24 +64,7 @@ export const TEMPLATE_FIELDS: Record<string, TemplateField[]> = {
     { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
   ],
   packaging_confirmation: [
-    { key: 'product_name', label: 'Product / Brand Name', type: 'text', placeholder: 'e.g. Glow Serum' },
-    {
-      key: 'packaging_type',
-      label: 'Packaging Type',
-      type: 'select',
-      options: ['Bottle', 'Jar', 'Tube', 'Airless Pump', 'Dropper', 'Sachet', 'Other'],
-    },
-    { key: 'pack_size', label: 'Pack Size (ml / gm)', type: 'text', placeholder: 'e.g. 100 ml' },
-    { key: 'moq', label: 'MOQ (Quantity)', type: 'text', placeholder: 'e.g. 500' },
-    { key: 'unit_cost', label: 'Unit Cost (Rs.)', type: 'text', placeholder: 'e.g. 45.00' },
-    { key: 'total_cost', label: 'Total Packaging Cost (Rs.)', type: 'text', placeholder: 'e.g. 22,500' },
-    {
-      key: 'printing_scope',
-      label: 'Printing / Label Scope',
-      type: 'select',
-      options: ['Included', 'Not Included', 'Separate'],
-    },
-    { key: 'procurement_timeline', label: 'Expected Procurement Timeline', type: 'text', placeholder: 'e.g. 3–4 weeks' },
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
   ],
   final_order_shipment: [
     { key: 'product_name', label: 'Product / Brand Name', type: 'text', placeholder: 'e.g. Glow Serum' },
