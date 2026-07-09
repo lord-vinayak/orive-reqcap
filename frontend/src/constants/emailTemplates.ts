@@ -90,7 +90,7 @@ export const TEMPLATE_FIELDS: Record<string, TemplateField[]> = {
     { key: 'date_of_receipt', label: 'Date of Receipt', type: 'date' },
   ],
   printing_confirmation: [
-    { key: 'product_name', label: 'Product / Brand Name', type: 'text', placeholder: 'e.g. Glow Serum' },
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
   ],
   invoice: [
     { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
