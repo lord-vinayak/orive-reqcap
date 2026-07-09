@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
-import { FilePlus2, FileSearch, FolderKanban, LayoutDashboard, ClipboardList, PackageSearch } from "lucide-react";
+import { FilePlus2, FileSearch, FolderKanban, LayoutDashboard, ClipboardList, PackageSearch, FlaskConical } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 
 interface NavCardProps {
@@ -110,6 +110,24 @@ export default function Home() {
           <div className="text-lg font-semibold text-black dark:text-slate-100 mb-0.5" aria-hidden="true">Batch Register</div>
           <div className="text-sm text-black/60 dark:text-slate-300" aria-hidden="true">
             Record batch numbers, manufacturing and expiry dates.
+          </div>
+        </div>
+
+        {/* Ingredient Inventory — full-width card below */}
+        <div
+          onClick={() => navigate("/ingredient-inventory")}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/ingredient-inventory"); } }}
+          role="button"
+          tabIndex={0}
+          className="card text-left hover:border-mustard transition-colors group cursor-pointer flex items-center gap-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard mt-4"
+          aria-label="Go to Ingredient Inventory — track raw material samples sent to vendors and quantities used in batches"
+        >
+          <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center shrink-0 group-hover:bg-mustard transition-colors" aria-hidden="true">
+            <span className="text-2xl text-mustard-700"><FlaskConical /></span>
+          </div>
+          <div className="text-lg font-semibold text-black dark:text-slate-100 mb-0.5" aria-hidden="true">Ingredient Inventory</div>
+          <div className="text-sm text-black/60 dark:text-slate-300" aria-hidden="true">
+            Track raw material samples sent to vendors and quantities used in batches.
           </div>
         </div>
       </div>

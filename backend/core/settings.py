@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'apps.crm_projects',
     'apps.invoices',
     'apps.batch_register',
+    'apps.ingredient_inventory',
 ]
 
 MIDDLEWARE = [
