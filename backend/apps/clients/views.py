@@ -1,6 +1,7 @@
 import io
 import json
 import re
+import string
 
 from django.utils import timezone
 
@@ -121,6 +122,21 @@ class _SafeDict(dict):
     """Lets templates reference optional tokens (e.g. unused product slots) without KeyError."""
     def __missing__(self, key):
         return ''
+
+
+_BASE_EMAIL_CTX_KEYS = {'client_name', 'company_name', 'company_line', 'sent_by_name'}
+
+
+def _template_required_tokens(tpl) -> set:
+    """Placeholders a template references beyond the always-supplied base context —
+    these must come from extra_ctx or the template silently renders blank."""
+    formatter = string.Formatter()
+    tokens = set()
+    for text in (tpl.SUBJECT, tpl.HTML_BODY, tpl.TEXT_BODY):
+        for _, field_name, _, _ in formatter.parse(text):
+            if field_name:
+                tokens.add(field_name)
+    return tokens - _BASE_EMAIL_CTX_KEYS
 
 
 def _parse_phone(raw) -> str | None:
@@ -442,6 +458,13 @@ class ClientViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'phone_nos must be a non-empty list.'}, status=400)
 
         tpl = _TEMPLATE_MAP.get(email_type, welcome_tpl)
+
+        missing_tokens = _template_required_tokens(tpl) - set(extra_ctx.keys())
+        if missing_tokens:
+            return Response(
+                {'detail': f"Missing required fields for this email template: {', '.join(sorted(missing_tokens))}"},
+                status=400,
+            )
 
         # Upload attachments to Google Drive once (shared across recipients)
         drive_attachments = []
