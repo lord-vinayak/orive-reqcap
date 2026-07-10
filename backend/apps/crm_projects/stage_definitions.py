@@ -120,6 +120,7 @@ ORDER_PHASE_SECTIONS = [
             {'key': 'production_completed',          'display': 'Production completed'},
             {'key': 'bmr_captured',                  'display': 'BMR captured'},
             {'key': 'batch_initiated',               'display': 'Batch testing initiated'},
+            {'key': 'commercial_sample_sent_client',  'display': 'Commercial Sample sent to Client for approval'},
             {'key': 'batch_completed',               'display': 'Batch testing completed'},
             {'key': 'batch_passed',                  'display': 'Batch testing passed'},
             {'key': 'filling_initiated',             'display': 'Filling initiated'},
@@ -224,7 +225,7 @@ ALL_ORDER_STAGE_KEYS = [
 ]
 
 SAMPLE_TOTAL_STAGES = len(SAMPLE_PRE_LOOP) + len(RESAMPLE_LOOP_BASE) + len(SAMPLE_POST_APPROVAL)
-ORDER_TOTAL_STAGES = len(ALL_ORDER_STAGE_KEYS)  # 61
+ORDER_TOTAL_STAGES = len(ALL_ORDER_STAGE_KEYS)  # 62
 
 # Flat map of stage_key → human display name (all cycles included).
 STAGE_DISPLAY_MAP: dict[str, str] = {}
