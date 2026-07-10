@@ -1,6 +1,5 @@
 import io
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
 
 import openpyxl
 from django.db.models import Q
@@ -39,15 +38,6 @@ def _parse_date(raw):
         except ValueError:
             continue
     return None
-
-
-def _decimal_or_none(raw):
-    if raw is None or str(raw).strip() == '':
-        return None
-    try:
-        return Decimal(str(raw).strip())
-    except InvalidOperation:
-        return None
 
 
 class PackagingRecordViewSet(viewsets.ModelViewSet):
@@ -103,7 +93,7 @@ class PackagingRecordViewSet(viewsets.ModelViewSet):
         ws.cell(row=3, column=3, value='Shubham')
         ws.cell(row=3, column=4, value='Sahil Caldic')
         ws.cell(row=3, column=5, value='100ml PET Bottle')
-        ws.cell(row=3, column=6, value=1000)
+        ws.cell(row=3, column=6, value='1000 units')
         ws.cell(row=3, column=7, value=1000)
         ws.cell(row=3, column=8, value=50)
         ws.cell(row=3, column=9, value=5.5)
@@ -175,11 +165,11 @@ class PackagingRecordViewSet(viewsets.ModelViewSet):
                 vendor_name=cell(row_data, 'vendor_name') or '',
                 product_name=cell(row_data, 'product_name') or '',
                 product_type=cell(row_data, 'product_type') or '',
-                no_of_ordered_by_client=_decimal_or_none(cell(row_data, 'no_of_ordered_by_client')),
-                quantity_sent=_decimal_or_none(cell(row_data, 'quantity_sent')),
-                used_in_batch=_decimal_or_none(cell(row_data, 'used_in_batch')),
-                price_per_unit=_decimal_or_none(cell(row_data, 'price_per_unit')),
-                damaged_missing=_decimal_or_none(cell(row_data, 'damaged_missing')),
+                no_of_ordered_by_client=cell(row_data, 'no_of_ordered_by_client') or '',
+                quantity_sent=cell(row_data, 'quantity_sent') or '',
+                used_in_batch=cell(row_data, 'used_in_batch') or '',
+                price_per_unit=cell(row_data, 'price_per_unit') or '',
+                damaged_missing=cell(row_data, 'damaged_missing') or '',
                 comment=cell(row_data, 'comment') or '',
                 created_by=request.user,
             ))
