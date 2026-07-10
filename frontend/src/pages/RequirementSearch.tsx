@@ -77,10 +77,13 @@ function BrowseTab() {
   }
 
   // Page navigation — does NOT clear selection
+  const fetchSeq = useRef(0)
   const fetchPage = async (pg: number) => {
+    const seq = ++fetchSeq.current
     setLoading(true)
     try {
       const res = await clientService.list(buildParams(pg) as any)
+      if (seq !== fetchSeq.current) return // a newer fetch already superseded this one
       const raw = Array.isArray(res) ? res : (res as any)
       const list: Client[] = Array.isArray(raw) ? raw : raw.results ?? []
       const count: number = Array.isArray(res) ? list.length : ((res as any).count ?? list.length)
@@ -89,11 +92,12 @@ function BrowseTab() {
       setTotalPages(Math.max(1, Math.ceil(count / BROWSE_PAGE_SIZE)))
       setPage(pg)
     } catch {
+      if (seq !== fetchSeq.current) return
       setClients([])
       setTotalCount(null)
       setTotalPages(1)
     } finally {
-      setLoading(false)
+      if (seq === fetchSeq.current) setLoading(false)
     }
   }
 
