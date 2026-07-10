@@ -1,7 +1,7 @@
 import { api } from './api'
 import type {
   Client, Requirement, RequirementProduct, Note, FileRecord,
-  CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, IngredientRecord,
+  CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, IngredientRecord, PackagingRecord,
 } from '@/types'
 import type { LeadBucket } from '@/constants/clientStatus'
 
@@ -335,6 +335,44 @@ export interface IngredientUploadSkipRow {
 export interface IngredientUploadResult {
   created: IngredientUploadRow[]
   skipped: IngredientUploadSkipRow[]
+}
+
+export interface PackagingUploadRow {
+  row: number
+  product_name: string
+  warning?: string
+}
+
+export interface PackagingUploadResult {
+  created: PackagingUploadRow[]
+  skipped: []
+}
+
+export const packagingRecordService = {
+  list: async (params: { q?: string; page?: number; page_size?: number } = {}) =>
+    (await api.get<{ count: number; next: string | null; previous: string | null; results: PackagingRecord[] } | PackagingRecord[]>('/packaging-records/', { params })).data,
+  create: async (data: Partial<PackagingRecord>) => (await api.post<PackagingRecord>('/packaging-records/', data)).data,
+  update: async (id: string, data: Partial<PackagingRecord>) =>
+    (await api.patch<PackagingRecord>(`/packaging-records/${id}/`, data)).data,
+  remove: async (id: string) => api.delete(`/packaging-records/${id}/`),
+
+  bulkUpload: async (file: File): Promise<PackagingUploadResult> => {
+    const form = new FormData()
+    form.append('file', file)
+    return (await api.post<PackagingUploadResult>('/packaging-records/bulk-upload/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data
+  },
+
+  downloadTemplate: () =>
+    api.get('/packaging-records/upload-template/', { responseType: 'blob' }).then((r) => {
+      const url = URL.createObjectURL(new Blob([r.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'packaging_inventory_template.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+    }),
 }
 
 export const ingredientRecordService = {
