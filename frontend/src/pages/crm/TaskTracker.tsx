@@ -441,6 +441,7 @@ export default function TaskTracker() {
                       <div className="flex flex-col gap-1">
                         {canEditPlannedDate(task) ? (
                           <input
+                            key={task.planned_closure_date ?? 'none'}
                             type="date"
                             defaultValue={task.planned_closure_date ?? ''}
                             onBlur={(e) => {

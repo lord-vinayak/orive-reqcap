@@ -480,7 +480,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
     fd.append('sub_type', form.sub_type)
     fd.append('amount', form.amount || '0')
     fd.append('comments', form.comments)
-    if (form.direction === 'paid' && form.vendor_id_selected) {
+    if ((form.direction === 'paid' || form.direction === 'payable') && form.vendor_id_selected) {
       if (form.vendor_kind === 'manufacturer') {
         fd.append('manufacturer', form.vendor_id_selected)
       } else {

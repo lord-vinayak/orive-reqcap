@@ -67,14 +67,23 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
     try {
       // Step 1: save newly entered emails to client profiles
       const toSave = rows.filter((r) => r.draftEmail.trim() && r.draftEmail.trim() !== r.existingEmail)
-      await Promise.allSettled(
+      const saveResults = await Promise.allSettled(
         toSave.map((r) => clientService.patch(r.phone_no, { email: r.draftEmail.trim() }))
       )
+      const failedPhones = new Set(
+        toSave.filter((_, i) => saveResults[i].status === 'rejected').map((r) => r.phone_no)
+      )
 
-      // Step 2: send welcome email to all rows that now have an email
+      // Step 2: send welcome email to all rows that now have an email and actually saved
       const phoneNosWithEmail = rows
-        .filter((r) => r.draftEmail.trim())
+        .filter((r) => r.draftEmail.trim() && !failedPhones.has(r.phone_no))
         .map((r) => r.phone_no)
+
+      if (failedPhones.size > 0 && phoneNosWithEmail.length === 0) {
+        setError(`Failed to save email for ${failedPhones.size} client${failedPhones.size === 1 ? '' : 's'}. Please try again.`)
+        setSending(false)
+        return
+      }
 
       if (phoneNosWithEmail.length === 0) {
         setError('No email addresses provided. Please fill in at least one email.')
@@ -83,6 +92,12 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
       }
 
       const result = await clientService.sendWelcomeEmail(phoneNosWithEmail, emailType)
+      if (failedPhones.size > 0) {
+        result.skipped = [
+          ...result.skipped,
+          ...Array.from(failedPhones).map((phone_no) => ({ phone_no, reason: 'Email save failed' })),
+        ]
+      }
       onDone(result)
     } catch {
       setError('Failed to send emails. Please try again.')
