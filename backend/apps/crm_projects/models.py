@@ -4,10 +4,12 @@ from django.db import models, transaction, IntegrityError
 from django.conf import settings
 from django.core.validators import MinValueValidator
 
+from django.utils import timezone
+
 from .stage_definitions import (
     SAMPLE_PRE_LOOP, RESAMPLE_LOOP_BASE, SAMPLE_POST_APPROVAL,
     ORDER_PHASE_SECTIONS, SAMPLE_TOTAL_STAGES, ORDER_TOTAL_STAGES,
-    get_loop_key,
+    RAG_RULES, RAG_UNIT, get_loop_key,
 )
 
 
@@ -20,6 +22,56 @@ def _add_weekdays(start: date, days: int) -> date:
         if current.weekday() < 5:
             added += 1
     return current
+
+
+def compute_stage_rag(base_key: str, cycle: int, completion_map: dict):
+    """Live RAG status ('red'/'amber'/'green'/None) for one stage, from its predecessor's
+    completion time. Single source of truth — used both per-stage (detail view) and to
+    build the project-level aggregate below."""
+    rule = RAG_RULES.get(base_key)
+    if not rule:
+        return None
+    actual_key = get_loop_key(base_key, cycle)
+    pred_key = get_loop_key(rule['predecessor'], cycle)
+    sc = completion_map.get(actual_key)
+    if sc and sc.is_complete:
+        return None  # completed — no badge
+    pred = completion_map.get(pred_key)
+    if not pred or not pred.is_complete or not pred.completed_at:
+        return None  # predecessor not done — stage not yet active
+    if RAG_UNIT == 'minutes':
+        elapsed = (timezone.now() - pred.completed_at).total_seconds() / 60
+    else:
+        elapsed = (timezone.localdate() - timezone.localtime(pred.completed_at).date()).days
+    if elapsed >= rule['red']:
+        return 'red'
+    if elapsed >= rule['amber']:
+        return 'amber'
+    return 'green'
+
+
+def project_stage_rag_keys(project) -> dict:
+    """Map of 'red'/'amber' -> list of currently active stage keys for this project.
+
+    Replaces the old date-based ProjectMilestone table (never populated since RAG
+    moved to live per-stage computation) as the source for project-level delay flags.
+    """
+    cache = getattr(project, '_prefetched_objects_cache', {})
+    rows = cache['stage_completions'] if 'stage_completions' in cache else project.stage_completions.all()
+    completion_map = {sc.stage_key: sc for sc in rows}
+
+    result = {'red': [], 'amber': []}
+    for c in range(1, project.resample_cycle + 1):
+        for s in RESAMPLE_LOOP_BASE:
+            rag = compute_stage_rag(s['key'], c, completion_map)
+            if rag in result:
+                result[rag].append(get_loop_key(s['key'], c))
+    for sec in ORDER_PHASE_SECTIONS:
+        for s in sec['stages']:
+            rag = compute_stage_rag(s['key'], 1, completion_map)
+            if rag in result:
+                result[rag].append(s['key'])
+    return result
 
 
 PHASE_CHOICES = [('sample', 'Sample Phase'), ('order', 'Order Phase')]
@@ -140,11 +192,11 @@ class CRMProject(models.Model):
 
     @property
     def delayed_stages(self):
-        return self.milestones.filter(status='delayed')
+        return project_stage_rag_keys(self)['red']
 
     @property
     def at_risk_stages(self):
-        return self.milestones.filter(status='at_risk')
+        return project_stage_rag_keys(self)['amber']
 
 
 class ProjectVendorLink(models.Model):
