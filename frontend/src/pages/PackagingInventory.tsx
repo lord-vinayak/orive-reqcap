@@ -11,8 +11,8 @@ type DraftRow = Partial<PackagingRecord>
 
 const BLANK_DRAFT: DraftRow = {
   date: null, category: '', client_name: '', vendor_name: '', product_name: '', product_type: '',
-  no_of_ordered_by_client: null, quantity_sent: null, used_in_batch: null,
-  price_per_unit: null, damaged_missing: null, comment: '',
+  no_of_ordered_by_client: '', quantity_sent: '', used_in_batch: '',
+  price_per_unit: '', damaged_missing: '', comment: '',
 }
 
 function fmtDate(d: string | null) {
@@ -20,8 +20,8 @@ function fmtDate(d: string | null) {
 }
 
 function computeRemained(draft: DraftRow) {
-  const sent = draft.quantity_sent ? Number(draft.quantity_sent) : null
-  if (sent === null) return null
+  const sent = draft.quantity_sent ? Number(draft.quantity_sent) : NaN
+  if (Number.isNaN(sent)) return null
   const used = draft.used_in_batch ? Number(draft.used_in_batch) : 0
   return sent - used
 }
@@ -51,12 +51,12 @@ function RowEditor({
       <td className="px-2 py-2"><input aria-label="Client name" className={inputCls} value={draft.client_name ?? ''} onChange={set('client_name')} /></td>
       <td className="px-2 py-2"><input aria-label="Vendor name" className={inputCls} value={draft.vendor_name ?? ''} onChange={set('vendor_name')} /></td>
       <td className="px-2 py-2"><input aria-label="Product name" className={inputCls} value={draft.product_name ?? ''} onChange={set('product_name')} /></td>
-      <td className="px-2 py-2"><input aria-label="No. of ordered by client" type="number" min={0} step="0.01" className={inputCls} value={draft.no_of_ordered_by_client ?? ''} onChange={set('no_of_ordered_by_client')} /></td>
-      <td className="px-2 py-2"><input aria-label="Quantity sent" type="number" min={0} step="0.01" className={inputCls} value={draft.quantity_sent ?? ''} onChange={set('quantity_sent')} /></td>
-      <td className="px-2 py-2"><input aria-label="Used in batch" type="number" min={0} step="0.01" className={inputCls} value={draft.used_in_batch ?? ''} onChange={set('used_in_batch')} /></td>
+      <td className="px-2 py-2"><input aria-label="No. of ordered by client" className={inputCls} value={draft.no_of_ordered_by_client ?? ''} onChange={set('no_of_ordered_by_client')} /></td>
+      <td className="px-2 py-2"><input aria-label="Quantity sent" className={inputCls} value={draft.quantity_sent ?? ''} onChange={set('quantity_sent')} /></td>
+      <td className="px-2 py-2"><input aria-label="Used in batch" className={inputCls} value={draft.used_in_batch ?? ''} onChange={set('used_in_batch')} /></td>
       <td className="px-2 py-2 text-black/60 dark:text-slate-400 bg-amber-50 dark:bg-amber-950/30 tabular-nums">{remained ?? '—'}</td>
-      <td className="px-2 py-2"><input aria-label="Price per unit" type="number" min={0} step="0.01" className={inputCls} value={draft.price_per_unit ?? ''} onChange={set('price_per_unit')} /></td>
-      <td className="px-2 py-2"><input aria-label="Damaged or missing" type="number" min={0} step="0.01" className={inputCls} value={draft.damaged_missing ?? ''} onChange={set('damaged_missing')} /></td>
+      <td className="px-2 py-2"><input aria-label="Price per unit" className={inputCls} value={draft.price_per_unit ?? ''} onChange={set('price_per_unit')} /></td>
+      <td className="px-2 py-2"><input aria-label="Damaged or missing" className={inputCls} value={draft.damaged_missing ?? ''} onChange={set('damaged_missing')} /></td>
       <td className="px-2 py-2"><input aria-label="Comment" className={inputCls} value={draft.comment ?? ''} onChange={set('comment')} /></td>
       <td className="px-2 py-2"><input aria-label="Product type" className={inputCls} value={draft.product_type ?? ''} onChange={set('product_type')} /></td>
       <td className="px-2 py-2 whitespace-nowrap">
@@ -314,12 +314,12 @@ export default function PackagingInventory() {
                         <td className="px-3 py-2 font-medium text-black dark:text-white">{r.client_name || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.vendor_name || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.product_name || '—'}</td>
-                        <td className="px-3 py-2 text-black/70 dark:text-slate-300 tabular-nums">{r.no_of_ordered_by_client ?? '—'}</td>
-                        <td className="px-3 py-2 text-black/70 dark:text-slate-300 tabular-nums">{r.quantity_sent ?? '—'}</td>
-                        <td className="px-3 py-2 text-black/70 dark:text-slate-300 tabular-nums">{r.used_in_batch ?? '—'}</td>
+                        <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.no_of_ordered_by_client || '—'}</td>
+                        <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.quantity_sent || '—'}</td>
+                        <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.used_in_batch || '—'}</td>
                         <td className="px-3 py-2 bg-amber-50 dark:bg-amber-950/30 tabular-nums">{r.quantity_remained ?? '—'}</td>
-                        <td className="px-3 py-2 text-black/70 dark:text-slate-300 tabular-nums">{r.price_per_unit ?? '—'}</td>
-                        <td className="px-3 py-2 text-black/70 dark:text-slate-300 tabular-nums">{r.damaged_missing ?? '—'}</td>
+                        <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.price_per_unit || '—'}</td>
+                        <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.damaged_missing || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.comment || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.product_type || '—'}</td>
                         <td className="px-3 py-2 whitespace-nowrap">
