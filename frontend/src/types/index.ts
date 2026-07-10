@@ -192,3 +192,22 @@ export interface IngredientRecord {
   created_at: string
   updated_at: string
 }
+
+export interface PackagingRecord {
+  id: string
+  date: string | null
+  category: string
+  client_name: string
+  vendor_name: string
+  product_name: string
+  product_type: string
+  no_of_ordered_by_client: string | null
+  quantity_sent: string | null
+  used_in_batch: string | null
+  quantity_remained: string | null
+  price_per_unit: string | null
+  damaged_missing: string | null
+  comment: string
+  created_at: string
+  updated_at: string
+}
