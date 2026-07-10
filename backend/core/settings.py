@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'apps.invoices',
     'apps.batch_register',
     'apps.ingredient_inventory',
+    'apps.packaging_inventory',
 ]
 
 MIDDLEWARE = [
