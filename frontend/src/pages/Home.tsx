@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
-import { FilePlus2, FileSearch, FolderKanban, LayoutDashboard, ClipboardList, PackageSearch, FlaskConical } from "lucide-react";
+import { FilePlus2, FileSearch, FolderKanban, LayoutDashboard, ClipboardList, PackageSearch, FlaskConical, Box } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 
 interface NavCardProps {
@@ -95,8 +95,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Batch Register + Ingredient Inventory — side by side */}
-        <div className="grid sm:grid-cols-2 gap-4 mt-4">
+        {/* Batch Register + Ingredient Inventory + Packaging Inventory — side by side */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
           <div
             onClick={() => navigate("/batch-register")}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/batch-register"); } }}
@@ -131,6 +131,25 @@ export default function Home() {
               <div className="text-lg font-semibold text-black dark:text-slate-100 mb-0.5" aria-hidden="true">Ingredient Inventory</div>
               <div className="text-sm text-black/60 dark:text-slate-300" aria-hidden="true">
                 Track raw material samples sent to vendors and quantities used in batches.
+              </div>
+            </div>
+          </div>
+
+          <div
+            onClick={() => navigate("/packaging-inventory")}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/packaging-inventory"); } }}
+            role="button"
+            tabIndex={0}
+            className="card text-left hover:border-mustard transition-colors group cursor-pointer flex items-center gap-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard"
+            aria-label="Go to Packaging Inventory — track packaging materials sent to vendors and quantities used in batches"
+          >
+            <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center shrink-0 group-hover:bg-mustard transition-colors" aria-hidden="true">
+              <span className="text-2xl text-mustard-700"><Box /></span>
+            </div>
+            <div>
+              <div className="text-lg font-semibold text-black dark:text-slate-100 mb-0.5" aria-hidden="true">Packaging Inventory</div>
+              <div className="text-sm text-black/60 dark:text-slate-300" aria-hidden="true">
+                Track packaging materials sent to vendors and quantities used in batches.
               </div>
             </div>
           </div>
