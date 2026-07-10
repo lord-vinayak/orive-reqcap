@@ -23,7 +23,7 @@ class CreateUserSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(
             email=validated_data['email'],
             name=validated_data['name'],
-            role=validated_data.get('role', 'user'),
+            role=validated_data.get('role') or User._meta.get_field('role').default,
             password=password,
             is_active=validated_data.get('is_active', True),
         )
