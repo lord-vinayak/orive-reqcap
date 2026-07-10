@@ -17,6 +17,8 @@ ALLOWED_PROPOSAL_DOC_MIMETYPES = {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 }
 
+MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+
 
 def _classify(mimetype):
     if not mimetype:
@@ -45,6 +47,8 @@ class RequirementFilesView(viewsets.ViewSet):
         file_obj = request.FILES.get('file')
         if not file_obj:
             return Response({'detail': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+        if file_obj.size > MAX_UPLOAD_SIZE_BYTES:
+            return Response({'detail': 'File exceeds the 10 MB upload limit.'}, status=status.HTTP_400_BAD_REQUEST)
 
         product_id = request.data.get('product_id') or None
 
