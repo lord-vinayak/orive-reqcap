@@ -4,7 +4,7 @@ from .models import (
     CRMProject, ProjectVendorLink, StageCompletion, SubStageCompletion,
     ProjectNote, ProjectFile, ProjectMilestone, KeyLearning, ProjectPayment,
     StandaloneTask, TaskComment, ResampleNote,
-    TASK_STATUS_CHOICES,
+    TASK_STATUS_CHOICES, project_stage_rag_keys,
 )
 from .stage_definitions import STAGE_DISPLAY_MAP
 from apps.crm_master_data.models import Vendor
@@ -396,13 +396,13 @@ class CRMProjectListSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'project_no', 'start_date', 'created_at', 'phase', 'project_stage']
 
     def get_has_delays(self, obj):
-        return any(m.status == 'delayed' for m in obj.milestones.all())
+        return bool(project_stage_rag_keys(obj)['red'])
 
     def get_overall_status(self, obj):
-        statuses = {m.status for m in obj.milestones.all()}
-        if 'delayed' in statuses:
+        rag = project_stage_rag_keys(obj)
+        if rag['red']:
             return 'delayed'
-        if 'at_risk' in statuses:
+        if rag['amber']:
             return 'at_risk'
         return 'on_track'
 

@@ -1,5 +1,4 @@
 import logging
-from datetime import date, timedelta
 from django.db import transaction
 
 logger = logging.getLogger(__name__)
@@ -14,6 +13,7 @@ from .models import (
     CRMProject, StageCompletion, SubStageCompletion,
     ProjectNote, ProjectFile, ProjectMilestone, KeyLearning, ProjectPayment,
     StandaloneTask, TaskComment, ResampleNote, _add_weekdays,
+    compute_stage_rag, project_stage_rag_keys,
 )
 from .serializers import (
     CRMProjectListSerializer, CRMProjectDetailSerializer, CRMProjectWriteSerializer,
@@ -25,7 +25,7 @@ from .serializers import (
 from .stage_definitions import (
     SAMPLE_PRE_LOOP, RESAMPLE_LOOP_BASE, SAMPLE_POST_APPROVAL,
     ORDER_PHASE_SECTIONS, SAMPLE_TOTAL_STAGES, ORDER_TOTAL_STAGES,
-    MAX_RESAMPLE_CYCLES, BATCH_RESET_KEYS, STAGE_DISPLAY_MAP, RAG_RULES, RAG_UNIT,
+    MAX_RESAMPLE_CYCLES, BATCH_RESET_KEYS, STAGE_DISPLAY_MAP,
     get_loop_key, get_loop_stage_keys_for_cycle, ALL_INITIAL_STAGE_KEYS,
     ALL_ORDER_STAGE_KEYS,
 )
@@ -132,27 +132,7 @@ def _refresh_milestone_statuses(project: CRMProject):
     ProjectMilestone.objects.bulk_update(milestones, ['status'])
 
 
-def _compute_rag(base_key: str, cycle: int, completion_map: dict) -> str | None:
-    rule = RAG_RULES.get(base_key)
-    if not rule:
-        return None
-    actual_key = get_loop_key(base_key, cycle)
-    pred_key = get_loop_key(rule['predecessor'], cycle)
-    sc = completion_map.get(actual_key)
-    if sc and sc.is_complete:
-        return None  # completed — no badge
-    pred = completion_map.get(pred_key)
-    if not pred or not pred.is_complete or not pred.completed_at:
-        return None  # predecessor not done — stage not yet active
-    if RAG_UNIT == 'minutes':
-        elapsed = (timezone.now() - pred.completed_at).total_seconds() / 60
-    else:
-        elapsed = (date.today() - pred.completed_at.date()).days
-    if elapsed >= rule['red']:
-        return 'red'
-    if elapsed >= rule['amber']:
-        return 'amber'
-    return 'green'
+_compute_rag = compute_stage_rag  # single source of truth lives in models.py
 
 
 # ── Stage status computation ──────────────────────────────────────────────────
@@ -789,7 +769,19 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def dashboard_stats(self, request):
         qs = CRMProject.objects.all()
-        delayed_projects = qs.filter(milestones__status='delayed').distinct().count()
+        # Delay status is computed live per-stage (RAG), not from the unused ProjectMilestone
+        # table — prefetch stage_completions once to avoid N+1 while checking each project.
+        delayed_projects = sum(
+            1 for p in CRMProject.objects.prefetch_related(
+                Prefetch(
+                    'stage_completions',
+                    queryset=StageCompletion.objects.only(
+                        'id', 'project_id', 'stage_key', 'is_complete', 'completed_at',
+                    ),
+                )
+            ).only('id', 'resample_cycle')
+            if project_stage_rag_keys(p)['red']
+        )
 
         order_total = len(ALL_ORDER_STAGE_KEYS)
         sample_count = qs.filter(phase='sample').count()
@@ -837,7 +829,9 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
             .prefetch_related(
                 Prefetch(
                     'stage_completions',
-                    queryset=StageCompletion.objects.only('id', 'project_id', 'stage_key', 'is_complete'),
+                    queryset=StageCompletion.objects.only(
+                        'id', 'project_id', 'stage_key', 'is_complete', 'completed_at',
+                    ),
                 ),
                 Prefetch(
                     'milestones',
@@ -1115,7 +1109,7 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
             new_payment = serializer.save(created_by=request.user)
             payable.settlement = new_payment
             payable.save(update_fields=['settlement'])
-        self._handle_invoice(new_payment, request)
+            self._handle_invoice(new_payment, request)
         return Response(
             ProjectPaymentSerializer(new_payment, context={'request': request}).data,
             status=201,
