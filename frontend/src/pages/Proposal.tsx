@@ -540,6 +540,8 @@ function EditableItemsTable({
 }) {
   // Local editable buffer — PATCH only fires on blur to avoid spam.
   const [draft, setDraft] = useState<Record<string, Record<string, string>>>({})
+  // Keyed by `${itemId}:${colKey}` — surfaces a failed PATCH instead of silently reverting.
+  const [commitError, setCommitError] = useState<Record<string, string>>({})
 
   /** Merge server-side catalog_data with any unsaved local draft for this row. */
   const getMerged = (it: ProposalItem): Record<string, unknown> => ({
@@ -566,9 +568,15 @@ function EditableItemsTable({
     const patchVal: unknown = col.numeric
       ? (newVal === '' ? null : Number(newVal))
       : newVal
+    const errKey = `${it.id}:${col.key}`
     try {
       await onItemChange(it.id, { [col.key]: patchVal })
-    } finally {
+      setCommitError((prev) => {
+        if (!(errKey in prev)) return prev
+        const next = { ...prev }
+        delete next[errKey]
+        return next
+      })
       setDraft((prev) => {
         const next = { ...prev }
         if (next[it.id]) {
@@ -578,6 +586,9 @@ function EditableItemsTable({
         }
         return next
       })
+    } catch {
+      // Keep the draft value on failure — don't silently discard what the user typed.
+      setCommitError((prev) => ({ ...prev, [errKey]: 'Save failed — try again.' }))
     }
   }
 
@@ -620,18 +631,24 @@ function EditableItemsTable({
               <tr key={it.id} className={idx % 2 === 1 ? 'bg-black/[0.02]' : ''}>
                 <td className="px-2 py-1 text-center text-black/70 font-medium">{idx + 1}</td>
                 {TABLE_COLUMNS.map((col) => {
-                  // Only RM Cost/kg is editable; everything else is read-only.
-                  if (col.key === 'per_kg_rate') {
+                  if (col.kind === 'edit') {
+                    const errMsg = commitError[`${it.id}:${col.key}`]
                     return (
                       <td key={col.key} className="px-1 py-1">
                         <input
-                          type="number"
+                          type={col.numeric ? 'number' : 'text'}
                           value={cellValue(it, col.key)}
                           onChange={(e) => updateLocal(it.id, col.key, e.target.value)}
-                          onBlur={() => commit(it, col as Extract<ColSpec, { kind: 'edit' }>)}
-                          className="w-full px-1 py-0.5 border border-transparent rounded bg-transparent hover:bg-mustard-50/50 focus:bg-white focus:border-mustard text-sm"
+                          onBlur={() => commit(it, col)}
+                          className={`w-full px-1 py-0.5 border rounded bg-transparent hover:bg-mustard-50/50 focus:bg-white text-sm ${
+                            errMsg ? 'border-red-500' : 'border-transparent focus:border-mustard'
+                          }`}
                           aria-label={`Item ${idx + 1} ${col.label}`}
+                          aria-invalid={!!errMsg}
                         />
+                        {errMsg && (
+                          <p className="text-[10px] text-red-600 mt-0.5" role="alert">{errMsg}</p>
+                        )}
                       </td>
                     )
                   }
@@ -657,12 +674,7 @@ function EditableItemsTable({
                       </td>
                     )
                   }
-                  // All other edit columns — read-only display
-                  return (
-                    <td key={col.key} className="px-2 py-1 text-sm text-black/80 whitespace-nowrap">
-                      {cellValue(it, col.key) || <span className="text-black/30">—</span>}
-                    </td>
-                  )
+                  return null
                 })}
                 <td className="px-2 py-1 text-center">
                   <button
