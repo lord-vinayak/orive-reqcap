@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from rest_framework import serializers
 from .models import Invoice
 
@@ -27,4 +29,15 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def validate_items(self, value):
         if not isinstance(value, list) or len(value) == 0:
             raise serializers.ValidationError('items must be a non-empty list.')
+        for idx, item in enumerate(value, start=1):
+            if not isinstance(item, dict):
+                raise serializers.ValidationError(f'Item {idx} must be an object.')
+            for field in ('rate_per_item', 'qty'):
+                raw = item.get(field)
+                if raw is None or raw == '':
+                    continue
+                try:
+                    Decimal(str(raw))
+                except (InvalidOperation, ValueError, TypeError):
+                    raise serializers.ValidationError(f"Item {idx}: '{field}' must be a number, got {raw!r}.")
         return value

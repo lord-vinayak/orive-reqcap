@@ -93,7 +93,10 @@ def _compute_costs(m):
     # Size may include units like "100g" or "500ml" — extract the leading number.
     size_str = str(m.get('size') or '')
     size_match = re.match(r'[\d.]+', size_str)
-    size_val = float(size_match.group()) if size_match else None
+    try:
+        size_val = float(size_match.group()) if size_match else None
+    except (TypeError, ValueError):
+        size_val = None
 
     mfg = _n('manufacturing_cost')
     pkg = _n('tentative_packaging_cost')
