@@ -81,6 +81,7 @@ export default function CRMProjectDetail() {
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [emailHistoryOpen, setEmailHistoryOpen] = useState(false)
   const pendingStages = useRef(0)
+  const [savingStageKeys, setSavingStageKeys] = useState<Set<string>>(new Set())
 
   const fetchProject = () => {
     if (!id) return
@@ -130,15 +131,22 @@ export default function CRMProjectDetail() {
 
   const handleCompleteStage = async (key: string, complete: boolean) => {
     if (!id) return
+    if (savingStageKeys.has(key)) return // this stage's own request is already in flight
     // Functional form: concurrent calls chain on latest state, not stale closure
     setStageStatus((prev) => prev ? patchStage(prev, key, complete) : prev)
     pendingStages.current++
+    setSavingStageKeys((prev) => new Set(prev).add(key))
     try {
       await crmApi.completeStage(id, key, complete)
     } catch {
       // reconcile fetch below will revert to server truth on error
     } finally {
       pendingStages.current--
+      setSavingStageKeys((prev) => {
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      })
       // Single authoritative fetch once all concurrent ticks have settled
       if (pendingStages.current === 0) fetchStageStatus()
     }
@@ -455,6 +463,7 @@ export default function CRMProjectDetail() {
                 onApproveSample={handleApproveSample}
                 onSetOrderGate={handleSetOrderGate}
                 saving={actionSaving}
+                savingStageKeys={savingStageKeys}
                 teamMembers={teamMembers}
                 onAssign={handleAssignStage}
                 onUpload={handleUploadStageFile}
@@ -470,6 +479,7 @@ export default function CRMProjectDetail() {
                 onCompleteSection={handleCompleteSection}
                 onResetBatch={handleResetBatch}
                 saving={actionSaving}
+                savingStageKeys={savingStageKeys}
                 teamMembers={teamMembers}
                 onAssign={handleAssignStage}
                 onUpload={handleUploadStageFile}

@@ -10,6 +10,7 @@ interface Props {
   onCompleteSection: (sectionKey: string) => Promise<void>
   onResetBatch: () => Promise<void>
   saving: boolean
+  savingStageKeys?: Set<string>
   teamMembers?: InternalTeamMember[]
   onAssign?: (key: string, memberId: string) => Promise<void>
   onUpload?: (stageKey: string, file: File) => Promise<void>
@@ -17,7 +18,7 @@ interface Props {
 
 export function OrderPhaseView({
   stageStatus, activeStageKey, setActiveStageKey, onCompleteStage, onCompleteSection,
-  onResetBatch, saving, teamMembers = [], onAssign, onUpload,
+  onResetBatch, saving, savingStageKeys, teamMembers = [], onAssign, onUpload,
 }: Props) {
   const { order_phase } = stageStatus
   const [openSectionKey, setOpenSectionKey] = useState<string | null>(null)
@@ -52,6 +53,7 @@ export function OrderPhaseView({
           onCompleteSection={onCompleteSection}
           onResetBatch={section.key === 'production' ? onResetBatch : undefined}
           saving={saving}
+          savingStageKeys={savingStageKeys}
           teamMembers={teamMembers}
           onAssign={onAssign}
           onUpload={onUpload}
@@ -64,7 +66,7 @@ export function OrderPhaseView({
 // ── Section accordion ─────────────────────────────────────────────────────────
 
 function SectionAccordion({
-  section, activeKey, setActiveKey, open, setOpen, onToggle, onCompleteSection, onResetBatch, saving, teamMembers, onAssign, onUpload,
+  section, activeKey, setActiveKey, open, setOpen, onToggle, onCompleteSection, onResetBatch, saving, savingStageKeys, teamMembers, onAssign, onUpload,
 }: {
   section: SectionStatus
   activeKey: string | null
@@ -75,6 +77,7 @@ function SectionAccordion({
   onCompleteSection: (sectionKey: string) => Promise<void>
   onResetBatch?: () => Promise<void>
   saving: boolean
+  savingStageKeys?: Set<string>
   teamMembers?: InternalTeamMember[]
   onAssign?: (key: string, memberId: string) => Promise<void>
   onUpload?: (stageKey: string, file: File) => Promise<void>
@@ -196,7 +199,7 @@ function SectionAccordion({
               }`}
             >
               <StageCheckbox
-                stage={stage} onToggle={onToggle} saving={saving}
+                stage={stage} onToggle={onToggle} saving={saving || !!savingStageKeys?.has(stage.key)}
                 teamMembers={teamMembers} onAssign={onAssign} onUpload={onUpload}
               />
             </div>

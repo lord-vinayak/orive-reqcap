@@ -12,6 +12,7 @@ interface Props {
   onApproveSample: (approved: boolean | 'other', reason?: string) => Promise<void>
   onSetOrderGate: (data: { order_booking_steps: Record<string, boolean>; order_booked: boolean }) => Promise<void>
   saving: boolean
+  savingStageKeys?: Set<string>
   teamMembers?: InternalTeamMember[]
   onAssign?: (key: string, memberId: string, comment?: string) => Promise<void>
   onUpload?: (stageKey: string, file: File) => Promise<void>
@@ -20,7 +21,7 @@ interface Props {
 
 export function SamplePhaseView({
   stageStatus, projectId: _projectId, activeStageKey, setActiveStageKey,
-  onCompleteStage, onApproveSample, onSetOrderGate, saving,
+  onCompleteStage, onApproveSample, onSetOrderGate, saving, savingStageKeys,
   teamMembers = [], onAssign, onUpload, files = [],
 }: Props) {
   const { sample_phase, order_booking_steps, order_booked, sample_phase_complete, sample_rejected, resample_cycle, max_cycles, resample_notes } = stageStatus
@@ -35,6 +36,7 @@ export function SamplePhaseView({
         setActiveKey={setActiveStageKey}
         onToggle={onCompleteStage}
         saving={saving}
+        savingStageKeys={savingStageKeys}
         teamMembers={teamMembers}
         onAssign={onAssign}
         onUpload={onUpload}
@@ -83,7 +85,7 @@ export function SamplePhaseView({
                     className={`cursor-pointer ${activeStageKey === stage.key ? 'ring-2 ring-inset ring-mustard' : ''}`}
                   >
                     <StageCheckbox
-                      stage={stage} onToggle={onCompleteStage} saving={saving}
+                      stage={stage} onToggle={onCompleteStage} saving={saving || !!savingStageKeys?.has(stage.key)}
                       teamMembers={teamMembers} onAssign={onAssign} onUpload={onUpload}
                     />
                   </div>
@@ -121,6 +123,7 @@ export function SamplePhaseView({
           setActiveKey={setActiveStageKey}
           onToggle={onCompleteStage}
           saving={saving}
+          savingStageKeys={savingStageKeys}
           teamMembers={teamMembers}
           onAssign={onAssign}
           onUpload={onUpload}
@@ -145,7 +148,7 @@ export function SamplePhaseView({
 // ── Stage section wrapper ─────────────────────────────────────────────────────
 
 function StageSection({
-  title, stages, activeKey, setActiveKey, onToggle, saving, teamMembers, onAssign, onUpload,
+  title, stages, activeKey, setActiveKey, onToggle, saving, savingStageKeys, teamMembers, onAssign, onUpload,
 }: {
   title: string
   stages: StageStatusResponse['sample_phase']['pre_loop']
@@ -153,6 +156,7 @@ function StageSection({
   setActiveKey: (k: string) => void
   onToggle: (k: string, v: boolean) => Promise<void>
   saving: boolean
+  savingStageKeys?: Set<string>
   teamMembers?: InternalTeamMember[]
   onAssign?: (key: string, memberId: string, comment?: string) => Promise<void>
   onUpload?: (stageKey: string, file: File) => Promise<void>
@@ -169,7 +173,7 @@ function StageSection({
             className={`cursor-pointer ${activeKey === stage.key ? 'ring-2 ring-inset ring-mustard' : ''}`}
           >
             <StageCheckbox
-              stage={stage} onToggle={onToggle} saving={saving}
+              stage={stage} onToggle={onToggle} saving={saving || !!savingStageKeys?.has(stage.key)}
               teamMembers={teamMembers} onAssign={onAssign} onUpload={onUpload}
             />
           </div>
