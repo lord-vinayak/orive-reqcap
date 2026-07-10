@@ -201,12 +201,12 @@ export interface PackagingRecord {
   vendor_name: string
   product_name: string
   product_type: string
-  no_of_ordered_by_client: string | null
-  quantity_sent: string | null
-  used_in_batch: string | null
+  no_of_ordered_by_client: string
+  quantity_sent: string
+  used_in_batch: string
   quantity_remained: string | null
-  price_per_unit: string | null
-  damaged_missing: string | null
+  price_per_unit: string
+  damaged_missing: string
   comment: string
   created_at: string
   updated_at: string
