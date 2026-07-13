@@ -5,7 +5,7 @@ export const BODY_PARTS = ['Face', 'Body', 'Hair', 'Lip', 'Eye'] as const
 
 export const CATEGORIES = [
   'Wash', 'Moisturizer', 'Serum', 'Toner', 'Mask',
-  'Sunscreen', 'Scrub', 'Oil', 'Shampoo', 'Conditioner', 'Spray',
+  'Sunscreen', 'Scrub', 'Oil', 'Shampoo', 'Conditioner', 'Spray', 'Balm',
 ] as const
 
 export const SUB_CATEGORIES: Record<string, string[]> = {
@@ -21,6 +21,7 @@ export const SUB_CATEGORIES: Record<string, string[]> = {
   Shampoo: ['Pearly', 'Transparent', 'Gel', 'Creamy'],
   Conditioner: ['Lotion', 'Cream - light', 'Cream - thick'],
   Spray: ['Mist', 'Deodorant'],
+  Balm: [],
 }
 
 export const KEY_BENEFITS: Record<string, string[]> = {

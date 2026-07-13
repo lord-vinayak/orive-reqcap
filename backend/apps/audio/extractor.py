@@ -11,7 +11,7 @@ from django.conf import settings
 VOCAB = {
     'body_part': ['Face', 'Body', 'Hair', 'Lip', 'Eye'],
     'category': ['Wash', 'Moisturizer', 'Serum', 'Toner', 'Mask',
-                 'Sunscreen', 'Scrub', 'Oil', 'Shampoo', 'Conditioner', 'Spray'],
+                 'Sunscreen', 'Scrub', 'Oil', 'Shampoo', 'Conditioner', 'Spray', 'Balm'],
     'sub_category_by_category': {
         'Wash': ['Foaming', 'Gel', 'Creamy', 'Gel with beads', 'Pearly', 'Transparent', 'Gloss'],
         'Moisturizer': ['Gel', 'Gel Cream', 'Cream - light', 'Cream - thick', 'Lotion', 'Balm'],
@@ -24,6 +24,7 @@ VOCAB = {
         'Shampoo': ['Pearly', 'Transparent', 'Gel', 'Creamy'],
         'Conditioner': ['Lotion', 'Cream - light', 'Cream - thick'],
         'Spray': ['Mist', 'Deodorant'],
+        'Balm': [],
     },
     'key_benefits_by_body': {
         'Face': ['Acne', 'Pigmentation', 'Glow', 'Skin Lightening', 'Aging',

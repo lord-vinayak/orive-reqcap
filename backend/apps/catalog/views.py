@@ -19,7 +19,7 @@ from apps.users.permissions import IsAdminOrReadOnly
 _BODY_PARTS = ['Face', 'Body', 'Hair', 'Lip', 'Eye']
 _PRODUCT_TYPES = [
     'Wash', 'Moisturizer', 'Serum', 'Toner', 'Mask',
-    'Sunscreen', 'Scrub', 'Oil', 'Shampoo', 'Conditioner', 'Spray',
+    'Sunscreen', 'Scrub', 'Oil', 'Shampoo', 'Conditioner', 'Spray', 'Balm',
 ]
 _SUB_PRODUCT_TYPES = sorted({
     'Foaming', 'Gel', 'Creamy', 'Gel with beads', 'Pearly', 'Transparent', 'Gloss',
