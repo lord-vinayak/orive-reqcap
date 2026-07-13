@@ -154,6 +154,9 @@ export default function RequirementForm() {
   // Tracks which product row is currently being added directly to the Client Costing.
   const [addingRowToCostingIndex, setAddingRowToCostingIndex] = useState<number | null>(null);
 
+  // Tracks the JSON stringified state of a row when it was successfully added to costing.
+  const [costedRowSnapshots, setCostedRowSnapshots] = useState<Record<string, string>>({});
+
   // Bumped after each Save so NotesSection refetches and surfaces auto-mirror notes.
   const [notesRefreshKey, setNotesRefreshKey] = useState(0);
 
@@ -601,6 +604,10 @@ export default function RequirementForm() {
         potential_mrp: row.planned_mrp,
       };
       await proposalService.addFreeformItem(proposal.id, snapshot as any);
+      setCostedRowSnapshots((prev) => ({
+        ...prev,
+        [row.id]: JSON.stringify(row),
+      }));
       setProposalRefreshKey((k) => k + 1);
       setSavedAt(new Date());
     } catch (e: any) {
@@ -711,6 +718,7 @@ export default function RequirementForm() {
             showValidation={showValidation}
             onAddRowToCosting={handleAddRowToCosting}
             addingRowToCostingIndex={addingRowToCostingIndex}
+            costedAndUnchangedRows={products.map((p) => costedRowSnapshots[p.id] === JSON.stringify(p))}
             onAddNote={requirement ? () => setShowNotesModal(true) : undefined}
             onAddImage={requirement ? () => setShowFilesModal(true) : undefined}
           />

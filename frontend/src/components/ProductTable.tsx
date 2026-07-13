@@ -39,6 +39,7 @@ interface Props {
   showValidation?: boolean
   onAddRowToCosting?: (index: number) => Promise<void> | void
   addingRowToCostingIndex?: number | null
+  costedAndUnchangedRows?: boolean[]
   onAddNote?: () => void
   onAddImage?: () => void
 }
@@ -48,6 +49,7 @@ export default function ProductTable({
   activeIndex, onActiveChange,
   showValidation = false,
   onAddRowToCosting, addingRowToCostingIndex = null,
+  costedAndUnchangedRows = [],
   onAddNote, onAddImage,
 }: Props) {
   const [liveMsg, setLiveMsg] = useState('')
@@ -460,10 +462,10 @@ export default function ProductTable({
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); onAddRowToCosting(i) }}
-                          disabled={addingRowToCostingIndex === i || rowErrors.length > 0}
+                          disabled={addingRowToCostingIndex === i || rowErrors.length > 0 || costedAndUnchangedRows[i]}
                           className="px-2 h-6 flex items-center justify-center rounded border border-mustard-400 text-mustard-700 hover:bg-mustard-50 text-xs font-medium leading-none disabled:opacity-50 disabled:cursor-not-allowed"
                           aria-label={`Add row ${p.row_number} to Client Costing`}
-                          title={rowErrors.length > 0 ? 'Fill required fields first' : 'Add this row to Client Costing'}
+                          title={rowErrors.length > 0 ? 'Fill required fields first' : costedAndUnchangedRows[i] ? 'Already added to Costing' : 'Add this row to Client Costing'}
                         >
                           {addingRowToCostingIndex === i ? '…' : '+ Costing'}
                         </button>
