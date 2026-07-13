@@ -33,7 +33,7 @@ _KEY_BENEFITS = sorted({
     'Dandruff', 'Thinning', 'Greying', 'Growth', 'Frizz', 'Bond Repair',
 })
 _SIZES = ['8', '15', '30', '50', '100', '150', '200']
-_PACKAGING_TYPES = ['Jar', 'Bottle', 'Tube']
+_PACKAGING_TYPES = ['Jar', 'Bottle', 'Tube', 'Stick']
 _RATE_CATEGORIES = ['Basic', 'Premium', 'Luxury']
 _YES_NO = ['Yes', 'No']
 

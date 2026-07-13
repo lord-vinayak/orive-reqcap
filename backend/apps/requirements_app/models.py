@@ -45,7 +45,7 @@ class RequirementProduct(models.Model):
     BODY_PARTS = ['Face', 'Body', 'Hair', 'Lip', 'Eye']
     CATEGORIES = ['Wash', 'Moisturizer', 'Serum', 'Toner', 'Mask',
                   'Sunscreen', 'Scrub', 'Oil', 'Shampoo', 'Conditioner', 'Spray', 'Balm']
-    PACKAGING = ['Jar', 'Bottle', 'Tube']
+    PACKAGING = ['Jar', 'Bottle', 'Tube', 'Stick']
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     requirement = models.ForeignKey(

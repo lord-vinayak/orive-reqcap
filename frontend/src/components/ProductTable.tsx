@@ -110,7 +110,17 @@ export default function ProductTable({
           </thead>
           <tbody>
             {products.map((p, i) => {
-              const subOptions = p.category && SUB_CATEGORIES[p.category] ? SUB_CATEGORIES[p.category] : []
+              let subOptions = p.category && SUB_CATEGORIES[p.category] ? [...SUB_CATEGORIES[p.category]] : []
+              if (p.body_part === 'Lip') {
+                if (!subOptions.includes('Balm')) subOptions.push('Balm')
+              } else {
+                subOptions = subOptions.filter(o => o !== 'Balm')
+              }
+
+              const packagingOptions = p.body_part === 'Lip' 
+                ? [...PACKAGING] 
+                : PACKAGING.filter(pk => pk !== 'Stick')
+
               const isActive = activeIndex === i
               const rowErrors = showValidation ? validateProductRow(p) : []
               const invalid = (cond: boolean) => (showValidation && cond ? 'border-red-400 bg-red-50/40' : '')
@@ -290,7 +300,7 @@ export default function ProductTable({
                       required
                     >
                       <option value="">Select Packaging</option>
-                      {PACKAGING.map((pk) => <option key={pk} value={pk}>{pk}</option>)}
+                      {packagingOptions.map((pk) => <option key={pk} value={pk}>{pk}</option>)}
                     </select>
                     <div id={`packaging-help-${p.id}`} className="sr-only">
                       Use Up Arrow and Down Arrow keys to navigate options.
