@@ -118,6 +118,7 @@ function VendorSearch({ options, selectedId, selectedKind, onSelect, onClear, di
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const listboxId = useId()
 
   const selected = options.find((o) => o.id === selectedId && (selectedKind === '' || o.kind === selectedKind))
 
@@ -166,6 +167,11 @@ function VendorSearch({ options, selectedId, selectedKind, onSelect, onClear, di
       ) : (
         <input
           type="text"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-haspopup="listbox"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
@@ -178,7 +184,10 @@ function VendorSearch({ options, selectedId, selectedKind, onSelect, onClear, di
       )}
 
       {open && !selected && (
-        <div className="absolute z-50 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white dark:bg-slate-800 border border-black/15 dark:border-white/15 rounded shadow-lg">
+        // ponytail: options stay real focusable <button>s (Tab-reachable) instead of a full
+        // roving-tabindex/aria-activedescendant combobox — simplest thing that's actually
+        // keyboard-operable; revisit if a list ever gets long enough that Tab-per-row is painful
+        <div id={listboxId} role="listbox" aria-label="Vendor and manufacturer results" className="absolute z-50 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white dark:bg-slate-800 border border-black/15 dark:border-white/15 rounded shadow-lg">
           {filtered.length === 0 ? (
             <p className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">No results</p>
           ) : (
@@ -186,7 +195,9 @@ function VendorSearch({ options, selectedId, selectedKind, onSelect, onClear, di
               <button
                 key={o.id}
                 type="button"
-                onMouseDown={() => handleSelect(o)}
+                role="option"
+                aria-selected={false}
+                onClick={() => handleSelect(o)}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-mustard/10 dark:hover:bg-mustard/10 flex items-center gap-2"
               >
                 <span className="text-xs text-black/40 dark:text-slate-400 shrink-0 font-mono w-16">{o.vendor_id}</span>
@@ -418,8 +429,49 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [statusMsg, setStatusMsg] = useState('')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const addButtonRef = useRef<HTMLButtonElement>(null)
+  const previousFocus = useRef<Element | null>(null)
+
+  const announce = (msg: string) => {
+    setStatusMsg('')
+    requestAnimationFrame(() => setStatusMsg(msg))
+  }
+
+  // Capture trigger, focus dialog, restore on unmount
+  useEffect(() => {
+    previousFocus.current = document.activeElement
+    closeButtonRef.current?.focus()
+    return () => { (previousFocus.current as HTMLElement)?.focus?.() }
+  }, [])
+
+  // Focus trap + Escape-to-close
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key === 'Tab') {
+        const el = dialogRef.current
+        if (!el) return
+        const focusable = el.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault(); last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first.focus()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
 
   const fetchPayments = () =>
     crmApi.listProjectPayments(projectId)
@@ -450,6 +502,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
     setEditingId(null)
     setSettlingId(null)
     setFormError('')
+    addButtonRef.current?.focus()
   }
 
   const startSettle = (p: ProjectPayment) => {
@@ -509,20 +562,24 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
       setEditingId(null)
       await fetchPayments()
       onChanged()
-    } catch {
-      setFormError('Failed to save. Please try again.')
+      announce('Payment saved.')
+      addButtonRef.current?.focus()
+    } catch (err: any) {
+      setFormError(err?.response?.data?.detail ?? 'Failed to save. Please try again.')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this payment entry?')) return
+  const handleDelete = async (id: string, label: string) => {
+    if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return
     setDeletingId(id)
     try {
       await crmApi.deleteProjectPayment(id)
       await fetchPayments()
       onChanged()
+      announce('Payment deleted.')
+      addButtonRef.current?.focus()
     } finally {
       setDeletingId(null)
     }
@@ -533,16 +590,20 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
       <div className="fixed inset-0 z-40 bg-black/30 dark:bg-black/50" aria-hidden="true" onClick={onClose} />
 
       <aside
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="payment-panel-title"
-        className="fixed right-0 top-0 h-full z-50 w-[28rem] bg-white dark:bg-slate-900 shadow-2xl flex flex-col"
+        className="fixed right-0 top-0 h-full z-50 w-full sm:w-[28rem] bg-white dark:bg-slate-900 shadow-2xl flex flex-col"
       >
+        <div className="sr-only" aria-live="polite" aria-atomic="true">{statusMsg}</div>
+
         <div className="flex items-center justify-between px-5 py-4 border-b border-black/10 dark:border-white/10">
           <h2 id="payment-panel-title" className="font-semibold text-black dark:text-white">
             Payments
           </h2>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             className="text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white text-xl leading-none rounded focus-visible:ring-2 focus-visible:ring-mustard"
@@ -554,7 +615,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {editingId === null && (
-            <button type="button" onClick={startAdd} className="btn-primary w-full text-sm">
+            <button ref={addButtonRef} type="button" onClick={startAdd} className="btn-primary w-full text-sm">
               + Add Payment
             </button>
           )}
@@ -642,7 +703,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
                       {isAdmin && (
                         <button
                           type="button"
-                          onClick={() => handleDelete(p.id)}
+                          onClick={() => handleDelete(p.id, `${p.sub_type_display} ₹${fmt(p.amount)}`)}
                           disabled={deletingId === p.id}
                           aria-label={`Delete ${p.sub_type_display} ₹${fmt(p.amount)}`}
                           className="text-xs text-red-500 hover:underline disabled:opacity-50"
