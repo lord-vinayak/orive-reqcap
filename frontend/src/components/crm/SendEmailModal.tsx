@@ -37,6 +37,8 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([])
   const [preview, setPreview] = useState<{ subject: string; html_body: string } | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [subjectEdit, setSubjectEdit] = useState('')
+  const previewFrameRef = useRef<HTMLIFrameElement>(null)
 
   // Capture trigger, focus dialog, restore on unmount
   useEffect(() => {
@@ -106,10 +108,14 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
       .catch(() => setEmail(''))
       .finally(() => setFetchingEmail(false))
     clientService.previewProjectEmail(clientPhone, emailType, fieldValues)
-      .then(setPreview)
+      .then((p) => { setPreview(p); setSubjectEdit(p.subject) })
       .catch(() => setPreview(null))
       .finally(() => setPreviewLoading(false))
     setStep('confirm')
+  }
+
+  const applyFormat = (command: string, value?: string) => {
+    previewFrameRef.current?.contentDocument?.execCommand(command, false, value)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,7 +138,11 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
     setError('')
     try {
       await clientService.patch(clientPhone, { email: email.trim() })
-      const result = await clientService.sendProjectEmail(clientPhone, emailType, projectId, files, fieldValues, selectedInvoiceIds)
+      const editedHtml = previewFrameRef.current?.contentDocument?.documentElement?.outerHTML ?? ''
+      const result = await clientService.sendProjectEmail(
+        clientPhone, emailType, projectId, files, fieldValues, selectedInvoiceIds,
+        subjectEdit, editedHtml,
+      )
       onDone(result)
     } catch {
       setError('Failed to send email. Please try again.')
@@ -261,19 +271,45 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
                 Template: <span className="font-medium text-black dark:text-white">{templateLabel}</span>
               </div>
 
-              {/* Rendered email preview */}
+              {/* Rendered email preview — editable */}
               <div>
-                <p className="block text-sm font-medium text-black dark:text-white mb-1">Preview</p>
+                <p className="block text-sm font-medium text-black dark:text-white mb-1">Preview (editable)</p>
                 {previewLoading ? (
                   <div role="status" aria-live="polite" className="text-sm text-black/50 dark:text-slate-400">Rendering preview…</div>
                 ) : preview ? (
                   <div className="border border-black/10 dark:border-white/10 rounded overflow-hidden">
-                    <div className="px-3 py-2 text-sm bg-black/5 dark:bg-white/5 text-black dark:text-white truncate">
-                      <span className="text-black/50 dark:text-slate-400">Subject: </span>{preview.subject}
+                    <input
+                      value={subjectEdit}
+                      onChange={(e) => setSubjectEdit(e.target.value)}
+                      aria-label="Email subject"
+                      className="w-full px-3 py-2 text-sm bg-black/5 dark:bg-white/5 text-black dark:text-white border-b border-black/10 dark:border-white/10 focus:outline-none focus:ring-1 focus:ring-mustard"
+                    />
+                    <div className="flex gap-1 px-2 py-1 bg-black/5 dark:bg-white/5 border-b border-black/10 dark:border-white/10">
+                      {[
+                        { cmd: 'bold', label: 'B', className: 'font-bold' },
+                        { cmd: 'italic', label: 'I', className: 'italic' },
+                        { cmd: 'underline', label: 'U', className: 'underline' },
+                        { cmd: 'insertUnorderedList', label: '• List', className: '' },
+                      ].map((btn) => (
+                        <button
+                          key={btn.cmd}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => applyFormat(btn.cmd)}
+                          className={`px-2 py-1 text-xs rounded hover:bg-black/10 dark:hover:bg-white/10 text-black dark:text-white ${btn.className}`}
+                        >
+                          {btn.label}
+                        </button>
+                      ))}
                     </div>
                     <iframe
+                      ref={previewFrameRef}
                       title="Email preview"
                       srcDoc={preview.html_body}
+                      onLoad={() => {
+                        const doc = previewFrameRef.current?.contentDocument
+                        if (doc) doc.designMode = 'on'
+                      }}
                       className="w-full h-64 bg-white"
                     />
                   </div>
