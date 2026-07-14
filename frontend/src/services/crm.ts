@@ -346,4 +346,7 @@ export const crmApi = {
 
   createInvoice: (data: InvoiceCreatePayload) =>
     api.post<Invoice>('/invoices/', data),
+
+  previewInvoice: (data: InvoiceCreatePayload) =>
+    api.post('/invoices/preview/', data, { responseType: 'blob' }),
 }
