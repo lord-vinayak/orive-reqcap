@@ -24,8 +24,9 @@ _PRODUCT_TYPES = [
 _SUB_PRODUCT_TYPES = sorted({
     'Foaming', 'Gel', 'Creamy', 'Gel with beads', 'Pearly', 'Transparent', 'Gloss',
     'Gel Cream', 'Cream - light', 'Cream - thick', 'Lotion', 'Balm',
-    'Water Based', 'Oil Based', 'Water', 'Milky', 'Clay', 'Cream',
+    'Water Based', 'Oil Based', 'Bi Phasic', 'Water', 'Milky', 'Clay', 'Cream',
     'Spray', 'Physical', 'Chemical', 'Light Weight', 'Normal', 'Mist', 'Deodorant',
+    'Tinted', 'Mineral',
 })
 _KEY_BENEFITS = sorted({
     'Acne', 'Pigmentation', 'Glow', 'Skin Lightening', 'Aging', 'Wrinkle',
