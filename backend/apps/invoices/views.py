@@ -1,4 +1,6 @@
+from django.http import HttpResponse
 from rest_framework import viewsets, permissions
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -11,6 +13,20 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = InvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
     http_method_names = ['get', 'post', 'head', 'options']
+
+    @action(detail=False, methods=['post'])
+    def preview(self, request):
+        """Render the PDF without saving anything (no DB row, no Drive upload)."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        invoice = Invoice(**serializer.validated_data)
+
+        try:
+            pdf_bytes = build_invoice_pdf(invoice)
+        except Exception as exc:
+            return Response({'detail': f'PDF generation failed: {exc}'}, status=500)
+
+        return HttpResponse(pdf_bytes, content_type='application/pdf')
 
     def get_queryset(self):
         qs = Invoice.objects.select_related('project', 'created_by')
