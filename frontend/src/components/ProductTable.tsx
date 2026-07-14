@@ -192,7 +192,9 @@ export default function ProductTable({
                       required
                     >
                       <option value="">Select Category</option>
-                      {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c === 'Scrub' && p.body_part === 'Face' ? 'Exfoliant' : c}</option>
+                      ))}
                     </select>
                     <div id={`category-help-${p.id}`} className="sr-only">
                       Use Up Arrow and Down Arrow keys to navigate options.
