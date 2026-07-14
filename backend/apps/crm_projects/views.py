@@ -30,6 +30,7 @@ from .stage_definitions import (
     ALL_ORDER_STAGE_KEYS,
 )
 from .consumers import broadcast_task_update
+from .task_emails import send_task_assignment_email
 
 
 # ── Task payload helper ───────────────────────────────────────────────────────
@@ -681,6 +682,15 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
 
         sc.refresh_from_db()
 
+        send_task_assignment_email(
+            member,
+            task_title=STAGE_DISPLAY_MAP.get(stage_key, stage_key),
+            context_label=project.project_no,
+            priority=sc.priority,
+            planned_closure_date=sc.planned_closure_date,
+            assigned_by=request.user,
+        )
+
         task_payload = _build_stage_task_payload(sc, project)
         broadcast_task_update(task_payload)
         return Response(task_payload)
@@ -1145,11 +1155,21 @@ class StandaloneTaskViewSet(viewsets.ModelViewSet):
             assigned_by=self.request.user,
             last_updated_by=self.request.user,
         )
+        if task.assigned_to:
+            send_task_assignment_email(
+                task.assigned_to,
+                task_title=task.title,
+                context_label=task.project.project_no if task.project else (task.client.name if task.client else 'Standalone Task'),
+                priority=task.priority,
+                planned_closure_date=task.planned_closure_date,
+                assigned_by=self.request.user,
+            )
         broadcast_task_update(_build_standalone_task_payload(task))
 
     def perform_update(self, serializer):
         new_status = serializer.validated_data.get('task_status')
         instance = serializer.instance
+        previous_assignee_id = instance.assigned_to_id
 
         # Permission check
         if self.request.user.role != 'admin':
@@ -1166,6 +1186,15 @@ class StandaloneTaskViewSet(viewsets.ModelViewSet):
             extra['actual_closure_date'] = _date.today()
 
         task = serializer.save(**extra)
+        if task.assigned_to and task.assigned_to_id != previous_assignee_id:
+            send_task_assignment_email(
+                task.assigned_to,
+                task_title=task.title,
+                context_label=task.project.project_no if task.project else (task.client.name if task.client else 'Standalone Task'),
+                priority=task.priority,
+                planned_closure_date=task.planned_closure_date,
+                assigned_by=self.request.user,
+            )
         broadcast_task_update(_build_standalone_task_payload(task))
 
     def destroy(self, request, *args, **kwargs):
