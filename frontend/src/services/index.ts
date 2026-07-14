@@ -85,6 +85,14 @@ export const clientService = {
   sendWelcomeEmail: async (phoneNos: string[], emailType: 'welcome' | 'reminder_1' | 'reminder_2' | 'closure' = 'welcome'): Promise<WelcomeEmailResult> =>
     (await api.post<WelcomeEmailResult>('/clients/send-welcome-email/', { phone_nos: phoneNos, email_type: emailType })).data,
 
+  /** Render an email's subject + HTML body without sending it. */
+  previewProjectEmail: async (
+    phoneNo: string,
+    emailType: string,
+    extraCtx: Record<string, string> = {},
+  ): Promise<{ subject: string; html_body: string }> =>
+    (await api.post('/clients/preview-email/', { phone_no: phoneNo, email_type: emailType, extra_ctx: extraCtx })).data,
+
   /** Send a project email (multipart — supports file attachments and extra template fields). */
   sendProjectEmail: async (
     phoneNo: string,
