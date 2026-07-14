@@ -12,7 +12,7 @@ interface Props {
   onDone: (invoice: Invoice) => void
 }
 
-type Step = 'template' | 'form' | 'generating' | 'done'
+type Step = 'template' | 'form' | 'preview' | 'generating' | 'done'
 
 const INVOICE_TYPES: InvoiceType[] = ['service', 'product_batch', 'product_simple', 'service_size', 'printing', 'final']
 
@@ -78,6 +78,13 @@ export function GenerateInvoiceModal({
   // Line items
   const [items, setItems] = useState<InvoiceItem[]>([BLANK_ITEM()])
 
+  // Preview
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }
+  }, [previewUrl])
+
   // Focus trap + Escape
   useEffect(() => {
     previousFocus.current = document.activeElement
@@ -110,41 +117,52 @@ export function GenerateInvoiceModal({
   const addItem = () => setItems((prev) => [...prev, BLANK_ITEM()])
   const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx))
 
-  const handleGenerate = async () => {
+  const buildPayload = (): InvoiceCreatePayload => ({
+    project: projectId,
+    invoice_type: invoiceType,
+    invoice_number: invoiceNumber,
+    date: invoiceDate,
+    client_name: clientNameField,
+    company_name: companyName,
+    client_gstin: clientGstin,
+    billing_address: billingAddress,
+    shipping_address: shippingAddress,
+    eway_bill_no: ewayBillNo,
+    sgst_rate: gstRates.sgst,
+    cgst_rate: gstRates.cgst,
+    igst_rate: gstRates.igst,
+    shipping_cost: (invoiceType === 'product_simple' || invoiceType === 'final') ? shippingCost : 0,
+    advance_rate: invoiceType === 'product_batch' ? advanceRate : 0,
+    dispatch_address: invoiceType === 'final' ? dispatchAddress : '',
+    advance_received: invoiceType === 'final' ? advanceReceived : 0,
+    items: items.filter((it) => it.item_name),
+  })
+
+  const handlePreview = async () => {
     if (items.every((it) => !it.item_name)) {
       setError('Add at least one item with a name.'); return
     }
     setError('')
-    setStep('generating')
-
-    const payload: InvoiceCreatePayload = {
-      project: projectId,
-      invoice_type: invoiceType,
-      invoice_number: invoiceNumber,
-      date: invoiceDate,
-      client_name: clientNameField,
-      company_name: companyName,
-      client_gstin: clientGstin,
-      billing_address: billingAddress,
-      shipping_address: shippingAddress,
-      eway_bill_no: ewayBillNo,
-      sgst_rate: gstRates.sgst,
-      cgst_rate: gstRates.cgst,
-      igst_rate: gstRates.igst,
-      shipping_cost: (invoiceType === 'product_simple' || invoiceType === 'final') ? shippingCost : 0,
-      advance_rate: invoiceType === 'product_batch' ? advanceRate : 0,
-      dispatch_address: invoiceType === 'final' ? dispatchAddress : '',
-      advance_received: invoiceType === 'final' ? advanceReceived : 0,
-      items: items.filter((it) => it.item_name),
-    }
-
     try {
-      const inv = await crmApi.createInvoice(payload)
+      const res = await crmApi.previewInvoice(buildPayload())
+      const url = URL.createObjectURL(res.data as Blob)
+      setPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return url })
+      setStep('preview')
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Failed to build preview.')
+    }
+  }
+
+  const handleConfirm = async () => {
+    setError('')
+    setStep('generating')
+    try {
+      const inv = await crmApi.createInvoice(buildPayload())
       setResult(inv.data)
       setStep('done')
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'Failed to generate invoice.')
-      setStep('form')
+      setStep('preview')
     }
   }
 
@@ -160,7 +178,9 @@ export function GenerateInvoiceModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col"
+        className={`bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-h-[90vh] flex flex-col ${
+          step === 'preview' ? 'max-w-5xl' : 'max-w-3xl'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -168,6 +188,7 @@ export function GenerateInvoiceModal({
           <h2 id={titleId} className="text-lg font-semibold text-black dark:text-white">
             {step === 'template' && 'Select Invoice Type'}
             {step === 'form' && 'Invoice Details'}
+            {step === 'preview' && 'Preview Invoice'}
             {step === 'generating' && 'Generating Invoice…'}
             {step === 'done' && 'Invoice Generated'}
           </h2>
@@ -335,6 +356,20 @@ export function GenerateInvoiceModal({
             </div>
           )}
 
+          {/* Step 3: Preview */}
+          {step === 'preview' && previewUrl && (
+            <div className="space-y-2">
+              <iframe
+                src={previewUrl}
+                title="Invoice preview"
+                className="w-full h-[70vh] border border-gray-200 dark:border-slate-600 rounded-lg"
+              />
+              {error && (
+                <p className="text-red-500 text-sm" role="alert">{error}</p>
+              )}
+            </div>
+          )}
+
           {/* Step 3a: Generating */}
           {step === 'generating' && (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -387,10 +422,23 @@ export function GenerateInvoiceModal({
                 ← Back
               </button>
               <button
-                onClick={handleGenerate}
+                onClick={handlePreview}
                 className="px-4 py-2 text-sm rounded-lg bg-yellow-500 text-white font-semibold hover:bg-yellow-600"
               >
-                Generate Invoice
+                Preview →
+              </button>
+            </>
+          )}
+          {step === 'preview' && (
+            <>
+              <button onClick={() => { setError(''); setStep('form') }} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-black dark:text-white">
+                ← Edit
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="px-4 py-2 text-sm rounded-lg bg-yellow-500 text-white font-semibold hover:bg-yellow-600"
+              >
+                Confirm & Save
               </button>
             </>
           )}
