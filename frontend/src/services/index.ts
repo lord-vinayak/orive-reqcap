@@ -101,6 +101,8 @@ export const clientService = {
     files: File[],
     extraCtx: Record<string, string> = {},
     invoiceIds: string[] = [],
+    subjectOverride = '',
+    htmlBodyOverride = '',
   ): Promise<WelcomeEmailResult> => {
     const form = new FormData()
     form.append('phone_nos', JSON.stringify([phoneNo]))
@@ -108,6 +110,8 @@ export const clientService = {
     form.append('project_id', projectId)
     form.append('extra_ctx', JSON.stringify(extraCtx))
     form.append('invoice_ids', JSON.stringify(invoiceIds))
+    if (subjectOverride) form.append('subject_override', subjectOverride)
+    if (htmlBodyOverride) form.append('html_body_override', htmlBodyOverride)
     files.forEach((f) => form.append('files', f))
     return (await api.post<WelcomeEmailResult>('/clients/send-welcome-email/', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
