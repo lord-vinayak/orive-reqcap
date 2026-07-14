@@ -149,6 +149,12 @@ def _build_email_ctx(client_name, company_name, sent_by_name, extra_ctx) -> _Saf
     })
 
 
+def _html_to_text(html: str) -> str:
+    # ponytail: regex strip is good enough for a plain-text fallback, not a full HTML parser
+    text = re.sub(r'<[^>]+>', '', html)
+    return re.sub(r'\n{3,}', '\n\n', text).strip()
+
+
 def _parse_phone(raw) -> str | None:
     """Extract trailing 10-digit Indian mobile from any common format."""
     if raw is None:
@@ -488,6 +494,8 @@ class ClientViewSet(viewsets.ModelViewSet):
             extra_ctx = json.loads(raw_ctx) if isinstance(raw_ctx, str) else {}
             raw_inv = request.data.get('invoice_ids', '[]')
             invoice_ids = json.loads(raw_inv) if isinstance(raw_inv, str) else raw_inv
+            subject_override = request.data.get('subject_override', '')
+            html_body_override = request.data.get('html_body_override', '')
         else:
             phone_nos = request.data.get('phone_nos', [])
             email_type = request.data.get('email_type', 'welcome')
@@ -495,18 +503,22 @@ class ClientViewSet(viewsets.ModelViewSet):
             uploaded_files = []
             extra_ctx = request.data.get('extra_ctx', {})
             invoice_ids = request.data.get('invoice_ids', [])
+            subject_override = request.data.get('subject_override', '')
+            html_body_override = request.data.get('html_body_override', '')
 
         if not isinstance(phone_nos, list) or not phone_nos:
             return Response({'detail': 'phone_nos must be a non-empty list.'}, status=400)
 
         tpl = _TEMPLATE_MAP.get(email_type, welcome_tpl)
+        has_override = bool(subject_override) and bool(html_body_override)
 
-        missing_tokens = _template_required_tokens(tpl) - set(extra_ctx.keys())
-        if missing_tokens:
-            return Response(
-                {'detail': f"Missing required fields for this email template: {', '.join(sorted(missing_tokens))}"},
-                status=400,
-            )
+        if not has_override:
+            missing_tokens = _template_required_tokens(tpl) - set(extra_ctx.keys())
+            if missing_tokens:
+                return Response(
+                    {'detail': f"Missing required fields for this email template: {', '.join(sorted(missing_tokens))}"},
+                    status=400,
+                )
 
         # Upload attachments to Google Drive once (shared across recipients)
         drive_attachments = []
@@ -581,10 +593,15 @@ class ClientViewSet(viewsets.ModelViewSet):
                 skipped.append({'phone_no': phone, 'reason': 'No email address on file'})
                 continue
 
-            safe_ctx = _build_email_ctx(client.name, client.company_name or '', sent_by_name, extra_ctx)
-            subject = tpl.SUBJECT.format_map(safe_ctx)
-            html_body = tpl.HTML_BODY.format_map(safe_ctx)
-            text_body = tpl.TEXT_BODY.format_map(safe_ctx)
+            if has_override:
+                subject = subject_override
+                html_body = html_body_override
+                text_body = _html_to_text(html_body_override)
+            else:
+                safe_ctx = _build_email_ctx(client.name, client.company_name or '', sent_by_name, extra_ctx)
+                subject = tpl.SUBJECT.format_map(safe_ctx)
+                html_body = tpl.HTML_BODY.format_map(safe_ctx)
+                text_body = tpl.TEXT_BODY.format_map(safe_ctx)
 
             try:
                 msg = EmailMultiAlternatives(subject=subject, body=text_body, to=[client.email])
