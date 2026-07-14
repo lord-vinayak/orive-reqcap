@@ -11,11 +11,11 @@ export const CATEGORIES = [
 export const SUB_CATEGORIES: Record<string, string[]> = {
   Wash: ['Foaming', 'Gel', 'Creamy', 'Gel with beads', 'Pearly', 'Transparent', 'Gloss'],
   Moisturizer: ['Gel', 'Gel Cream', 'Cream - light', 'Cream - thick', 'Lotion', 'Balm'],
-  Serum: ['Water Based', 'Oil Based'],
+  Serum: ['Water Based', 'Oil Based', 'Bi Phasic'],
   Toner: ['Water', 'Milky'],
   Mask: ['Clay', 'Cream'],
   // PRD 1.4.10 — expanded list for Sunscreen
-  Sunscreen: ['Spray', 'Gel', 'Gel Cream', 'Cream - light', 'Cream - thick', 'Lotion'],
+  Sunscreen: ['Spray', 'Gel', 'Gel Cream', 'Cream - light', 'Cream - thick', 'Lotion', 'Tinted', 'Mineral'],
   Scrub: ['Physical', 'Chemical'],
   Oil: ['Light Weight', 'Normal'],
   Shampoo: ['Pearly', 'Transparent', 'Gel', 'Creamy'],
