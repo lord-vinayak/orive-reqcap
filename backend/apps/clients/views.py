@@ -139,6 +139,16 @@ def _template_required_tokens(tpl) -> set:
     return tokens - _BASE_EMAIL_CTX_KEYS
 
 
+def _build_email_ctx(client_name, company_name, sent_by_name, extra_ctx) -> _SafeDict:
+    return _SafeDict({
+        'client_name': client_name,
+        'company_name': company_name,
+        'company_line': f' and {company_name}' if company_name else '',
+        'sent_by_name': sent_by_name,
+        **extra_ctx,
+    })
+
+
 def _parse_phone(raw) -> str | None:
     """Extract trailing 10-digit Indian mobile from any common format."""
     if raw is None:
@@ -430,6 +440,38 @@ class ClientViewSet(viewsets.ModelViewSet):
         return Response({'created': created, 'skipped': skipped}, status=200)
 
     # ------------------------------------------------------------------
+    # POST /api/clients/preview-email/
+    # ------------------------------------------------------------------
+    @action(detail=False, methods=['post'], url_path='preview-email')
+    def preview_email(self, request):
+        """Render subject + HTML body without sending anything or logging."""
+        phone_no = str(request.data.get('phone_no', '')).strip()
+        email_type = request.data.get('email_type', 'welcome')
+        extra_ctx = request.data.get('extra_ctx', {})
+
+        tpl = _TEMPLATE_MAP.get(email_type, welcome_tpl)
+        missing_tokens = _template_required_tokens(tpl) - set(extra_ctx.keys())
+        if missing_tokens:
+            return Response(
+                {'detail': f"Missing required fields for this email template: {', '.join(sorted(missing_tokens))}"},
+                status=400,
+            )
+
+        try:
+            client = Client.objects.get(phone_no=phone_no)
+            client_name, company_name = client.name, client.company_name or ''
+        except Client.DoesNotExist:
+            client_name, company_name = '(client name)', ''
+
+        sent_by_name = getattr(request.user, 'name', '') or request.user.email
+        safe_ctx = _build_email_ctx(client_name, company_name, sent_by_name, extra_ctx)
+
+        return Response({
+            'subject': tpl.SUBJECT.format_map(safe_ctx),
+            'html_body': tpl.HTML_BODY.format_map(safe_ctx),
+        })
+
+    # ------------------------------------------------------------------
     # POST /api/clients/send-welcome-email/
     # ------------------------------------------------------------------
     @action(detail=False, methods=['post'], url_path='send-welcome-email',
@@ -539,15 +581,7 @@ class ClientViewSet(viewsets.ModelViewSet):
                 skipped.append({'phone_no': phone, 'reason': 'No email address on file'})
                 continue
 
-            ctx = {
-                'client_name': client.name,
-                'company_name': client.company_name or '',
-                'company_line': f' and {client.company_name}' if client.company_name else '',
-                'sent_by_name': sent_by_name,
-                **extra_ctx,
-            }
-
-            safe_ctx = _SafeDict(ctx)
+            safe_ctx = _build_email_ctx(client.name, client.company_name or '', sent_by_name, extra_ctx)
             subject = tpl.SUBJECT.format_map(safe_ctx)
             html_body = tpl.HTML_BODY.format_map(safe_ctx)
             text_body = tpl.TEXT_BODY.format_map(safe_ctx)
