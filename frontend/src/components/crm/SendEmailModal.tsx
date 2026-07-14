@@ -144,8 +144,8 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
         subjectEdit, editedHtml,
       )
       onDone(result)
-    } catch {
-      setError('Failed to send email. Please try again.')
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Failed to send email. Please try again.')
     } finally {
       setSending(false)
     }
