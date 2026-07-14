@@ -35,6 +35,8 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
   const [error, setError] = useState('')
   const [projectInvoices, setProjectInvoices] = useState<Invoice[]>([])
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([])
+  const [preview, setPreview] = useState<{ subject: string; html_body: string } | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   // Capture trigger, focus dialog, restore on unmount
   useEffect(() => {
@@ -88,7 +90,7 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
     }
   }, [emailType])
 
-  const goToConfirm = async () => {
+  const goToConfirm = () => {
     // Validate required template fields
     const missing = activeFields.filter((f) => !f.optional && !fieldValues[f.key]?.trim())
     if (missing.length > 0) {
@@ -97,14 +99,16 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
     }
     setError('')
     setFetchingEmail(true)
-    try {
-      const client = await clientService.get(clientPhone)
-      setEmail(client.email ?? '')
-    } catch {
-      setEmail('')
-    } finally {
-      setFetchingEmail(false)
-    }
+    setPreviewLoading(true)
+    setPreview(null)
+    clientService.get(clientPhone)
+      .then((client) => setEmail(client.email ?? ''))
+      .catch(() => setEmail(''))
+      .finally(() => setFetchingEmail(false))
+    clientService.previewProjectEmail(clientPhone, emailType, fieldValues)
+      .then(setPreview)
+      .catch(() => setPreview(null))
+      .finally(() => setPreviewLoading(false))
     setStep('confirm')
   }
 
@@ -255,6 +259,27 @@ export function SendEmailModal({ clientPhone, clientName, projectId, onClose, on
             <div className="space-y-4">
               <div className="text-sm text-black/60 dark:text-slate-400">
                 Template: <span className="font-medium text-black dark:text-white">{templateLabel}</span>
+              </div>
+
+              {/* Rendered email preview */}
+              <div>
+                <p className="block text-sm font-medium text-black dark:text-white mb-1">Preview</p>
+                {previewLoading ? (
+                  <div role="status" aria-live="polite" className="text-sm text-black/50 dark:text-slate-400">Rendering preview…</div>
+                ) : preview ? (
+                  <div className="border border-black/10 dark:border-white/10 rounded overflow-hidden">
+                    <div className="px-3 py-2 text-sm bg-black/5 dark:bg-white/5 text-black dark:text-white truncate">
+                      <span className="text-black/50 dark:text-slate-400">Subject: </span>{preview.subject}
+                    </div>
+                    <iframe
+                      title="Email preview"
+                      srcDoc={preview.html_body}
+                      className="w-full h-64 bg-white"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-sm text-black/50 dark:text-slate-400 italic">Preview unavailable.</p>
+                )}
               </div>
 
               {/* Email address */}
