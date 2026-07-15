@@ -93,6 +93,29 @@ class ProposalViewSet(viewsets.ModelViewSet):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
+    @action(detail=True, methods=['get'], url_path='preview-email')
+    def preview_email(self, request, pk=None):
+        """Render subject + HTML body without sending anything or logging."""
+        proposal = self.get_object()
+        client = proposal.requirement.client
+
+        proposal_index = (
+            Proposal.objects.filter(requirement=proposal.requirement)
+            .order_by('created_at')
+            .values_list('id', flat=True)
+        )
+        proposal_number = list(proposal_index).index(proposal.id) + 1
+        ctx = {
+            'client_name': client.name,
+            'sent_by_name': request.user.name if hasattr(request.user, 'name') else request.user.email,
+            'proposal_item_count': proposal.items.count(),
+            'proposal_label': f'Client Costing #{proposal_number}',
+        }
+        return Response({
+            'subject': email_templates.SUBJECT,
+            'html_body': email_templates.HTML_BODY.format(**ctx),
+        })
+
     @action(detail=True, methods=['post'], url_path='send-email')
     def send_email(self, request, pk=None):
         """Send the Client Costing as an XLSX attachment to the client's email."""
