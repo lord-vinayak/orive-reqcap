@@ -67,6 +67,18 @@ export default function SendEmailModal({
   const [sending, setSending] = useState(false)
   const [emailSubmitted, setEmailSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const [preview, setPreview] = useState<{ subject: string; html_body: string } | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+
+  // Render the actual email (subject + body) whenever the selected proposal changes
+  useEffect(() => {
+    if (!selectedProposalId) { setPreview(null); return }
+    setPreviewLoading(true)
+    proposalService.previewEmail(selectedProposalId)
+      .then(setPreview)
+      .catch(() => setPreview(null))
+      .finally(() => setPreviewLoading(false))
+  }, [selectedProposalId])
 
   // Proposal documents for attachment selection
   const [proposalDocs, setProposalDocs] = useState<ProposalDocument[]>([])
@@ -222,14 +234,23 @@ export default function SendEmailModal({
             </label>
           )}
 
-          {/* Subject (read-only preview) */}
+          {/* Email preview */}
           <div>
             <p className="block text-xs font-medium text-black/60 dark:text-slate-300 mb-1">
-              Subject
+              Preview
             </p>
-            <p className="text-sm text-black/70 dark:text-slate-300 bg-black/[0.03] dark:bg-white/5 rounded px-3 py-2">
-              Product Proposal, Cost & Next Steps for Sample Development
-            </p>
+            {previewLoading ? (
+              <p className="text-sm text-black/50 dark:text-slate-400">Rendering preview…</p>
+            ) : preview ? (
+              <div className="border border-black/10 dark:border-white/10 rounded overflow-hidden">
+                <p className="text-sm text-black/70 dark:text-slate-300 bg-black/[0.03] dark:bg-white/5 px-3 py-2 border-b border-black/10 dark:border-white/10 truncate">
+                  {preview.subject}
+                </p>
+                <iframe title="Email preview" srcDoc={preview.html_body} className="w-full h-64 bg-white" />
+              </div>
+            ) : (
+              <p className="text-sm text-black/50 dark:text-slate-400 italic">Preview unavailable.</p>
+            )}
           </div>
 
           {/* Proposal document attachment picker */}
