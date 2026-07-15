@@ -17,11 +17,14 @@ interface Props {
   onDone: (result: WelcomeEmailResult) => void
 }
 
+type Step = 'edit' | 'preview'
+
 export function BulkEmailModal({ clients, onClose, onDone }: Props) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const firstFocusableRef = useRef<HTMLButtonElement>(null)
 
+  const [step, setStep] = useState<Step>('edit')
   const [emailType, setEmailType] = useState<EmailTemplateKey>('welcome')
   const [rows, setRows] = useState<Row[]>(() =>
     clients.map((c) => ({
@@ -33,6 +36,8 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
   )
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [preview, setPreview] = useState<{ subject: string; html_body: string } | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   // Focus trap + Escape
   useEffect(() => {
@@ -59,6 +64,22 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
 
   const updateEmail = (phone_no: string, val: string) => {
     setRows((prev) => prev.map((r) => r.phone_no === phone_no ? { ...r, draftEmail: val } : r))
+  }
+
+  const handlePreview = () => {
+    const sample = rows.find((r) => r.draftEmail.trim())
+    if (!sample) {
+      setError('No email addresses provided. Please fill in at least one email.')
+      return
+    }
+    setError('')
+    setPreviewLoading(true)
+    setPreview(null)
+    clientService.previewProjectEmail(sample.phone_no, emailType)
+      .then(setPreview)
+      .catch(() => setPreview(null))
+      .finally(() => setPreviewLoading(false))
+    setStep('preview')
   }
 
   const handleConfirm = async () => {
@@ -138,77 +159,101 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
 
         {/* Body */}
         <div className="px-6 py-4 overflow-y-auto flex-1">
-          {/* Email type choice */}
-          <fieldset className="mb-4">
-            <legend className="text-sm font-medium text-black dark:text-white mb-2">Email type</legend>
-            <div className="flex gap-6">
-              {EMAIL_TEMPLATES.map((tpl) => (
-                <label key={tpl.value} className="flex items-center gap-2 cursor-pointer text-sm text-black dark:text-white">
-                  <input
-                    type="radio"
-                    name="email-type"
-                    value={tpl.value}
-                    checked={emailType === tpl.value}
-                    onChange={() => setEmailType(tpl.value)}
-                    className="accent-mustard"
-                  />
-                  {tpl.label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <p className="text-sm text-black/70 dark:text-slate-300 mb-1">
-            Review and confirm email addresses for the <strong>{rows.length}</strong> selected client{rows.length !== 1 ? 's' : ''}.
-          </p>
-          {missingCount > 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 mb-4" role="status" aria-live="polite">
-              <span aria-hidden="true">⚠ </span>
-              {missingCount} client{missingCount !== 1 ? 's have' : ' has'} no email — please fill in before sending.
-            </p>
-          )}
-
-          <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-black/5 dark:bg-white/5 text-left">
-                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Client</th>
-                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Email address</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                {rows.map((r) => (
-                  <tr key={r.phone_no}>
-                    <td className="px-3 py-2">
-                      <div className="font-medium text-black dark:text-white">{r.name}</div>
-                      <div className="text-xs text-black/50 dark:text-slate-400 font-mono">{r.phone_no}</div>
-                    </td>
-                    <td className="px-3 py-2">
+          {step === 'edit' ? (
+            <>
+              {/* Email type choice */}
+              <fieldset className="mb-4">
+                <legend className="text-sm font-medium text-black dark:text-white mb-2">Email type</legend>
+                <div className="flex gap-6">
+                  {EMAIL_TEMPLATES.map((tpl) => (
+                    <label key={tpl.value} className="flex items-center gap-2 cursor-pointer text-sm text-black dark:text-white">
                       <input
-                        type="email"
-                        value={r.draftEmail}
-                        onChange={(e) => updateEmail(r.phone_no, e.target.value)}
-                        placeholder="Enter email address"
-                        aria-label={`Email address for ${r.name}`}
-                        aria-invalid={!r.draftEmail.trim()}
-                        aria-describedby={!r.draftEmail.trim() ? `email-required-${r.phone_no}` : undefined}
-                        className={`w-full text-sm border rounded px-2 py-1 bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard ${
-                          !r.draftEmail.trim()
-                            ? 'border-amber-400 dark:border-amber-500'
-                            : 'border-black/20 dark:border-white/20'
-                        }`}
+                        type="radio"
+                        name="email-type"
+                        value={tpl.value}
+                        checked={emailType === tpl.value}
+                        onChange={() => setEmailType(tpl.value)}
+                        className="accent-mustard"
                       />
-                      {!r.draftEmail.trim() && (
-                        <span id={`email-required-${r.phone_no}`} className="text-xs text-amber-600 dark:text-amber-400">
-                          Required to send email
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      {tpl.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <p className="text-sm text-black/70 dark:text-slate-300 mb-1">
+                Review and confirm email addresses for the <strong>{rows.length}</strong> selected client{rows.length !== 1 ? 's' : ''}.
+              </p>
+              {missingCount > 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mb-4" role="status" aria-live="polite">
+                  <span aria-hidden="true">⚠ </span>
+                  {missingCount} client{missingCount !== 1 ? 's have' : ' has'} no email — please fill in before sending.
+                </p>
+              )}
+
+              <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-black/5 dark:bg-white/5 text-left">
+                      <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Client</th>
+                      <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Email address</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                    {rows.map((r) => (
+                      <tr key={r.phone_no}>
+                        <td className="px-3 py-2">
+                          <div className="font-medium text-black dark:text-white">{r.name}</div>
+                          <div className="text-xs text-black/50 dark:text-slate-400 font-mono">{r.phone_no}</div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="email"
+                            value={r.draftEmail}
+                            onChange={(e) => updateEmail(r.phone_no, e.target.value)}
+                            placeholder="Enter email address"
+                            aria-label={`Email address for ${r.name}`}
+                            aria-invalid={!r.draftEmail.trim()}
+                            aria-describedby={!r.draftEmail.trim() ? `email-required-${r.phone_no}` : undefined}
+                            className={`w-full text-sm border rounded px-2 py-1 bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard ${
+                              !r.draftEmail.trim()
+                                ? 'border-amber-400 dark:border-amber-500'
+                                : 'border-black/20 dark:border-white/20'
+                            }`}
+                          />
+                          {!r.draftEmail.trim() && (
+                            <span id={`email-required-${r.phone_no}`} className="text-xs text-amber-600 dark:text-amber-400">
+                              Required to send email
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div>
+              <p className="text-sm text-black/70 dark:text-slate-300 mb-3">
+                Preview for <strong>{rows.find((r) => r.draftEmail.trim())?.name}</strong>
+                {' '}— the remaining {Math.max(rows.filter((r) => r.draftEmail.trim()).length - 1, 0)} recipient
+                {rows.filter((r) => r.draftEmail.trim()).length - 1 === 1 ? '' : 's'} will receive this with their own name.
+              </p>
+              {previewLoading ? (
+                <p className="text-sm text-black/50 dark:text-slate-400">Rendering preview…</p>
+              ) : preview ? (
+                <div className="border border-black/10 dark:border-white/10 rounded overflow-hidden">
+                  <p className="text-sm text-black/70 dark:text-slate-300 bg-black/[0.03] dark:bg-white/5 px-3 py-2 border-b border-black/10 dark:border-white/10 truncate">
+                    {preview.subject}
+                  </p>
+                  <iframe title="Email preview" srcDoc={preview.html_body} className="w-full h-64 bg-white" />
+                </div>
+              ) : (
+                <p className="text-sm text-black/50 dark:text-slate-400 italic">Preview unavailable.</p>
+              )}
+            </div>
+          )}
 
           {error && (
             <div role="alert" className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">
@@ -219,6 +264,16 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
 
         {/* Footer */}
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-black/10 dark:border-white/10 shrink-0">
+          {step === 'preview' && (
+            <button
+              type="button"
+              onClick={() => { setStep('edit'); setError('') }}
+              disabled={sending}
+              className="btn-secondary text-sm"
+            >
+              ← Edit
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -227,15 +282,25 @@ export function BulkEmailModal({ clients, onClose, onDone }: Props) {
           >
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={sending}
-            aria-busy={sending}
-            className="btn-primary text-sm"
-          >
-            {sending ? 'Sending…' : `Send to ${rows.filter((r) => r.draftEmail.trim()).length}`}
-          </button>
+          {step === 'edit' ? (
+            <button
+              type="button"
+              onClick={handlePreview}
+              className="btn-primary text-sm"
+            >
+              Preview →
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={sending}
+              aria-busy={sending}
+              className="btn-primary text-sm"
+            >
+              {sending ? 'Sending…' : `Confirm & Send to ${rows.filter((r) => r.draftEmail.trim()).length}`}
+            </button>
+          )}
         </div>
       </div>
     </div>
