@@ -269,6 +269,9 @@ export const proposalService = {
   },
   sendEmail: async (proposalId: string, payload: SendEmailPayload): Promise<SendEmailResult> =>
     (await api.post<SendEmailResult>(`/proposals/${proposalId}/send-email/`, payload)).data,
+  /** Render the Client Costing email's subject + HTML body without sending it. */
+  previewEmail: async (proposalId: string): Promise<{ subject: string; html_body: string }> =>
+    (await api.get(`/proposals/${proposalId}/preview-email/`)).data,
 }
 
 export const audioService = {
