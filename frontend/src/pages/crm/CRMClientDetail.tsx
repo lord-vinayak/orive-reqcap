@@ -99,17 +99,17 @@ export default function CRMClientDetail() {
               <Link
                 to={`/crm/projects/${crmProjects[0].id}`}
                 className="btn-secondary text-sm"
-                aria-label={`Go to existing project ${crmProjects[0].project_no}`}
+                aria-label={`Open existing project ${crmProjects[0].project_no}`}
               >
-                Go to Existing Project →
+                Open Existing Project →
               </Link>
             ) : crmProjects.length > 1 ? (
               <a
                 href="#crm-projects-heading"
                 className="btn-secondary text-sm"
-                aria-label={`Go to existing projects for ${client.name}`}
+                aria-label={`Open existing projects for ${client.name}`}
               >
-                Go to Existing Projects →
+                Open Existing Projects →
               </a>
             ) : null}
             <Link
@@ -125,7 +125,7 @@ export default function CRMClientDetail() {
               className="btn-secondary text-sm"
               aria-label={`View requirements for ${client.name} in the Requirement Capturing Tool`}
             >
-              View in Requirement Capturing Tool →
+              View Requirements →
             </Link>
           </div>
         </div>
