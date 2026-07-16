@@ -134,6 +134,35 @@ class Client(models.Model):
         return f'{self.name} ({self.phone_no})'
 
 
+class ClientFile(models.Model):
+    """Standalone file attached to a client — not tied to any requirement or project."""
+    FILE_TYPES = [
+        ('image', 'Image'),
+        ('video', 'Video'),
+        ('document', 'Document'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    client = models.ForeignKey(
+        Client, on_delete=models.CASCADE, related_name='files', to_field='phone_no',
+    )
+    drive_file_id = models.CharField(max_length=255)
+    drive_url = models.URLField()
+    filename = models.CharField(max_length=255)
+    file_type = models.CharField(max_length=20, choices=FILE_TYPES, default='document')
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name='client_files_uploaded',
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return self.filename
+
+
 class EmailLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     client = models.ForeignKey(
