@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/crm/StatusBadge'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
 import { PipelineStatusBadge } from '@/components/PipelineStatusBadge'
 import ClientFilesSection from '@/components/crm/ClientFilesSection'
+import ClientNotesSection from '@/components/crm/ClientNotesSection'
 import type { LeadStatus } from '@/constants/clientStatus'
 
 interface Client {
@@ -239,6 +240,9 @@ export default function CRMClientDetail() {
 
         {/* ── Standalone client files ── */}
         <ClientFilesSection clientPhone={client.phone_no} />
+
+        {/* ── Standalone client notes ── */}
+        <ClientNotesSection clientPhone={client.phone_no} />
       </div>
     </Layout>
   )
