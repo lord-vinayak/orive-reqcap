@@ -654,6 +654,46 @@ class ClientViewSet(viewsets.ModelViewSet):
         return Response(EmailLogSerializer(logs, many=True).data)
 
     # ------------------------------------------------------------------
+    # GET/POST /api/clients/<phone_no>/files/
+    # ------------------------------------------------------------------
+    @action(detail=True, methods=['get', 'post'], url_path='files',
+            parser_classes=[MultiPartParser, FormParser])
+    def files(self, request, phone_no=None):
+        if request.method == 'GET':
+            records = ClientFile.objects.filter(client_id=phone_no).select_related('uploaded_by')
+            return Response(ClientFileSerializer(records, many=True).data)
+
+        try:
+            client = Client.objects.get(pk=phone_no)
+        except Client.DoesNotExist:
+            raise NotFound('Client not found')
+
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({'detail': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            result = drive_upload_file(
+                file_bytes=file_obj.read(),
+                filename=file_obj.name,
+                mimetype=file_obj.content_type or 'application/octet-stream',
+                client_name=client.name,
+                subfolder='Client Files',
+            )
+        except Exception as e:
+            return Response({'detail': f'Drive upload failed: {e}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        record = ClientFile.objects.create(
+            client=client,
+            drive_file_id=result['drive_file_id'],
+            drive_url=result['drive_url'],
+            filename=file_obj.name,
+            file_type=_classify_file(file_obj.content_type),
+            uploaded_by=request.user,
+        )
+        return Response(ClientFileSerializer(record).data, status=status.HTTP_201_CREATED)
+
+    # ------------------------------------------------------------------
     # GET /api/clients/lead-bucket-counts/
     # ------------------------------------------------------------------
     @action(detail=False, methods=['get'], url_path='lead-bucket-counts')
