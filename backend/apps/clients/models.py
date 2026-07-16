@@ -163,6 +163,26 @@ class ClientFile(models.Model):
         return self.filename
 
 
+class ClientNote(models.Model):
+    """Append-only note attached to a client — not tied to any requirement or project."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    client = models.ForeignKey(
+        Client, on_delete=models.CASCADE, related_name='notes', to_field='phone_no',
+    )
+    text = models.TextField()
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name='client_notes_added',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']  # oldest first (append-only)
+
+    def __str__(self):
+        return f'Note by {self.added_by_id} at {self.created_at}'
+
+
 class EmailLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     client = models.ForeignKey(
