@@ -1,11 +1,11 @@
 // Strict dropdown vocabularies derived from the latest PRD (v2).
 // Used by ProductTable cascading dropdowns.
 
-export const BODY_PARTS = ['Face', 'Body', 'Hair', 'Lip', 'Eye'] as const
+export const BODY_PARTS = ['Face', 'Body', 'Hair', 'Lip', 'Eye', 'Others'] as const
 
 export const CATEGORIES = [
   'Wash', 'Moisturizer', 'Serum', 'Toner', 'Mask',
-  'Sunscreen', 'Scrub', 'Oil', 'Shampoo', 'Conditioner', 'Spray', 'Balm',
+  'Sunscreen', 'Scrub', 'Oil', 'Shampoo', 'Conditioner', 'Spray', 'Balm', 'Others',
 ] as const
 
 export const SUB_CATEGORIES: Record<string, string[]> = {

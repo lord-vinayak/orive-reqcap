@@ -116,6 +116,7 @@ export default function ProductTable({
               } else {
                 subOptions = subOptions.filter(o => o !== 'Balm')
               }
+              if (p.category && !subOptions.includes('Others')) subOptions.push('Others')
 
               const packagingOptions = p.body_part === 'Lip' 
                 ? [...PACKAGING] 
