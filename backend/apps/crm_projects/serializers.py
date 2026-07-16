@@ -86,6 +86,7 @@ class TaskItemSerializer(serializers.ModelSerializer):
     assigned_to_name = serializers.CharField(source='assigned_to.name', read_only=True)
     assigned_to_user_id = serializers.SerializerMethodField()
     assigned_by_user_id = serializers.SerializerMethodField()
+    assigned_by_name = serializers.SerializerMethodField()
     task_status_display = serializers.SerializerMethodField()
     last_updated_by_name = serializers.SerializerMethodField()
     latest_comment = serializers.SerializerMethodField()
@@ -96,7 +97,8 @@ class TaskItemSerializer(serializers.ModelSerializer):
             'id', 'task_type', 'stage_key', 'stage_display', 'title',
             'project_id', 'project_no', 'client_name', 'client_phone',
             'client_lead_status', 'client_lead_sub_status',
-            'assigned_to_id', 'assigned_to_name', 'assigned_to_user_id', 'assigned_by_user_id', 'assigned_at',
+            'assigned_to_id', 'assigned_to_name', 'assigned_to_user_id',
+            'assigned_by_user_id', 'assigned_by_name', 'assigned_at',
             'priority', 'planned_closure_date', 'actual_closure_date',
             'task_status', 'task_status_display',
             'last_updated_at', 'last_updated_by_name',
@@ -113,6 +115,11 @@ class TaskItemSerializer(serializers.ModelSerializer):
 
     def get_assigned_by_user_id(self, obj):
         return str(obj.assigned_by_id) if obj.assigned_by_id else None
+
+    def get_assigned_by_name(self, obj):
+        if obj.assigned_by:
+            return getattr(obj.assigned_by, 'name', None) or obj.assigned_by.email
+        return None
 
     def get_stage_display(self, obj):
         return STAGE_DISPLAY_MAP.get(obj.stage_key, obj.stage_key)
@@ -155,6 +162,7 @@ class StandaloneTaskSerializer(serializers.ModelSerializer):
     assigned_to_name = serializers.CharField(source='assigned_to.name', read_only=True)
     assigned_to_user_id = serializers.SerializerMethodField()
     assigned_by_user_id = serializers.SerializerMethodField()
+    assigned_by_name = serializers.SerializerMethodField()
     task_status_display = serializers.SerializerMethodField()
     last_updated_by_name = serializers.SerializerMethodField()
     latest_comment = serializers.SerializerMethodField()
@@ -170,7 +178,8 @@ class StandaloneTaskSerializer(serializers.ModelSerializer):
             'project_id', 'project_no',
             'client_name', 'client_phone',
             'client_lead_status', 'client_lead_sub_status',
-            'assigned_to_id', 'assigned_to_name', 'assigned_to_user_id', 'assigned_by_user_id', 'assigned_at',
+            'assigned_to_id', 'assigned_to_name', 'assigned_to_user_id',
+            'assigned_by_user_id', 'assigned_by_name', 'assigned_at',
             'priority', 'planned_closure_date', 'actual_closure_date',
             'task_status', 'task_status_display',
             'last_updated_at', 'last_updated_by_name',
@@ -190,6 +199,11 @@ class StandaloneTaskSerializer(serializers.ModelSerializer):
 
     def get_assigned_by_user_id(self, obj):
         return str(obj.assigned_by_id) if obj.assigned_by_id else None
+
+    def get_assigned_by_name(self, obj):
+        if obj.assigned_by:
+            return getattr(obj.assigned_by, 'name', None) or obj.assigned_by.email
+        return None
 
     def get_task_status_display(self, obj):
         return dict(TASK_STATUS_CHOICES).get(obj.task_status, obj.task_status)

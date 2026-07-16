@@ -54,6 +54,9 @@ def _build_stage_task_payload(sc, project):
         'assigned_to_name': sc.assigned_to.name if sc.assigned_to else None,
         'assigned_to_user_id': str(sc.assigned_to.user_id) if sc.assigned_to and sc.assigned_to.user_id else None,
         'assigned_by_user_id': str(sc.assigned_by_id) if sc.assigned_by_id else None,
+        'assigned_by_name': (
+            getattr(sc.assigned_by, 'name', None) or sc.assigned_by.email
+        ) if sc.assigned_by else None,
         'assigned_at': sc.assigned_at.isoformat() if sc.assigned_at else None,
         'priority': sc.priority,
         'planned_closure_date': sc.planned_closure_date.isoformat() if sc.planned_closure_date else None,
@@ -79,7 +82,7 @@ def _build_standalone_task_payload(task):
     # Re-fetch with all relations so the payload is complete after any save
     task = (
         StandaloneTask.objects
-        .select_related('project__client', 'client', 'assigned_to', 'last_updated_by')
+        .select_related('project__client', 'client', 'assigned_to', 'assigned_by', 'last_updated_by')
         .prefetch_related('comments__author')
         .get(pk=task.pk)
     )
@@ -99,6 +102,9 @@ def _build_standalone_task_payload(task):
         'assigned_to_name': task.assigned_to.name if task.assigned_to else None,
         'assigned_to_user_id': str(task.assigned_to.user_id) if task.assigned_to and task.assigned_to.user_id else None,
         'assigned_by_user_id': str(task.assigned_by_id) if task.assigned_by_id else None,
+        'assigned_by_name': (
+            getattr(task.assigned_by, 'name', None) or task.assigned_by.email
+        ) if task.assigned_by else None,
         'assigned_at': task.assigned_at.isoformat() if task.assigned_at else None,
         'priority': task.priority,
         'planned_closure_date': task.planned_closure_date.isoformat() if task.planned_closure_date else None,

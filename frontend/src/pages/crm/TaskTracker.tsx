@@ -415,6 +415,7 @@ export default function TaskTracker() {
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white whitespace-nowrap">Lead Status</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Priority</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Owner</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white whitespace-nowrap">Assigned By</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white whitespace-nowrap">Actual Close</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Comment</th>
@@ -423,7 +424,7 @@ export default function TaskTracker() {
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
                 {filteredTasks.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center text-sm text-black/60 dark:text-slate-300">
+                    <td colSpan={11} className="px-4 py-12 text-center text-sm text-black/60 dark:text-slate-300">
                       No tasks match the selected filters.{' '}
                       <button onClick={resetFilters} className="underline hover:text-mustard transition-colors">
                         Reset filters
@@ -515,6 +516,10 @@ export default function TaskTracker() {
 
                     <td className="px-4 py-3 text-black dark:text-white whitespace-nowrap">
                       {task.assigned_to_name ?? <span className="text-black/50 dark:text-slate-400">—</span>}
+                    </td>
+
+                    <td className="px-4 py-3 text-black dark:text-white whitespace-nowrap">
+                      {task.assigned_by_name ?? <span className="text-black/50 dark:text-slate-400">—</span>}
                     </td>
 
                     <td className="px-4 py-3">

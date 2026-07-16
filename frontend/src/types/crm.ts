@@ -70,6 +70,7 @@ export interface TaskItem {
   assigned_to_name: string | null
   assigned_to_user_id: string | null
   assigned_by_user_id: string | null
+  assigned_by_name: string | null
   assigned_at: string | null
   priority: TaskPriority
   planned_closure_date: string | null
