@@ -19,8 +19,8 @@ from rest_framework.exceptions import PermissionDenied, NotFound
 
 from apps.users.models import User
 from apps.files.drive_service import upload_file as drive_upload_file, delete_file as drive_delete_file
-from .models import Client, EmailLog, ClientFile
-from .serializers import ClientSerializer, EmailLogSerializer, ClientFileSerializer
+from .models import Client, EmailLog, ClientFile, ClientNote
+from .serializers import ClientSerializer, EmailLogSerializer, ClientFileSerializer, ClientNoteSerializer
 from . import welcome_email_template as welcome_tpl
 from . import reminder_email_template_1 as reminder1_tpl
 from . import reminder_email_template_2 as reminder2_tpl
@@ -706,6 +706,39 @@ class ClientViewSet(viewsets.ModelViewSet):
             raise NotFound()
         drive_delete_file(record.drive_file_id)
         record.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # ------------------------------------------------------------------
+    # GET/POST /api/clients/<phone_no>/notes/
+    # ------------------------------------------------------------------
+    @action(detail=True, methods=['get', 'post'], url_path='notes')
+    def notes(self, request, phone_no=None):
+        if request.method == 'GET':
+            notes = ClientNote.objects.filter(client_id=phone_no).select_related('added_by')
+            return Response(ClientNoteSerializer(notes, many=True).data)
+
+        try:
+            client = Client.objects.get(pk=phone_no)
+        except Client.DoesNotExist:
+            raise NotFound('Client not found')
+
+        ser = ClientNoteSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        note = ser.save(client=client, added_by=request.user)
+        return Response(ClientNoteSerializer(note).data, status=status.HTTP_201_CREATED)
+
+    # ------------------------------------------------------------------
+    # DELETE /api/clients/notes/<uuid:pk>/
+    # ------------------------------------------------------------------
+    @action(detail=False, methods=['delete'], url_path='notes/(?P<note_id>[^/.]+)')
+    def delete_note(self, request, note_id=None):
+        if request.user.role != 'admin':
+            raise PermissionDenied('Only admins can delete notes.')
+        try:
+            note = ClientNote.objects.get(pk=note_id)
+        except ClientNote.DoesNotExist:
+            raise NotFound()
+        note.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     # ------------------------------------------------------------------
