@@ -95,6 +95,23 @@ export default function CRMClientDetail() {
             </div>
           </div>
           <div className="flex gap-2">
+            {crmProjects.length === 1 ? (
+              <Link
+                to={`/crm/projects/${crmProjects[0].id}`}
+                className="btn-secondary text-sm"
+                aria-label={`Go to existing project ${crmProjects[0].project_no}`}
+              >
+                Go to Existing Project →
+              </Link>
+            ) : crmProjects.length > 1 ? (
+              <a
+                href="#crm-projects-heading"
+                className="btn-secondary text-sm"
+                aria-label={`Go to existing projects for ${client.name}`}
+              >
+                Go to Existing Projects →
+              </a>
+            ) : null}
             <Link
               to={`/crm/projects/new?client=${client.phone_no}`}
               className="btn-primary text-sm"
