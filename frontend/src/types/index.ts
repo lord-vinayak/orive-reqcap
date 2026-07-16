@@ -85,6 +85,18 @@ export interface FileRecord {
   uploaded_at: string
 }
 
+export interface ClientFile {
+  id: string
+  client: string
+  drive_file_id: string
+  drive_url: string
+  filename: string
+  file_type: 'image' | 'video' | 'document'
+  uploaded_by: string
+  uploaded_by_name: string
+  uploaded_at: string
+}
+
 export interface CatalogItem {
   id: string
   date: string
