@@ -15,9 +15,12 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from rest_framework.exceptions import PermissionDenied, NotFound
+
 from apps.users.models import User
-from .models import Client, EmailLog
-from .serializers import ClientSerializer, EmailLogSerializer
+from apps.files.drive_service import upload_file as drive_upload_file, delete_file as drive_delete_file
+from .models import Client, EmailLog, ClientFile
+from .serializers import ClientSerializer, EmailLogSerializer, ClientFileSerializer
 from . import welcome_email_template as welcome_tpl
 from . import reminder_email_template_1 as reminder1_tpl
 from . import reminder_email_template_2 as reminder2_tpl
@@ -116,6 +119,16 @@ POC_HINT = (
 )
 
 PHONE_RE = re.compile(r'\d{10}$')
+
+
+def _classify_file(mimetype):
+    if not mimetype:
+        return 'document'
+    if mimetype.startswith('image/'):
+        return 'image'
+    if mimetype.startswith('video/'):
+        return 'video'
+    return 'document'
 
 
 class _SafeDict(dict):
