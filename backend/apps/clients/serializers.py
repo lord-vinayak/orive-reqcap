@@ -1,6 +1,6 @@
 import re
 from rest_framework import serializers
-from .models import Client, EmailLog, ClientFile
+from .models import Client, EmailLog, ClientFile, ClientNote
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -45,6 +45,15 @@ class ClientFileSerializer(serializers.ModelSerializer):
             'filename', 'file_type', 'uploaded_by', 'uploaded_by_name', 'uploaded_at',
         ]
         read_only_fields = ['id', 'drive_file_id', 'drive_url', 'uploaded_by', 'uploaded_at']
+
+
+class ClientNoteSerializer(serializers.ModelSerializer):
+    added_by_name = serializers.CharField(source='added_by.name', read_only=True)
+
+    class Meta:
+        model = ClientNote
+        fields = ['id', 'client', 'text', 'added_by', 'added_by_name', 'created_at']
+        read_only_fields = ['id', 'client', 'added_by', 'created_at']
 
 
 class EmailLogSerializer(serializers.ModelSerializer):
