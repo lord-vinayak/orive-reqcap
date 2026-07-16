@@ -85,6 +85,15 @@ export interface FileRecord {
   uploaded_at: string
 }
 
+export interface ClientNote {
+  id: string
+  client: string
+  text: string
+  added_by: string
+  added_by_name: string
+  created_at: string
+}
+
 export interface ClientFile {
   id: string
   client: string
