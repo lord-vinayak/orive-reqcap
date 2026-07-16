@@ -1,6 +1,6 @@
 import { api } from './api'
 import type {
-  Client, Requirement, RequirementProduct, Note, FileRecord,
+  Client, Requirement, RequirementProduct, Note, FileRecord, ClientFile,
   CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, IngredientRecord, PackagingRecord,
 } from '@/types'
 import type { LeadBucket } from '@/constants/clientStatus'
@@ -136,6 +136,18 @@ export const clientService = {
       a.click()
       URL.revokeObjectURL(url)
     }),
+
+  /** Standalone files attached to the client — not tied to any requirement or project. */
+  listFiles: async (phone: string) => (await api.get<ClientFile[]>(`/clients/${phone}/files/`)).data,
+  uploadFile: async (phone: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const { data } = await api.post<ClientFile>(`/clients/${phone}/files/`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  },
+  deleteFile: async (fileId: string) => api.delete(`/clients/files/${fileId}/`),
 }
 
 export const requirementService = {
