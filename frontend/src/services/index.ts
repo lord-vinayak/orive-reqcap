@@ -1,6 +1,6 @@
 import { api } from './api'
 import type {
-  Client, Requirement, RequirementProduct, Note, FileRecord, ClientFile,
+  Client, Requirement, RequirementProduct, Note, FileRecord, ClientFile, ClientNote,
   CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, IngredientRecord, PackagingRecord,
 } from '@/types'
 import type { LeadBucket } from '@/constants/clientStatus'
@@ -148,6 +148,12 @@ export const clientService = {
     return data
   },
   deleteFile: async (fileId: string) => api.delete(`/clients/files/${fileId}/`),
+
+  /** Standalone notes attached to the client — not tied to any requirement or project. */
+  listNotes: async (phone: string) => (await api.get<ClientNote[]>(`/clients/${phone}/notes/`)).data,
+  addNote: async (phone: string, text: string) =>
+    (await api.post<ClientNote>(`/clients/${phone}/notes/`, { text })).data,
+  deleteNote: async (noteId: string) => api.delete(`/clients/notes/${noteId}/`),
 }
 
 export const requirementService = {
