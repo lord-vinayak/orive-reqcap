@@ -694,6 +694,21 @@ class ClientViewSet(viewsets.ModelViewSet):
         return Response(ClientFileSerializer(record).data, status=status.HTTP_201_CREATED)
 
     # ------------------------------------------------------------------
+    # DELETE /api/clients/files/<uuid:pk>/
+    # ------------------------------------------------------------------
+    @action(detail=False, methods=['delete'], url_path='files/(?P<file_id>[^/.]+)')
+    def delete_file(self, request, file_id=None):
+        if request.user.role != 'admin':
+            raise PermissionDenied('Only admins can delete files.')
+        try:
+            record = ClientFile.objects.get(pk=file_id)
+        except ClientFile.DoesNotExist:
+            raise NotFound()
+        drive_delete_file(record.drive_file_id)
+        record.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # ------------------------------------------------------------------
     # GET /api/clients/lead-bucket-counts/
     # ------------------------------------------------------------------
     @action(detail=False, methods=['get'], url_path='lead-bucket-counts')
