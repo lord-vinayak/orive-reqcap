@@ -382,9 +382,11 @@ export interface PaymentVendorOption {
 
 export interface ProjectPayment {
   id: string
-  project: string
-  project_no: string
-  project_client_name: string
+  project: string | null
+  project_no: string | null
+  project_client_name: string | null
+  client: string | null
+  client_name: string | null
   payment_date: string
   direction: PaymentDirection
   sub_type: PaymentSubType
