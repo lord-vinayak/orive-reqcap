@@ -2,9 +2,12 @@ import React, { useEffect, useRef, useState, useId } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
-import type { Manufacturer, Vendor, InternalTeamMember, VendorType, ProjectPayment, VendorCategory } from '@/types/crm'
+import { clientService } from '@/services'
+import type { Manufacturer, Vendor, InternalTeamMember, VendorType, ProjectPayment, VendorCategory, CRMProjectList, PaymentDirection } from '@/types/crm'
+import type { Client } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { Modal } from '@/components/crm/Modal'
+import { SUB_TYPES_BY_DIRECTION, DEFAULT_SUB_TYPE, DIRECTION_BADGE, DIRECTION_AMOUNT } from '@/components/crm/PaymentSidePanel'
 
 const INTERNAL_TABS = ['formulation', 'sales', 'ops', 'admin'] as const
 
@@ -924,18 +927,259 @@ interface VendorTransactionModalProps {
   isAdmin: boolean
 }
 
+function TxnForm({
+  entity, initial, onSaved, onCancel,
+}: {
+  entity: VendorTransactionModalProps['entity']
+  initial: ProjectPayment | null
+  onSaved: () => void
+  onCancel: () => void
+}) {
+  const [direction, setDirection] = useState<PaymentDirection>(initial?.direction ?? 'paid')
+  const [subType, setSubType] = useState(initial?.sub_type ?? DEFAULT_SUB_TYPE.paid)
+  const [amount, setAmount] = useState(initial?.amount ?? '')
+  const [paymentDate, setPaymentDate] = useState(initial?.payment_date ?? new Date().toISOString().slice(0, 10))
+  const [comments, setComments] = useState(initial?.comments ?? '')
+  const [projectId, setProjectId] = useState(initial?.project ?? '')
+  const [projects, setProjects] = useState<CRMProjectList[]>([])
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  // Client combobox state
+  const [clientSearch, setClientSearch] = useState('')
+  const [clientResults, setClientResults] = useState<Client[]>([])
+  const [selectedClient, setSelectedClient] = useState<Client | null>(
+    initial?.client ? ({ phone_no: initial.client, name: initial.client_name ?? '' } as Client) : null,
+  )
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    crmApi.listProjects().then((r) => {
+      setProjects(Array.isArray(r.data) ? r.data : (r.data as any).results ?? [])
+    })
+  }, [])
+
+  const handleDirectionChange = (dir: PaymentDirection) => {
+    setDirection(dir)
+    setSubType(DEFAULT_SUB_TYPE[dir])
+  }
+
+  const handleProjectChange = (pid: string) => {
+    setProjectId(pid)
+    if (pid) {
+      const proj = projects.find((p) => p.id === pid)
+      if (proj) setSelectedClient({ phone_no: proj.client, name: proj.client_name } as Client)
+    }
+  }
+
+  const handleClientSearchChange = (value: string) => {
+    setClientSearch(value)
+    setSelectedClient(null)
+    if (!value.trim()) { setClientResults([]); setClientDropdownOpen(false); return }
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      const data = await clientService.list({ q: value.trim() })
+      const results = Array.isArray(data) ? data : (data as any).results ?? []
+      setClientResults(results)
+      setClientDropdownOpen(true)
+    }, 300)
+  }
+
+  const handleSave = async () => {
+    if (!paymentDate) { setError('Date is required.'); return }
+    setSaving(true)
+    setError('')
+    const fd = new FormData()
+    fd.append('payment_date', paymentDate)
+    fd.append('direction', direction)
+    fd.append('sub_type', subType)
+    fd.append('amount', amount || '0')
+    fd.append('comments', comments)
+    if (projectId) fd.append('project', projectId)
+    if (selectedClient) fd.append('client', selectedClient.phone_no)
+    if (entity.kind === 'manufacturer') fd.append('manufacturer', entity.id)
+    else fd.append('vendor', entity.id)
+    if (invoiceFile) fd.append('invoice', invoiceFile)
+    try {
+      if (initial) await crmApi.updateProjectPayment(initial.id, fd)
+      else await crmApi.createProjectPayment(fd)
+      onSaved()
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Failed to save. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const subTypes = SUB_TYPES_BY_DIRECTION[direction] ?? []
+
+  return (
+    <div className="bg-black/3 dark:bg-white/3 rounded-lg p-4 space-y-3 text-sm mb-4">
+      <p className="font-medium text-black dark:text-white text-xs uppercase tracking-wide">
+        {initial ? 'Edit Transaction' : 'New Transaction'}
+      </p>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Date *</label>
+          <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)}
+            className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" disabled={saving} />
+        </div>
+        <div>
+          <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Amount (₹)</label>
+          <input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
+            placeholder="0.00"
+            className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" disabled={saving} />
+        </div>
+      </div>
+
+      <fieldset>
+        <legend className="block text-xs text-black/60 dark:text-slate-400 mb-1">Payment Type</legend>
+        <div className="space-y-1">
+          <div className="flex rounded border border-black/20 dark:border-white/20 overflow-hidden" role="group" aria-label="Actual payment type">
+            {(['paid', 'received'] as PaymentDirection[]).map((dir) => (
+              <button key={dir} type="button" onClick={() => handleDirectionChange(dir)} disabled={saving}
+                aria-pressed={direction === dir}
+                className={`flex-1 py-1.5 text-xs font-medium transition-colors ${direction === dir ? 'bg-mustard text-black' : 'bg-white dark:bg-slate-700 text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                {dir === 'paid' ? 'Paid' : 'Received'}
+              </button>
+            ))}
+          </div>
+          <div className="flex rounded border border-black/20 dark:border-white/20 overflow-hidden" role="group" aria-label="Pending payment type">
+            {(['payable', 'receivable'] as PaymentDirection[]).map((dir) => (
+              <button key={dir} type="button" onClick={() => handleDirectionChange(dir)} disabled={saving}
+                aria-pressed={direction === dir}
+                className={`flex-1 py-1.5 text-xs font-medium transition-colors ${direction === dir ? 'bg-mustard text-black' : 'bg-white dark:bg-slate-700 text-black/60 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                {dir === 'payable' ? 'Payable' : 'Receivable'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </fieldset>
+
+      <div>
+        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Sub Type</label>
+        <select value={subType} onChange={(e) => setSubType(e.target.value)}
+          className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" disabled={saving}>
+          {subTypes.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">
+          Link to Project <span className="text-black/30 dark:text-slate-500">(optional)</span>
+        </label>
+        <select value={projectId} onChange={(e) => handleProjectChange(e.target.value)}
+          className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" disabled={saving}>
+          <option value="">— None —</option>
+          {projects.map((p) => <option key={p.id} value={p.id}>{p.project_no} — {p.client_name}</option>)}
+        </select>
+      </div>
+
+      <div className="relative">
+        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">
+          Client <span className="text-black/30 dark:text-slate-500">(optional)</span>
+        </label>
+        {selectedClient ? (
+          <div className="flex items-center justify-between gap-2 border border-black/20 dark:border-white/20 rounded px-2 py-1.5 bg-white dark:bg-slate-700">
+            <span className="text-sm text-black dark:text-white truncate">{selectedClient.name} <span className="text-xs text-black/40 dark:text-slate-500">({selectedClient.phone_no})</span></span>
+            <button type="button" onClick={() => { setSelectedClient(null); setClientSearch('') }} aria-label="Clear selected client"
+              className="shrink-0 text-black/40 dark:text-slate-400 hover:text-black dark:hover:text-white text-lg leading-none">×</button>
+          </div>
+        ) : (
+          <input type="text" value={clientSearch} onChange={(e) => handleClientSearchChange(e.target.value)}
+            onFocus={() => clientResults.length > 0 && setClientDropdownOpen(true)}
+            placeholder="Search by name or phone…"
+            className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" disabled={saving} />
+        )}
+        {clientDropdownOpen && !selectedClient && (
+          <div className="absolute z-50 left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-white dark:bg-slate-800 border border-black/15 dark:border-white/15 rounded shadow-lg">
+            {clientResults.length === 0 ? (
+              <p className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">No clients found</p>
+            ) : (
+              clientResults.map((c) => (
+                <button key={c.phone_no} type="button"
+                  onClick={() => { setSelectedClient(c); setClientSearch(''); setClientDropdownOpen(false) }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-mustard/10">
+                  <span className="text-black dark:text-white">{c.name}</span>
+                  <span className="block text-xs text-black/40 dark:text-slate-500">{c.phone_no}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">Comments</label>
+        <textarea value={comments} onChange={(e) => setComments(e.target.value)} rows={2}
+          className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard resize-none" disabled={saving} placeholder="Optional notes…" />
+      </div>
+
+      <div>
+        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">
+          Invoice {initial?.invoice_filename ? '(upload new to replace)' : '(optional)'}
+        </label>
+        {initial?.invoice_filename && !invoiceFile && (
+          <p className="text-xs text-mustard mb-1 truncate">Current: {initial.invoice_filename}</p>
+        )}
+        <input type="file" accept="image/*,application/pdf" onChange={(e) => setInvoiceFile(e.target.files?.[0] ?? null)}
+          className="w-full text-xs text-black/60 dark:text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-mustard/10 file:text-black dark:file:text-white" disabled={saving} />
+      </div>
+
+      {error && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+
+      <div className="flex gap-2 pt-1">
+        <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex-1 text-xs py-1.5">
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+        <button type="button" onClick={onCancel} disabled={saving} className="btn-secondary flex-1 text-xs py-1.5">
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionModalProps) {
   const [payments, setPayments] = useState<ProjectPayment[]>([])
   const [loading, setLoading] = useState(true)
+  const [formState, setFormState] = useState<'none' | 'new' | ProjectPayment>('none')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  useEffect(() => {
+  const fetchPayments = () =>
     crmApi.listVendorPayments(entity.kind, entity.id)
       .then((r) => {
         const data = Array.isArray(r.data) ? r.data : (r.data as any).results ?? []
         setPayments(data)
       })
       .finally(() => setLoading(false))
-  }, [entity.id, entity.kind])
+
+  useEffect(() => { fetchPayments() }, [entity.id, entity.kind])
+
+  const handleSaved = () => { setFormState('none'); fetchPayments() }
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this transaction? This cannot be undone.')) return
+    setDeletingId(id)
+    try {
+      await crmApi.deleteProjectPayment(id)
+      await fetchPayments()
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleSettle = async (p: ProjectPayment) => {
+    const fd = new FormData()
+    fd.append('payment_date', new Date().toISOString().slice(0, 10))
+    fd.append('amount', p.amount)
+    fd.append('sub_type', p.sub_type)
+    await crmApi.settleProjectPayment(p.id, fd)
+    fetchPayments()
+  }
 
   const totalPaid = payments.filter((p) => p.direction === 'paid').reduce((s, p) => s + Number(p.amount), 0)
   const totalReceived = payments.filter((p) => p.direction === 'received').reduce((s, p) => s + Number(p.amount), 0)
@@ -946,6 +1190,23 @@ function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionM
       onClose={onClose}
       size="lg"
     >
+      <div className="flex justify-end mb-3">
+        {formState === 'none' && (
+          <button type="button" className="btn-primary text-sm" onClick={() => setFormState('new')}>
+            + Add Transaction
+          </button>
+        )}
+      </div>
+
+      {formState !== 'none' && (
+        <TxnForm
+          entity={entity}
+          initial={formState === 'new' ? null : formState}
+          onSaved={handleSaved}
+          onCancel={() => setFormState('none')}
+        />
+      )}
+
       {loading ? (
         <p className="text-sm text-black/70 dark:text-slate-300 py-4">Loading…</p>
       ) : payments.length === 0 ? (
@@ -981,9 +1242,11 @@ function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionM
                   <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Sub Type</th>
                   <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300 text-right">Amount (₹)</th>
                   <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Project</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Client</th>
                   <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Comments</th>
                   <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">By</th>
                   <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Invoice</th>
+                  <th scope="col" className="px-3 py-2 font-semibold text-black/70 dark:text-slate-300">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
@@ -993,31 +1256,37 @@ function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionM
                       {new Date(p.payment_date).toLocaleDateString('en-IN')}
                     </td>
                     <td className="px-3 py-2">
-                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                        p.direction === 'paid'
-                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      }`}>
-                        {p.direction === 'paid' ? 'Paid' : 'Received'}
+                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${DIRECTION_BADGE[p.direction]}`}>
+                        {p.direction.charAt(0).toUpperCase() + p.direction.slice(1)}
                       </span>
+                      {p.is_settled && (
+                        <span className="ml-1 text-xs font-semibold px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">✓</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-black dark:text-white">{p.sub_type_display}</td>
-                    <td className={`px-3 py-2 text-right font-semibold tabular-nums ${
-                      p.direction === 'paid' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-                    }`}>
+                    <td className={`px-3 py-2 text-right font-semibold tabular-nums ${DIRECTION_AMOUNT[p.direction]}`}>
                       ₹{fmtAmount(p.amount)}
                     </td>
                     <td className="px-3 py-2">
-                      <Link
-                        to={`/crm/projects/${p.project}`}
-                        className="text-mustard hover:underline text-xs font-mono"
-                        onClick={onClose}
-                      >
-                        {p.project_no}
-                      </Link>
-                      {p.project_client_name && (
-                        <div className="text-xs text-black/70 dark:text-slate-300">{p.project_client_name}</div>
+                      {p.project ? (
+                        <>
+                          <Link
+                            to={`/crm/projects/${p.project}`}
+                            className="text-mustard hover:underline text-xs font-mono"
+                            onClick={onClose}
+                          >
+                            {p.project_no}
+                          </Link>
+                          {p.project_client_name && (
+                            <div className="text-xs text-black/70 dark:text-slate-300">{p.project_client_name}</div>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-black/70 dark:text-slate-300 text-xs">—</span>
                       )}
+                    </td>
+                    <td className="px-3 py-2 text-black/70 dark:text-slate-300 text-xs">
+                      {p.client_name || '—'}
                     </td>
                     <td className="px-3 py-2 text-black/60 dark:text-slate-300 max-w-[120px]">
                       <span className="truncate block">{p.comments || '—'}</span>
@@ -1044,6 +1313,26 @@ function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionM
                       ) : (
                         <span className="text-black/70 dark:text-slate-300 text-xs">—</span>
                       )}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <div className="flex gap-2">
+                        {!p.is_settled && (p.direction === 'payable' || p.direction === 'receivable') && (
+                          <button type="button" onClick={() => handleSettle(p)} className="text-xs text-mustard hover:underline font-medium">
+                            Settle
+                          </button>
+                        )}
+                        {!p.is_settled && (
+                          <button type="button" onClick={() => setFormState(p)} className="text-xs text-mustard hover:underline">
+                            Edit
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button type="button" onClick={() => handleDelete(p.id)} disabled={deletingId === p.id}
+                            className="text-xs text-red-500 hover:underline disabled:opacity-50">
+                            {deletingId === p.id ? '…' : 'Delete'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
