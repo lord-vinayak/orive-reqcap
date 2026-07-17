@@ -331,13 +331,15 @@ class ProjectPaymentSerializer(serializers.ModelSerializer):
     vendor_vid = serializers.CharField(source='vendor.vendor_id', read_only=True, default=None)
     manufacturer_name = serializers.CharField(source='manufacturer.company_name', read_only=True, default=None)
     manufacturer_vid = serializers.CharField(source='manufacturer.vendor_id', read_only=True, default=None)
-    project_no = serializers.CharField(source='project.project_no', read_only=True)
-    project_client_name = serializers.CharField(source='project.client.name', read_only=True)
+    project_no = serializers.CharField(source='project.project_no', read_only=True, default=None)
+    project_client_name = serializers.CharField(source='project.client.name', read_only=True, default=None)
+    client_name = serializers.CharField(source='client.name', read_only=True, default=None)
 
     class Meta:
         model = ProjectPayment
         fields = [
             'id', 'project', 'project_no', 'project_client_name',
+            'client', 'client_name',
             'payment_date', 'direction', 'sub_type', 'sub_type_display', 'amount',
             'vendor', 'vendor_name', 'vendor_vid',
             'manufacturer', 'manufacturer_name', 'manufacturer_vid',
@@ -350,7 +352,7 @@ class ProjectPaymentSerializer(serializers.ModelSerializer):
             'invoice_drive_id', 'invoice_drive_url', 'invoice_filename',
             'sub_type_display', 'vendor_name', 'vendor_vid',
             'manufacturer_name', 'manufacturer_vid', 'project_no', 'project_client_name',
-            'settlement', 'is_settled',
+            'client_name', 'settlement', 'is_settled',
         ]
 
     def get_sub_type_display(self, obj):
