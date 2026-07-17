@@ -1059,6 +1059,7 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
         date_to = self.request.query_params.get('date_to')
         if project_id:
             qs = qs.filter(project_id=project_id)
+        qs = qs.select_related('client')
         if vendor_id:
             qs = qs.filter(vendor_id=vendor_id)
         if manufacturer_id:
@@ -1074,12 +1075,18 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
         if not invoice_file:
             return
         from apps.files.drive_service import upload_file
+        if instance.project:
+            client_name = instance.project.client.name
+        elif instance.client:
+            client_name = instance.client.name
+        else:
+            client_name = (instance.vendor or instance.manufacturer).company_name if (instance.vendor or instance.manufacturer) else 'Standalone'
         try:
             result = upload_file(
                 file_bytes=invoice_file.read(),
                 filename=invoice_file.name,
                 mimetype=invoice_file.content_type or 'application/octet-stream',
-                client_name=instance.project.client.name,
+                client_name=client_name,
                 subfolder='Invoices',
             )
             instance.invoice_drive_id = result['drive_file_id']
@@ -1117,7 +1124,10 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
         new_direction = 'paid' if payable.direction == 'payable' else 'received'
         data = request.data.copy()
         data['direction'] = new_direction
-        data['project'] = str(payable.project_id)
+        if payable.project_id:
+            data['project'] = str(payable.project_id)
+        if payable.client_id:
+            data['client'] = payable.client_id
 
         serializer = ProjectPaymentSerializer(data=data, context={'request': request})
         serializer.is_valid(raise_exception=True)
