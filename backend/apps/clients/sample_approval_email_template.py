@@ -6,7 +6,7 @@
 #   (product2/3 slots are optional — leave blank if not applicable)
 # ============================================================
 
-SUBJECT = "Sample Approval Confirmation - {brand_name}"
+SUBJECT = "Sample Approved! Confirmation of Sample Code – {brand_name}"
 
 HTML_BODY = """\
 <html>
@@ -14,11 +14,9 @@ HTML_BODY = """\
 
   <p>Dear {client_name},</p>
 
-  <p>We are glad to share that the below samples are approved by you.</p>
+  <p>We're glad your samples are approved — congratulations on this milestone!</p>
 
-  <p>
-    Kindly review the details below and flag any discrepancies within 2 days, as this exact sample version will go into bulk production. This is critical as same sample version will go in bulk production.
-  </p>
+  <p>Please review and confirm the approved sample codes, as same will go into production.</p>
 
   <p>
     Product 1 Name: {product1_name}<br/>
@@ -29,10 +27,6 @@ HTML_BODY = """\
     <br/>
     Product 3 Name: {product3_name}<br/>
     Sample No: {sample3_number}
-  </p>
-
-  <p>
-    Please note that any future changes in the sample whether texture, fragrance, color, active positioning, product claims, or formulation direction, may require additional review and may impact timelines, cost, or development scope.
   </p>
 
   <p>Best Wishes,<br/>
@@ -58,9 +52,9 @@ HTML_BODY = """\
 TEXT_BODY = """\
 Dear {client_name},
 
-We are glad to share that the below samples are approved by you.
+We're glad your samples are approved — congratulations on this milestone!
 
-Kindly review the details below and flag any discrepancies within 2 days, as this exact sample version will go into bulk production. This is critical as same sample version will go in bulk production.
+Please review and confirm the approved sample codes, as same will go into production.
 
 Product 1 Name: {product1_name}
 Sample No: {sample1_number}
@@ -70,8 +64,6 @@ Sample No: {sample2_number}
 
 Product 3 Name: {product3_name}
 Sample No: {sample3_number}
-
-Please note that any future changes in the sample whether texture, fragrance, color, active positioning, product claims, or formulation direction, may require additional review and may impact timelines, cost, or development scope.
 
 Best Wishes,
 Team Skinovation Sciences

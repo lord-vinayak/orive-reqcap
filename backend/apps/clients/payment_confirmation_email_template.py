@@ -4,7 +4,7 @@
 # Template-specific tokens: {brand_name}, {payment_type}, {amount}, {date}
 # ============================================================
 
-SUBJECT = "{payment_type} Payment Confirmation for {brand_name}"
+SUBJECT = "Payment Received – Thank You! | {brand_name}"
 
 HTML_BODY = """\
 <html>
@@ -12,13 +12,15 @@ HTML_BODY = """\
 
   <p>Dear {client_name},</p>
 
-  <p>We confirm receipt of following payment.</p>
+  <p>We're happy to confirm that your payment has been received.</p>
 
   <p>
-    Payment Amount Received: Rs. {amount}<br/>
+    Amount: ₹{amount}<br/>
     Payment Type: {payment_type}<br/>
     Date of Receipt: {date}
   </p>
+
+  <p>We'll keep you posted on the next steps.</p>
 
   <p>Best Wishes,<br/>
   <strong>Team Skinovation Sciences</strong><br/>
@@ -43,11 +45,13 @@ HTML_BODY = """\
 TEXT_BODY = """\
 Dear {client_name},
 
-We confirm receipt of following payment.
+We're happy to confirm that your payment has been received.
 
-Payment Amount Received: Rs. {amount}
+Amount: ₹{amount}
 Payment Type: {payment_type}
 Date of Receipt: {date}
+
+We'll keep you posted on the next steps.
 
 Best Wishes,
 Team Skinovation Sciences

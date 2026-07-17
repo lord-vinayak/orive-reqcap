@@ -26,17 +26,12 @@ from . import reminder_email_template_1 as reminder1_tpl
 from . import reminder_email_template_2 as reminder2_tpl
 from . import closure_email_template as closure_tpl
 from . import sample_initiation_email_template as sample_initiation_tpl
-from . import sample_payment_confirmation_email_template as sample_payment_tpl
 from . import sample_approval_email_template as sample_approval_tpl
-from . import order_initiation_email_template as order_initiation_tpl
+from . import order_booking_invoice_email_template as order_booking_invoice_tpl
 from . import packaging_confirmation_email_template as packaging_confirmation_tpl
-from . import packaging_payment_confirmation_email_template as packaging_payment_tpl
-from . import printing_confirmation_email_template as printing_confirmation_tpl
-from . import printing_payment_confirmation_email_template as printing_payment_tpl
-from . import final_order_shipment_email_template as final_order_shipment_tpl
-from . import invoice_email_template as invoice_tpl
+from . import design_content_approval_email_template as design_content_approval_tpl
+from . import final_shipment_email_template as final_shipment_tpl
 from . import payment_confirmation_email_template as payment_confirmation_tpl
-from . import order_confirmation_email_template as order_confirmation_tpl
 
 LEAD_BUCKETS = {
     'prospective':      ['initial_conversation', 'proposal', 'costing'],
@@ -52,17 +47,12 @@ _TEMPLATE_MAP = {
     'reminder_2': reminder2_tpl,
     'closure': closure_tpl,
     'sample_initiation': sample_initiation_tpl,
-    'sample_payment_confirmation': sample_payment_tpl,
     'sample_approval': sample_approval_tpl,
-    'order_initiation': order_initiation_tpl,
+    'order_booking_invoice': order_booking_invoice_tpl,
     'packaging_confirmation': packaging_confirmation_tpl,
-    'packaging_payment_confirmation': packaging_payment_tpl,
-    'printing_confirmation': printing_confirmation_tpl,
-    'printing_payment_confirmation': printing_payment_tpl,
-    'final_order_shipment': final_order_shipment_tpl,
-    'invoice': invoice_tpl,
+    'design_content_approval': design_content_approval_tpl,
+    'final_shipment': final_shipment_tpl,
     'payment_confirmation': payment_confirmation_tpl,
-    'order_confirmation': order_confirmation_tpl,
 }
 
 _TEMPLATE_LABELS = {
@@ -71,17 +61,12 @@ _TEMPLATE_LABELS = {
     'reminder_2': 'Reminder Email 2',
     'closure': 'Closure Email',
     'sample_initiation': 'Sample Initiation Email',
-    'sample_payment_confirmation': 'Sample Payment Confirmation Email',
     'sample_approval': 'Sample Approval Email',
-    'order_initiation': 'Order Initiation Email - 50% Order Booking',
+    'order_booking_invoice': 'Order Booking Invoice Email',
     'packaging_confirmation': 'Packaging Confirmation Email',
-    'packaging_payment_confirmation': 'Packaging Payment Confirmation Email',
-    'printing_confirmation': 'Printing Confirmation Email',
-    'printing_payment_confirmation': 'Printing Payment Confirmation Email',
-    'final_order_shipment': 'Final Order Shipment Email with Final Invoice',
-    'invoice': 'Invoice Email',
+    'design_content_approval': 'Design & Content Approval Email',
+    'final_shipment': 'Final Shipment Email (Final Invoice)',
     'payment_confirmation': 'Payment Confirmation Email',
-    'order_confirmation': 'Order Confirmation Email',
 }
 
 # ---------------------------------------------------------------------------

@@ -1,10 +1,10 @@
 # ============================================================
-# Packaging Confirmation Email
+# Design & Content Approval Email
 # Base tokens: {client_name}, {company_name}, {sent_by_name}
 # Template-specific tokens: {brand_name}
 # ============================================================
 
-SUBJECT = "Finalized Packaging – Please Approve to Begin Procurement | {brand_name}"
+SUBJECT = "Design Files Ready – Please Review & Approve | {brand_name}"
 
 HTML_BODY = """\
 <html>
@@ -12,23 +12,25 @@ HTML_BODY = """\
 
   <p>Dear {client_name},</p>
 
-  <p>Please find attached your finalized packaging and its details.</p>
+  <p>Your design files are ready! Please find them attached.</p>
+
+  <p><strong>What we need from you:</strong></p>
+  <ol>
+    <li><strong>Review the design files carefully</strong> — check for any errors in text, spellings, claims, ingredients, and details.</li>
+    <li><strong>Give your confirmation over email</strong> — once we receive your approval, the files will be sent for printing.</li>
+  </ol>
+
+  <p>Printing timeline: 15–20 days.</p>
 
   <p>
-    Once you approve it over email and payment is made, we will begin packaging procurement.
+    Also attached is the design invoice. Printing will be initiated once we have both your design confirmation and payment.
   </p>
-
-  <p><strong>Procurement timelines:</strong></p>
-  <ul>
-    <li>Tube: 45–60 days</li>
-    <li>Other packaging: 15–20 days</li>
-  </ul>
 
   <p>
     <strong>Important:</strong> Please make payments only to our official bank account or via the QR code shared with you. Payments made to any phone number will not be acknowledged.
   </p>
 
-  <p>Attachment: Finalized Packaging Details</p>
+  <p>Attachments: Design Files | Design Invoice</p>
 
   <p>Best Wishes,<br/>
   <strong>Team Skinovation Sciences</strong><br/>
@@ -53,17 +55,19 @@ HTML_BODY = """\
 TEXT_BODY = """\
 Dear {client_name},
 
-Please find attached your finalized packaging and its details.
+Your design files are ready! Please find them attached.
 
-Once you approve it over email and payment is made, we will begin packaging procurement.
+What we need from you:
+1. Review the design files carefully — check for any errors in text, spellings, claims, ingredients, and details.
+2. Give your confirmation over email — once we receive your approval, the files will be sent for printing.
 
-Procurement timelines:
-- Tube: 45–60 days
-- Other packaging: 15–20 days
+Printing timeline: 15–20 days.
+
+Also attached is the design invoice. Printing will be initiated once we have both your design confirmation and payment.
 
 Important: Please make payments only to our official bank account or via the QR code shared with you. Payments made to any phone number will not be acknowledged.
 
-Attachment: Finalized Packaging Details
+Attachments: Design Files | Design Invoice
 
 Best Wishes,
 Team Skinovation Sciences

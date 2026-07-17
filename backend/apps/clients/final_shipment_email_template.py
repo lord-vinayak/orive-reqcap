@@ -1,10 +1,10 @@
 # ============================================================
-# Invoice Email Template (packaging, printing, order)
+# Final Shipment Email (Final Invoice)
 # Base tokens: {client_name}, {company_name}, {sent_by_name}
-# Template-specific tokens: {brand_name}, {payment_type}, {amount}, {date}
+# Template-specific tokens: {brand_name}
 # ============================================================
 
-SUBJECT = "{payment_type} Invoice - {brand_name}"
+SUBJECT = "Your Order is Ready! Final Invoice Attached | {brand_name}"
 
 HTML_BODY = """\
 <html>
@@ -12,16 +12,17 @@ HTML_BODY = """\
 
   <p>Dear {client_name},</p>
 
+  <p>Thank you for your order — we're glad to share that your order is ready!</p>
+
   <p>
-    Please find attached the invoice for your {payment_type}. Kindly process the payment so we can proceed further.
+    Please find attached the final invoice. Kindly make the payment so we can ship your products right away.
   </p>
 
-  <p>Payment summary below</p>
   <p>
-    Payment Amount: Rs. {amount}<br/>
-    Payment Type: {payment_type}<br/>
-    Date of Invoice: {date}
+    <strong>Important:</strong> Please make payments only to our official bank account or via the QR code shared with you. Payments made to any phone number will not be acknowledged.
   </p>
+
+  <p>Attachment: Final Invoice – {brand_name}</p>
 
   <p>Best Wishes,<br/>
   <strong>Team Skinovation Sciences</strong><br/>
@@ -46,12 +47,13 @@ HTML_BODY = """\
 TEXT_BODY = """\
 Dear {client_name},
 
-Please find attached the invoice for your {payment_type}. Kindly process the payment so we can proceed further.
+Thank you for your order — we're glad to share that your order is ready!
 
-Payment summary below
-Payment Amount: Rs. {amount}
-Payment Type: {payment_type}
-Date of Invoice: {date}
+Please find attached the final invoice. Kindly make the payment so we can ship your products right away.
+
+Important: Please make payments only to our official bank account or via the QR code shared with you. Payments made to any phone number will not be acknowledged.
+
+Attachment: Final Invoice – {brand_name}
 
 Best Wishes,
 Team Skinovation Sciences

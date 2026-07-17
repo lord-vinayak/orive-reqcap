@@ -1,10 +1,10 @@
 # ============================================================
-# Packaging Confirmation Email
+# Order Booking Invoice Email
 # Base tokens: {client_name}, {company_name}, {sent_by_name}
 # Template-specific tokens: {brand_name}
 # ============================================================
 
-SUBJECT = "Finalized Packaging – Please Approve to Begin Procurement | {brand_name}"
+SUBJECT = "Your Order Booking – {brand_name} | Payment Awaited to Confirm"
 
 HTML_BODY = """\
 <html>
@@ -12,23 +12,24 @@ HTML_BODY = """\
 
   <p>Dear {client_name},</p>
 
-  <p>Please find attached your finalized packaging and its details.</p>
+  <p>Thank you for proceeding with us — we're excited to bring your products to life!</p>
 
   <p>
-    Once you approve it over email and payment is made, we will begin packaging procurement.
+    Please find attached your order booking. Your order will be confirmed once payment is received.
   </p>
-
-  <p><strong>Procurement timelines:</strong></p>
-  <ul>
-    <li>Tube: 45–60 days</li>
-    <li>Other packaging: 15–20 days</li>
-  </ul>
 
   <p>
     <strong>Important:</strong> Please make payments only to our official bank account or via the QR code shared with you. Payments made to any phone number will not be acknowledged.
   </p>
 
-  <p>Attachment: Finalized Packaging Details</p>
+  <p><strong>Please note:</strong></p>
+  <ul>
+    <li>The exact batch number will be assigned at production closure, aligned to the date of production.</li>
+    <li>There is a variance of ±10% during production. The final invoice will be based on actual units made.</li>
+    <li>Cost of shipment will be on actuals.</li>
+  </ul>
+
+  <p>Attachment: Order Booking – {brand_name}</p>
 
   <p>Best Wishes,<br/>
   <strong>Team Skinovation Sciences</strong><br/>
@@ -53,17 +54,18 @@ HTML_BODY = """\
 TEXT_BODY = """\
 Dear {client_name},
 
-Please find attached your finalized packaging and its details.
+Thank you for proceeding with us — we're excited to bring your products to life!
 
-Once you approve it over email and payment is made, we will begin packaging procurement.
-
-Procurement timelines:
-- Tube: 45–60 days
-- Other packaging: 15–20 days
+Please find attached your order booking. Your order will be confirmed once payment is received.
 
 Important: Please make payments only to our official bank account or via the QR code shared with you. Payments made to any phone number will not be acknowledged.
 
-Attachment: Finalized Packaging Details
+Please note:
+- The exact batch number will be assigned at production closure, aligned to the date of production.
+- There is a variance of ±10% during production. The final invoice will be based on actual units made.
+- Cost of shipment will be on actuals.
+
+Attachment: Order Booking – {brand_name}
 
 Best Wishes,
 Team Skinovation Sciences

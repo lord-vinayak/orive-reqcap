@@ -1,10 +1,10 @@
 # ============================================================
-# Sample Initiation Email Template
+# Sample Detail Confirmation & Initiation Email Template
 # Base tokens: {client_name}, {company_name}, {sent_by_name}
 # Template-specific tokens: {brand_name}
 # ============================================================
 
-SUBJECT = "Sample Initiation Invoice & Sample Detail Confirmation - {brand_name}"
+SUBJECT = "Your Sample Details – Please Review & Approve | {brand_name}"
 
 # ── HTML version (shown in modern email clients) ─────────────────────────────
 HTML_BODY = """\
@@ -13,31 +13,32 @@ HTML_BODY = """\
 
   <p>Dear {client_name},</p>
 
+  <p>Thank you for booking your sample with us!</p>
+
   <p>
-    Thank you for confirming your interest in initiating the sample development process with Skinovation Sciences.
+    Attached are your sample details. Please go through them carefully — your sample will be made exactly as per this document.
   </p>
 
-  <p>Please find attached</p>
+  <p><strong>What we need from you:</strong></p>
   <ol>
-    <li>Sample Sheet</li>
-    <li>Sample invoice</li>
+    <li><strong>Approve over email</strong> — reply confirming the details, or let us know if any changes are required (changes must be confirmed on email).</li>
+    <li><strong>Confirm your fragrance</strong> — from the attached fragrance notes, if not done already.</li>
+    <li><strong>Make the payment</strong> — to initiate sample development.</li>
   </ol>
 
   <p>
-    Please go through the Sample Sheet in detail, review and confirm the information captured for each product. This is very critical as the sample will be made as per the attached specifications.
+    <strong>Important:</strong> Please make payments only to our official bank account or via the QR code shared with you. Payments made to any phone number will not be acknowledged.
   </p>
 
   <p>
-    Also, please clear the sample invoice to book your sample.
+    <strong>Timelines:</strong> Once your sample is booked (payment received), it takes 3–4 weeks to process. We'll share tracking details as soon as it ships.
   </p>
 
   <p>
-    <strong>Please Note:</strong> The payment should be made only to the bank account details in the invoice. Any payments made on the phone number will not be considered.
+    <strong>One more thing:</strong> When you receive your sample, please note the Sample Number printed on it — this unique number is required at the time of production.
   </p>
 
-  <p>
-    We request you to kindly share the payment confirmation screenshot once processed.
-  </p>
+  <p>Attachments: Sample Details | Fragrance Notes</p>
 
   <p>Best Wishes,<br/>
   <strong>Team Skinovation Sciences</strong><br/>
@@ -63,19 +64,22 @@ HTML_BODY = """\
 TEXT_BODY = """\
 Dear {client_name},
 
-Thank you for confirming your interest in initiating the sample development process with Skinovation Sciences.
+Thank you for booking your sample with us!
 
-Please find attached
-1. Sample Sheet
-2. Sample invoice
+Attached are your sample details. Please go through them carefully — your sample will be made exactly as per this document.
 
-Please go through the Sample Sheet in detail, review and confirm the information captured for each product. This is very critical as the sample will be made as per the attached specifications.
+What we need from you:
+1. Approve over email — reply confirming the details, or let us know if any changes are required (changes must be confirmed on email).
+2. Confirm your fragrance — from the attached fragrance notes, if not done already.
+3. Make the payment — to initiate sample development.
 
-Also, please clear the sample invoice to book your sample.
+Important: Please make payments only to our official bank account or via the QR code shared with you. Payments made to any phone number will not be acknowledged.
 
-Please Note: The payment should be made only to the bank account details in the invoice. Any payments made on the phone number will not be considered.
+Timelines: Once your sample is booked (payment received), it takes 3–4 weeks to process. We'll share tracking details as soon as it ships.
 
-We request you to kindly share the payment confirmation screenshot once processed.
+One more thing: When you receive your sample, please note the Sample Number printed on it — this unique number is required at the time of production.
+
+Attachments: Sample Details | Fragrance Notes
 
 Best Wishes,
 Team Skinovation Sciences
