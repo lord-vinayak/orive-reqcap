@@ -478,7 +478,13 @@ class ProjectPayment(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    project = models.ForeignKey(CRMProject, on_delete=models.CASCADE, related_name='payments')
+    project = models.ForeignKey(
+        CRMProject, on_delete=models.CASCADE, null=True, blank=True, related_name='payments',
+    )
+    client = models.ForeignKey(
+        'clients.Client', on_delete=models.SET_NULL, null=True, blank=True,
+        to_field='phone_no', db_column='client_phone', related_name='cash_flow_payments',
+    )
     payment_date = models.DateField()
     direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, db_index=True)
     sub_type = models.CharField(max_length=30, db_index=True)
