@@ -35,7 +35,7 @@ export const KEY_BENEFITS: Record<string, string[]> = {
 }
 
 export const SIZES = ['8', '15', '30', '50', '100', '150', '200'] as const
-export const PACKAGING = ['Jar', 'Bottle', 'Tube', 'Stick'] as const
+export const PACKAGING = ['Jar', 'Bottle', 'Tube', 'Stick', 'Chapstick'] as const
 
 /**
  * Number-of-products options.

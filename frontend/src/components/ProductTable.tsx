@@ -113,14 +113,15 @@ export default function ProductTable({
               let subOptions = p.category && SUB_CATEGORIES[p.category] ? [...SUB_CATEGORIES[p.category]] : []
               if (p.body_part === 'Lip') {
                 if (!subOptions.includes('Balm')) subOptions.push('Balm')
+                if (!subOptions.includes('Liquid Balm')) subOptions.push('Liquid Balm')
               } else {
-                subOptions = subOptions.filter(o => o !== 'Balm')
+                subOptions = subOptions.filter(o => o !== 'Balm' && o !== 'Liquid Balm')
               }
               if (p.category && !subOptions.includes('Others')) subOptions.push('Others')
 
-              const packagingOptions = p.body_part === 'Lip' 
-                ? [...PACKAGING] 
-                : PACKAGING.filter(pk => pk !== 'Stick')
+              const packagingOptions = p.body_part === 'Lip'
+                ? [...PACKAGING]
+                : PACKAGING.filter(pk => pk !== 'Stick' && pk !== 'Chapstick')
 
               const isActive = activeIndex === i
               const rowErrors = showValidation ? validateProductRow(p) : []
