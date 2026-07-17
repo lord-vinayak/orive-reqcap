@@ -32,6 +32,10 @@ from . import packaging_confirmation_email_template as packaging_confirmation_tp
 from . import design_content_approval_email_template as design_content_approval_tpl
 from . import final_shipment_email_template as final_shipment_tpl
 from . import payment_confirmation_email_template as payment_confirmation_tpl
+from . import costing_email_template as costing_tpl
+from . import proposal_email_template as proposal_tpl
+from . import commercial_sample_approval_email_template as commercial_sample_approval_tpl
+from . import shipment_details_email_template as shipment_details_tpl
 
 LEAD_BUCKETS = {
     'prospective':      ['initial_conversation', 'proposal', 'costing'],
@@ -53,6 +57,10 @@ _TEMPLATE_MAP = {
     'design_content_approval': design_content_approval_tpl,
     'final_shipment': final_shipment_tpl,
     'payment_confirmation': payment_confirmation_tpl,
+    'costing': costing_tpl,
+    'proposal': proposal_tpl,
+    'commercial_sample_approval': commercial_sample_approval_tpl,
+    'shipment_details': shipment_details_tpl,
 }
 
 _TEMPLATE_LABELS = {
@@ -67,6 +75,10 @@ _TEMPLATE_LABELS = {
     'design_content_approval': 'Design & Content Approval Email',
     'final_shipment': 'Final Shipment Email (Final Invoice)',
     'payment_confirmation': 'Payment Confirmation Email',
+    'costing': 'Costing Email',
+    'proposal': 'Proposal Email',
+    'commercial_sample_approval': 'Commercial Sample Approval Email',
+    'shipment_details': 'Shipment Details Email',
 }
 
 # ---------------------------------------------------------------------------
