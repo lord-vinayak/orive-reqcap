@@ -8,6 +8,7 @@ from .models import (
 )
 from .stage_definitions import STAGE_DISPLAY_MAP
 from apps.crm_master_data.models import Vendor
+from apps.clients.models import Client
 
 
 class StageCompletionSerializer(serializers.ModelSerializer):
@@ -333,13 +334,16 @@ class ProjectPaymentSerializer(serializers.ModelSerializer):
     manufacturer_vid = serializers.CharField(source='manufacturer.vendor_id', read_only=True, default=None)
     project_no = serializers.CharField(source='project.project_no', read_only=True, default=None)
     project_client_name = serializers.CharField(source='project.client.name', read_only=True, default=None)
-    client_name = serializers.CharField(source='client.name', read_only=True, default=None)
+    clients = serializers.PrimaryKeyRelatedField(
+        queryset=Client.objects.all(), many=True, required=False,
+    )
+    client_names = serializers.SerializerMethodField()
 
     class Meta:
         model = ProjectPayment
         fields = [
             'id', 'project', 'project_no', 'project_client_name',
-            'client', 'client_name',
+            'clients', 'client_names',
             'payment_date', 'direction', 'sub_type', 'sub_type_display', 'amount',
             'vendor', 'vendor_name', 'vendor_vid',
             'manufacturer', 'manufacturer_name', 'manufacturer_vid',
@@ -352,8 +356,11 @@ class ProjectPaymentSerializer(serializers.ModelSerializer):
             'invoice_drive_id', 'invoice_drive_url', 'invoice_filename',
             'sub_type_display', 'vendor_name', 'vendor_vid',
             'manufacturer_name', 'manufacturer_vid', 'project_no', 'project_client_name',
-            'client_name', 'settlement', 'is_settled',
+            'client_names', 'settlement', 'is_settled',
         ]
+
+    def get_client_names(self, obj):
+        return [c.name for c in obj.clients.all()]
 
     def get_sub_type_display(self, obj):
         return SUB_TYPE_LABELS.get(obj.sub_type, obj.sub_type)

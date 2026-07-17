@@ -1059,7 +1059,7 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
         date_to = self.request.query_params.get('date_to')
         if project_id:
             qs = qs.filter(project_id=project_id)
-        qs = qs.select_related('client')
+        qs = qs.prefetch_related('clients')
         if vendor_id:
             qs = qs.filter(vendor_id=vendor_id)
         if manufacturer_id:
@@ -1077,8 +1077,8 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
         from apps.files.drive_service import upload_file
         if instance.project:
             client_name = instance.project.client.name
-        elif instance.client:
-            client_name = instance.client.name
+        elif instance.clients.exists():
+            client_name = ', '.join(c.name for c in instance.clients.all())
         else:
             client_name = (instance.vendor or instance.manufacturer).company_name if (instance.vendor or instance.manufacturer) else 'Standalone'
         try:
@@ -1126,8 +1126,12 @@ class ProjectPaymentViewSet(viewsets.ModelViewSet):
         data['direction'] = new_direction
         if payable.project_id:
             data['project'] = str(payable.project_id)
-        if payable.client_id:
-            data['client'] = payable.client_id
+        client_ids = list(payable.clients.values_list('phone_no', flat=True))
+        if client_ids:
+            if hasattr(data, 'setlist'):
+                data.setlist('clients', client_ids)
+            else:
+                data['clients'] = client_ids
 
         serializer = ProjectPaymentSerializer(data=data, context={'request': request})
         serializer.is_valid(raise_exception=True)

@@ -385,8 +385,8 @@ export interface ProjectPayment {
   project: string | null
   project_no: string | null
   project_client_name: string | null
-  client: string | null
-  client_name: string | null
+  clients: string[]
+  client_names: string[]
   payment_date: string
   direction: PaymentDirection
   sub_type: PaymentSubType

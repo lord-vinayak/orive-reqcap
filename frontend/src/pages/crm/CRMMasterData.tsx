@@ -946,11 +946,11 @@ function TxnForm({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  // Client combobox state
+  // Client combobox state (multi-select)
   const [clientSearch, setClientSearch] = useState('')
   const [clientResults, setClientResults] = useState<Client[]>([])
-  const [selectedClient, setSelectedClient] = useState<Client | null>(
-    initial?.client ? ({ phone_no: initial.client, name: initial.client_name ?? '' } as Client) : null,
+  const [selectedClients, setSelectedClients] = useState<Client[]>(
+    initial?.clients?.map((phone, i) => ({ phone_no: phone, name: initial.client_names?.[i] ?? '' } as Client)) ?? [],
   )
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -970,13 +970,16 @@ function TxnForm({
     setProjectId(pid)
     if (pid) {
       const proj = projects.find((p) => p.id === pid)
-      if (proj) setSelectedClient({ phone_no: proj.client, name: proj.client_name } as Client)
+      if (proj) {
+        setSelectedClients((prev) =>
+          prev.some((c) => c.phone_no === proj.client) ? prev : [...prev, { phone_no: proj.client, name: proj.client_name } as Client],
+        )
+      }
     }
   }
 
   const handleClientSearchChange = (value: string) => {
     setClientSearch(value)
-    setSelectedClient(null)
     if (!value.trim()) { setClientResults([]); setClientDropdownOpen(false); return }
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
@@ -985,6 +988,16 @@ function TxnForm({
       setClientResults(results)
       setClientDropdownOpen(true)
     }, 300)
+  }
+
+  const addClient = (c: Client) => {
+    setSelectedClients((prev) => (prev.some((sc) => sc.phone_no === c.phone_no) ? prev : [...prev, c]))
+    setClientSearch('')
+    setClientDropdownOpen(false)
+  }
+
+  const removeClient = (phoneNo: string) => {
+    setSelectedClients((prev) => prev.filter((c) => c.phone_no !== phoneNo))
   }
 
   const handleSave = async () => {
@@ -998,7 +1011,7 @@ function TxnForm({
     fd.append('amount', amount || '0')
     fd.append('comments', comments)
     if (projectId) fd.append('project', projectId)
-    if (selectedClient) fd.append('client', selectedClient.phone_no)
+    selectedClients.forEach((c) => fd.append('clients', c.phone_no))
     if (entity.kind === 'manufacturer') fd.append('manufacturer', entity.id)
     else fd.append('vendor', entity.id)
     if (invoiceFile) fd.append('invoice', invoiceFile)
@@ -1080,33 +1093,39 @@ function TxnForm({
 
       <div className="relative">
         <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">
-          Client <span className="text-black/30 dark:text-slate-500">(optional)</span>
+          Clients <span className="text-black/30 dark:text-slate-500">(optional, multiple allowed)</span>
         </label>
-        {selectedClient ? (
-          <div className="flex items-center justify-between gap-2 border border-black/20 dark:border-white/20 rounded px-2 py-1.5 bg-white dark:bg-slate-700">
-            <span className="text-sm text-black dark:text-white truncate">{selectedClient.name} <span className="text-xs text-black/40 dark:text-slate-500">({selectedClient.phone_no})</span></span>
-            <button type="button" onClick={() => { setSelectedClient(null); setClientSearch('') }} aria-label="Clear selected client"
-              className="shrink-0 text-black/40 dark:text-slate-400 hover:text-black dark:hover:text-white text-lg leading-none">×</button>
+        {selectedClients.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-1.5">
+            {selectedClients.map((c) => (
+              <span key={c.phone_no}
+                className="flex items-center gap-1 border border-black/20 dark:border-white/20 rounded-full pl-2.5 pr-1.5 py-1 bg-white dark:bg-slate-700">
+                <span className="text-xs text-black dark:text-white truncate max-w-[160px]">{c.name} <span className="text-black/40 dark:text-slate-500">({c.phone_no})</span></span>
+                <button type="button" onClick={() => removeClient(c.phone_no)} aria-label={`Remove ${c.name}`}
+                  className="shrink-0 text-black/40 dark:text-slate-400 hover:text-black dark:hover:text-white text-sm leading-none">×</button>
+              </span>
+            ))}
           </div>
-        ) : (
-          <input type="text" value={clientSearch} onChange={(e) => handleClientSearchChange(e.target.value)}
-            onFocus={() => clientResults.length > 0 && setClientDropdownOpen(true)}
-            placeholder="Search by name or phone…"
-            className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" disabled={saving} />
         )}
-        {clientDropdownOpen && !selectedClient && (
+        <input type="text" value={clientSearch} onChange={(e) => handleClientSearchChange(e.target.value)}
+          onFocus={() => clientResults.length > 0 && setClientDropdownOpen(true)}
+          placeholder="Search by name or phone to add a client…"
+          className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" disabled={saving} />
+        {clientDropdownOpen && (
           <div className="absolute z-50 left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-white dark:bg-slate-800 border border-black/15 dark:border-white/15 rounded shadow-lg">
             {clientResults.length === 0 ? (
               <p className="px-3 py-2 text-xs text-black/40 dark:text-slate-500">No clients found</p>
             ) : (
-              clientResults.map((c) => (
-                <button key={c.phone_no} type="button"
-                  onClick={() => { setSelectedClient(c); setClientSearch(''); setClientDropdownOpen(false) }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-mustard/10">
-                  <span className="text-black dark:text-white">{c.name}</span>
-                  <span className="block text-xs text-black/40 dark:text-slate-500">{c.phone_no}</span>
-                </button>
-              ))
+              clientResults
+                .filter((c) => !selectedClients.some((sc) => sc.phone_no === c.phone_no))
+                .map((c) => (
+                  <button key={c.phone_no} type="button"
+                    onClick={() => addClient(c)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-mustard/10">
+                    <span className="text-black dark:text-white">{c.name}</span>
+                    <span className="block text-xs text-black/40 dark:text-slate-500">{c.phone_no}</span>
+                  </button>
+                ))
             )}
           </div>
         )}
@@ -1286,7 +1305,7 @@ function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionM
                       )}
                     </td>
                     <td className="px-3 py-2 text-black/70 dark:text-slate-300 text-xs">
-                      {p.client_name || '—'}
+                      {p.client_names.length > 0 ? p.client_names.join(', ') : '—'}
                     </td>
                     <td className="px-3 py-2 text-black/60 dark:text-slate-300 max-w-[120px]">
                       <span className="truncate block">{p.comments || '—'}</span>
