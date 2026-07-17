@@ -27,28 +27,28 @@ const RECEIVED_SUB_TYPES: { value: string; label: string }[] = [
   { value: 'others', label: 'Others' },
 ]
 
-const SUB_TYPES_BY_DIRECTION: Record<string, { value: string; label: string }[]> = {
+export const SUB_TYPES_BY_DIRECTION: Record<string, { value: string; label: string }[]> = {
   paid: PAID_SUB_TYPES,
   payable: PAID_SUB_TYPES,
   received: RECEIVED_SUB_TYPES,
   receivable: RECEIVED_SUB_TYPES,
 }
 
-const DEFAULT_SUB_TYPE: Record<string, string> = {
+export const DEFAULT_SUB_TYPE: Record<string, string> = {
   paid: 'manufacturing',
   payable: 'manufacturing',
   received: 'sample',
   receivable: 'sample',
 }
 
-const DIRECTION_BADGE: Record<string, string> = {
+export const DIRECTION_BADGE: Record<string, string> = {
   paid: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   received: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   payable: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   receivable: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
 }
 
-const DIRECTION_AMOUNT: Record<string, string> = {
+export const DIRECTION_AMOUNT: Record<string, string> = {
   paid: 'text-red-600 dark:text-red-400',
   received: 'text-green-600 dark:text-green-400',
   payable: 'text-amber-600 dark:text-amber-400',
