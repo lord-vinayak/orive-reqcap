@@ -89,7 +89,8 @@ export default function CRMFinancials() {
     const map: Record<string, { no: string; client: string; credits: number; debits: number }> = {}
     for (const p of payments) {
       if (p.direction !== 'paid' && p.direction !== 'received') continue
-      if (!map[p.project]) map[p.project] = { no: p.project_no, client: p.project_client_name, credits: 0, debits: 0 }
+      if (!p.project) continue
+      if (!map[p.project]) map[p.project] = { no: p.project_no ?? '', client: p.project_client_name ?? '', credits: 0, debits: 0 }
       const amt = parseFloat(p.amount) || 0
       if (p.direction === 'received') map[p.project].credits += amt
       else map[p.project].debits += amt
