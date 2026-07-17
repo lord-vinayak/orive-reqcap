@@ -19,37 +19,25 @@ export interface TemplateField {
   optional?: boolean   // if true, field can be left blank
 }
 
-// Used in CRM project detail (SendEmailModal) — add entries here as templates are provided
+// Used in CRM project detail (SendEmailModal) — matches the official email index order
 export const PROJECT_EMAIL_TEMPLATES: { value: string; label: string }[] = [
   { value: 'sample_initiation', label: 'Sample Initiation Email' },
-  { value: 'sample_payment_confirmation', label: 'Sample Payment Confirmation Email' },
   { value: 'sample_approval', label: 'Sample Approval Email' },
-  { value: 'order_initiation', label: 'Order Initiation Email - 50% Order Booking' },
-  { value: 'packaging_confirmation', label: 'Packaging Confirmation Email' },
-  { value: 'packaging_payment_confirmation', label: 'Packaging Payment Confirmation Email' },
-  { value: 'printing_confirmation', label: 'Printing Confirmation Email' },
-  { value: 'printing_payment_confirmation', label: 'Printing Payment Confirmation Email' },
-  { value: 'final_order_shipment', label: 'Final Order Shipment Email with Final Invoice' },
-  { value: 'invoice', label: 'Invoice Email (Packaging / Printing / Order)' },
+  { value: 'order_booking_invoice', label: 'Order Booking Invoice Email' },
   { value: 'payment_confirmation', label: 'Payment Confirmation Email' },
-  { value: 'order_confirmation', label: 'Order Confirmation Email' },
+  { value: 'design_content_approval', label: 'Design & Content Approval Email' },
+  { value: 'packaging_confirmation', label: 'Packaging Confirmation Email' },
+  { value: 'final_shipment', label: 'Final Shipment Email (Final Invoice)' },
+  { value: 'costing', label: 'Costing Email' },
+  { value: 'proposal', label: 'Proposal Email' },
+  { value: 'commercial_sample_approval', label: 'Commercial Sample Approval Email' },
+  { value: 'shipment_details', label: 'Shipment Details Email' },
 ]
 
 // Dynamic fields per template — only define for templates that need user input
 export const TEMPLATE_FIELDS: Record<string, TemplateField[]> = {
   sample_initiation: [
     { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
-  ],
-  sample_payment_confirmation: [
-    { key: 'product_name', label: 'Product / Brand Name', type: 'text', placeholder: 'e.g. Glow Serum' },
-    { key: 'payment_amount', label: 'Payment Amount Received (₹)', type: 'text', placeholder: 'e.g. 15,000' },
-    { key: 'date_of_receipt', label: 'Date of Receipt', type: 'date' },
-    {
-      key: 'payment_type',
-      label: 'Payment Type',
-      type: 'select',
-      options: ['Sample Payment', '10% Advance Against Order'],
-    },
   ],
   sample_approval: [
     { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
@@ -60,35 +48,7 @@ export const TEMPLATE_FIELDS: Record<string, TemplateField[]> = {
     { key: 'product3_name', label: 'Product 3 Name', type: 'text', optional: true },
     { key: 'sample3_number', label: 'Product 3 — Sample No.', type: 'text', optional: true },
   ],
-  order_initiation: [
-    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
-  ],
-  packaging_confirmation: [
-    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
-  ],
-  final_order_shipment: [
-    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
-  ],
-  printing_payment_confirmation: [
-    { key: 'product_name', label: 'Product / Brand Name', type: 'text', placeholder: 'e.g. Glow Serum' },
-    { key: 'payment_amount', label: 'Payment Amount Received (Rs.)', type: 'text', placeholder: 'e.g. 8,500' },
-    { key: 'date_of_receipt', label: 'Date of Receipt', type: 'date' },
-  ],
-  printing_confirmation: [
-    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
-  ],
-  invoice: [
-    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
-    {
-      key: 'payment_type',
-      label: 'Payment Type',
-      type: 'select',
-      options: ['Product Sample', 'Packaging Sample', 'Order'],
-    },
-    { key: 'amount', label: 'Payment Amount (Rs.)', type: 'text', placeholder: 'e.g. 22,500' },
-    { key: 'date', label: 'Date of Invoice', type: 'date' },
-  ],
-  order_confirmation: [
+  order_booking_invoice: [
     { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
   ],
   payment_confirmation: [
@@ -102,9 +62,33 @@ export const TEMPLATE_FIELDS: Record<string, TemplateField[]> = {
     { key: 'amount', label: 'Payment Amount Received (Rs.)', type: 'text', placeholder: 'e.g. 22,500' },
     { key: 'date', label: 'Date of Receipt', type: 'date' },
   ],
-  packaging_payment_confirmation: [
-    { key: 'product_name', label: 'Product / Brand Name', type: 'text', placeholder: 'e.g. Glow Serum' },
-    { key: 'payment_amount', label: 'Payment Amount Received (Rs.)', type: 'text', placeholder: 'e.g. 22,500' },
-    { key: 'date_of_receipt', label: 'Date of Receipt', type: 'date' },
+  design_content_approval: [
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
+  ],
+  packaging_confirmation: [
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
+  ],
+  final_shipment: [
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
+  ],
+  costing: [
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
+  ],
+  proposal: [
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
+  ],
+  commercial_sample_approval: [
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
+    { key: 'tracking_link', label: 'Tracking Link', type: 'text', placeholder: 'e.g. https://track.example.com/...' },
+  ],
+  shipment_details: [
+    { key: 'brand_name', label: 'Brand Name', type: 'text', placeholder: 'e.g. Lumière' },
+    {
+      key: 'shipment_type',
+      label: 'Shipment Type',
+      type: 'select',
+      options: ['Sample', 'Packaging', 'Commercial Sample', 'Final Production'],
+    },
+    { key: 'tracking_link', label: 'Tracking Link', type: 'text', placeholder: 'e.g. https://track.example.com/...' },
   ],
 }
