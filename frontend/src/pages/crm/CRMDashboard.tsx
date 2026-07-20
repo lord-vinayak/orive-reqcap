@@ -9,9 +9,13 @@ import type { Client } from '@/types'
 import { StatusBadge } from '@/components/crm/StatusBadge'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
-import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL, LEAD_BUCKET_LABEL, LEAD_BUCKET_COLOR } from '@/constants/clientStatus'
+import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL, LEAD_BUCKET_LABEL, LEAD_BUCKET_COLOR, LEAD_STATUS_OPTIONS, LEAD_SUB_STATUS_OPTIONS } from '@/constants/clientStatus'
 import type { LeadStatus, LeadBucket } from '@/constants/clientStatus'
 import { useAuthStore } from '@/store/authStore'
+import { userService } from '@/services'
+import type { User } from '@/types'
+
+const SUB_STATUS_OPTIONS = Object.values(LEAD_SUB_STATUS_OPTIONS).flatMap((opts) => opts ?? [])
 
 type SegmentKey = 'sample' | 'order_active' | 'completed'
 type PipelineFilter = 'formula_pending' | 'sample_in_pipeline' | 'delayed'
@@ -43,7 +47,11 @@ export default function CRMDashboard() {
   const [projectSearchInput, setProjectSearchInput] = useState('')
   const [projectSearch, setProjectSearch] = useState('')
   const [projectPage, setProjectPage] = useState(1)
+  const [projectPocFilter, setProjectPocFilter] = useState('')
+  const [projectStageFilter, setProjectStageFilter] = useState('')
+  const [projectSubStageFilter, setProjectSubStageFilter] = useState('')
   const PROJECT_PAGE_SIZE = 50
+  const [users, setUsers] = useState<User[]>([])
   const [clientBucketCounts, setClientBucketCounts] = useState<Record<LeadBucket, number> | null>(null)
   const [activeClientBucket, setActiveClientBucket] = useState<LeadBucket | null>(null)
   const [clientBucketRows, setClientBucketRows] = useState<Client[]>([])
@@ -52,6 +60,9 @@ export default function CRMDashboard() {
   const [clientSearchInput, setClientSearchInput] = useState('')
   const [clientSearch, setClientSearch] = useState('')
   const [clientPage, setClientPage] = useState(1)
+  const [clientPocFilter, setClientPocFilter] = useState('')
+  const [clientStageFilter, setClientStageFilter] = useState('')
+  const [clientSubStageFilter, setClientSubStageFilter] = useState('')
   const CLIENT_PAGE_SIZE = 50
   const [pipelineModal, setPipelineModal] = useState<{ filter: PipelineFilter; projects: CRMProjectList[]; loading: boolean } | null>(null)
   const pipelineModalOpenerRef = useRef<HTMLElement | null>(null)
@@ -91,6 +102,10 @@ export default function CRMDashboard() {
     clientService.getLeadBucketCounts()
       .then(setClientBucketCounts)
       .catch(() => {})
+
+    userService.list().then((res) => {
+      setUsers(Array.isArray(res) ? res : (res as any).results ?? [])
+    })
   }, [])
 
   // Debounce the project search box, and reset to page 1 when it changes.
@@ -102,10 +117,10 @@ export default function CRMDashboard() {
     return () => clearTimeout(t)
   }, [projectSearchInput])
 
-  // Reset to page 1 whenever the pipeline segment filter changes.
+  // Reset to page 1 whenever the pipeline segment or structured filters change.
   useEffect(() => {
     setProjectPage(1)
-  }, [activeSegment])
+  }, [activeSegment, projectPocFilter, projectStageFilter, projectSubStageFilter])
 
   useEffect(() => {
     setProjectsLoading(true)
@@ -114,6 +129,9 @@ export default function CRMDashboard() {
     crmApi.listProjects({
       ...(projectSearch ? { search: projectSearch } : {}),
       ...(phase ? { phase } : {}),
+      ...(projectPocFilter ? { poc: projectPocFilter } : {}),
+      ...(projectStageFilter ? { client_lead_status: projectStageFilter } : {}),
+      ...(projectSubStageFilter ? { client_lead_sub_status: projectSubStageFilter } : {}),
       page: String(projectPage),
       page_size: String(PROJECT_PAGE_SIZE),
     })
@@ -123,7 +141,7 @@ export default function CRMDashboard() {
       })
       .catch(() => { setProjects([]); setProjectCount(0) })
       .finally(() => setProjectsLoading(false))
-  }, [activeSegment, projectSearch, projectPage])
+  }, [activeSegment, projectSearch, projectPage, projectPocFilter, projectStageFilter, projectSubStageFilter])
 
   // Debounce the search box into `clientSearch`, and reset to page 1 when it changes.
   useEffect(() => {
@@ -134,10 +152,10 @@ export default function CRMDashboard() {
     return () => clearTimeout(t)
   }, [clientSearchInput])
 
-  // Reset to page 1 whenever the active bucket changes.
+  // Reset to page 1 whenever the active bucket or structured filters change.
   useEffect(() => {
     setClientPage(1)
-  }, [activeClientBucket])
+  }, [activeClientBucket, clientPocFilter, clientStageFilter, clientSubStageFilter])
 
   useEffect(() => {
     if (!activeClientBucket) { setClientBucketRows([]); setClientBucketCount(0); return }
@@ -145,6 +163,9 @@ export default function CRMDashboard() {
     clientService.list({
       lead_bucket: activeClientBucket,
       q: clientSearch || undefined,
+      poc: clientPocFilter || undefined,
+      lead_status: clientStageFilter || undefined,
+      lead_sub_status: clientSubStageFilter || undefined,
       page: clientPage,
       page_size: CLIENT_PAGE_SIZE,
     })
@@ -159,7 +180,7 @@ export default function CRMDashboard() {
       })
       .catch(() => { setClientBucketRows([]); setClientBucketCount(0) })
       .finally(() => setClientBucketLoading(false))
-  }, [activeClientBucket, clientSearch, clientPage])
+  }, [activeClientBucket, clientSearch, clientPage, clientPocFilter, clientStageFilter, clientSubStageFilter])
 
   const filteredProjects = useMemo(() => {
     if (!activeSegment) return projects
@@ -331,6 +352,45 @@ export default function CRMDashboard() {
                       />
                     </label>
                   </div>
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <select
+                      value={projectPocFilter}
+                      onChange={(e) => setProjectPocFilter(e.target.value)}
+                      aria-label="Filter projects by POC"
+                      className="text-sm h-9 px-2 rounded border border-black/15 dark:border-white/15 bg-white dark:bg-slate-900 text-black dark:text-white focus-visible:ring-2 focus-visible:ring-mustard"
+                    >
+                      <option value="">All POCs</option>
+                      {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                    <select
+                      value={projectStageFilter}
+                      onChange={(e) => { setProjectStageFilter(e.target.value); setProjectSubStageFilter('') }}
+                      aria-label="Filter projects by stage"
+                      className="text-sm h-9 px-2 rounded border border-black/15 dark:border-white/15 bg-white dark:bg-slate-900 text-black dark:text-white focus-visible:ring-2 focus-visible:ring-mustard"
+                    >
+                      <option value="">All Stages</option>
+                      {LEAD_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <select
+                      value={projectSubStageFilter}
+                      onChange={(e) => setProjectSubStageFilter(e.target.value)}
+                      aria-label="Filter projects by sub-stage"
+                      className="text-sm h-9 px-2 rounded border border-black/15 dark:border-white/15 bg-white dark:bg-slate-900 text-black dark:text-white focus-visible:ring-2 focus-visible:ring-mustard"
+                    >
+                      <option value="">All Sub-stages</option>
+                      {(projectStageFilter ? LEAD_SUB_STATUS_OPTIONS[projectStageFilter as LeadStatus] ?? [] : SUB_STATUS_OPTIONS)
+                        .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    {(projectPocFilter || projectStageFilter || projectSubStageFilter) && (
+                      <button
+                        type="button"
+                        onClick={() => { setProjectPocFilter(''); setProjectStageFilter(''); setProjectSubStageFilter('') }}
+                        className="text-xs text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                      >
+                        Clear filters ✕
+                      </button>
+                    )}
+                  </div>
                   {projectsLoading ? (
                     <p className="text-black/60 dark:text-slate-300 text-sm" role="status" aria-live="polite">Loading…</p>
                   ) : filteredProjects.length === 0 ? (
@@ -454,6 +514,47 @@ export default function CRMDashboard() {
                       </label>
                     )}
                   </div>
+                  {activeClientBucket && (
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      <select
+                        value={clientPocFilter}
+                        onChange={(e) => setClientPocFilter(e.target.value)}
+                        aria-label="Filter clients by POC"
+                        className="text-sm h-9 px-2 rounded border border-black/15 dark:border-white/15 bg-white dark:bg-slate-900 text-black dark:text-white focus-visible:ring-2 focus-visible:ring-mustard"
+                      >
+                        <option value="">All POCs</option>
+                        {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
+                      <select
+                        value={clientStageFilter}
+                        onChange={(e) => { setClientStageFilter(e.target.value); setClientSubStageFilter('') }}
+                        aria-label="Filter clients by stage"
+                        className="text-sm h-9 px-2 rounded border border-black/15 dark:border-white/15 bg-white dark:bg-slate-900 text-black dark:text-white focus-visible:ring-2 focus-visible:ring-mustard"
+                      >
+                        <option value="">All Stages</option>
+                        {LEAD_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                      <select
+                        value={clientSubStageFilter}
+                        onChange={(e) => setClientSubStageFilter(e.target.value)}
+                        aria-label="Filter clients by sub-stage"
+                        className="text-sm h-9 px-2 rounded border border-black/15 dark:border-white/15 bg-white dark:bg-slate-900 text-black dark:text-white focus-visible:ring-2 focus-visible:ring-mustard"
+                      >
+                        <option value="">All Sub-stages</option>
+                        {(clientStageFilter ? LEAD_SUB_STATUS_OPTIONS[clientStageFilter as LeadStatus] ?? [] : SUB_STATUS_OPTIONS)
+                          .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                      {(clientPocFilter || clientStageFilter || clientSubStageFilter) && (
+                        <button
+                          type="button"
+                          onClick={() => { setClientPocFilter(''); setClientStageFilter(''); setClientSubStageFilter('') }}
+                          className="text-xs text-black/50 dark:text-slate-400 hover:text-black dark:hover:text-white focus-visible:ring-2 focus-visible:ring-mustard rounded"
+                        >
+                          Clear filters ✕
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {!activeClientBucket ? (
                     <p className="text-black/60 dark:text-slate-300 text-sm">Click a segment on the Clients pie chart to see clients in that lead status.</p>
                   ) : clientBucketLoading ? (

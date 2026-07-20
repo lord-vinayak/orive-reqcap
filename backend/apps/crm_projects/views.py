@@ -361,6 +361,15 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         client = self.request.query_params.get('client')
         if client:
             qs = qs.filter(client__phone_no=client)
+        client_lead_status = self.request.query_params.get('client_lead_status')
+        if client_lead_status:
+            qs = qs.filter(client__lead_status=client_lead_status)
+        client_lead_sub_status = self.request.query_params.get('client_lead_sub_status')
+        if client_lead_sub_status:
+            qs = qs.filter(client__lead_sub_status=client_lead_sub_status)
+        poc = self.request.query_params.get('poc')
+        if poc:
+            qs = qs.filter(Q(sales_poc_id=poc) | Q(formulation_poc_id=poc))
         source_req = self.request.query_params.get('source_requirement')
         if source_req:
             qs = qs.filter(source_requirement_id=source_req)

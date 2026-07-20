@@ -59,7 +59,7 @@ export interface EmailLog {
 }
 
 export const clientService = {
-  list: async (params: { q?: string; poc?: string; lead_status?: string; lead_bucket?: string; created_after?: string; created_before?: string; page_size?: number; page?: number } = {}) =>
+  list: async (params: { q?: string; poc?: string; lead_status?: string; lead_sub_status?: string; lead_bucket?: string; created_after?: string; created_before?: string; page_size?: number; page?: number } = {}) =>
     (await api.get<{ count: number; next: string | null; previous: string | null; results: Client[] } | Client[]>('/clients/', { params })).data,
 
   /** Client counts grouped into the 5 lead-status buckets used on the dashboard pie chart. */
