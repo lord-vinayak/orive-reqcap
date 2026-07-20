@@ -864,8 +864,17 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='pipeline-projects')
     def pipeline_projects(self, request):
         filter_key = request.query_params.get('filter')
-        if filter_key not in ('formula_pending', 'sample_in_pipeline'):
+        if filter_key not in ('formula_pending', 'sample_in_pipeline', 'delayed'):
             return Response({'error': 'Invalid filter'}, status=400)
+
+        if filter_key == 'delayed':
+            projects = [
+                p for p in CRMProject.objects
+                .prefetch_related('milestones', 'stage_completions')
+                .select_related('client')
+                if project_stage_rag_keys(p)['red']
+            ]
+            return Response(CRMProjectListSerializer(projects, many=True).data)
 
         all_sample = list(
             CRMProject.objects.filter(phase='sample')

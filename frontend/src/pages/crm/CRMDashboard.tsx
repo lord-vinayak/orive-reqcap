@@ -14,12 +14,13 @@ import type { LeadStatus, LeadBucket } from '@/constants/clientStatus'
 import { useAuthStore } from '@/store/authStore'
 
 type SegmentKey = 'sample' | 'order_active' | 'completed'
-type PipelineFilter = 'formula_pending' | 'sample_in_pipeline'
+type PipelineFilter = 'formula_pending' | 'sample_in_pipeline' | 'delayed'
 type DashboardTab = 'projects' | 'clients'
 
 const PIPELINE_MODAL_TITLE: Record<PipelineFilter, string> = {
   formula_pending: 'Formula Pending',
   sample_in_pipeline: 'Sample in Pipeline',
+  delayed: 'Delayed Projects',
 }
 
 const SEGMENT_LABELS: Record<SegmentKey, string> = {
@@ -210,7 +211,7 @@ export default function CRMDashboard() {
               <h2 id="summary-heading" className="sr-only">Statistics</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard label="Total Projects" value={stats.total_projects} />
-                <StatCard label="Delayed Projects" value={stats.delayed_projects} accent="red" />
+                <StatCard label="Delayed Projects" value={stats.delayed_projects} accent="red" onClick={() => openPipelineModal('delayed')} />
                 <StatCard label="Formula Pending" value={stats.pipeline.formula_pending} onClick={() => openPipelineModal('formula_pending')} />
                 <StatCard label="Sample in Pipeline" value={stats.pipeline.sample_in_pipeline} onClick={() => openPipelineModal('sample_in_pipeline')} />
               </div>
