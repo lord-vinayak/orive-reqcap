@@ -31,6 +31,7 @@ export default function CRMProjectList() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [delayedOnly, setDelayedOnly] = useState(false)
+  const [atRiskOnly, setAtRiskOnly] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
 
   // Options derived from the currently loaded projects — ponytail: no extra endpoint needed
@@ -48,11 +49,12 @@ export default function CRMProjectList() {
   const filteredProjects = useMemo(() => projects.filter((p) => {
     if (pocFilter && p.sales_poc_name !== pocFilter && p.formulation_poc_name !== pocFilter) return false
     if (stageFilter && p.project_stage !== stageFilter) return false
-    if (delayedOnly && !p.has_delays) return false
+    if (delayedOnly && p.overall_status !== 'delayed') return false
+    if (atRiskOnly && p.overall_status !== 'at_risk') return false
     if (dateFrom && (!p.sample_booked_date || p.sample_booked_date < dateFrom)) return false
     if (dateTo && (!p.sample_booked_date || p.sample_booked_date > dateTo)) return false
     return true
-  }), [projects, pocFilter, stageFilter, delayedOnly, dateFrom, dateTo])
+  }), [projects, pocFilter, stageFilter, delayedOnly, atRiskOnly, dateFrom, dateTo])
 
   const fetchProjects = (q = '', phase = '') => {
     setLoading(true)
@@ -156,6 +158,10 @@ export default function CRMProjectList() {
           <label className="flex items-center gap-1.5 text-sm text-black/70 dark:text-slate-300 px-1">
             <input type="checkbox" checked={delayedOnly} onChange={(e) => setDelayedOnly(e.target.checked)} className="rounded accent-mustard" />
             Delayed only
+          </label>
+          <label className="flex items-center gap-1.5 text-sm text-black/70 dark:text-slate-300 px-1">
+            <input type="checkbox" checked={atRiskOnly} onChange={(e) => setAtRiskOnly(e.target.checked)} className="rounded accent-mustard" />
+            At risk only
           </label>
           <button type="submit" className="btn-primary text-sm px-4">Search</button>
         </form>
