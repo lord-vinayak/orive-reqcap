@@ -2,9 +2,13 @@ import { useEffect, useState, useId } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { api } from '@/services/api'
+import { userService } from '@/services'
+import type { User } from '@/types'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
-import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL } from '@/constants/clientStatus'
+import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL, LEAD_STATUS_OPTIONS, LEAD_SUB_STATUS_OPTIONS } from '@/constants/clientStatus'
 import type { LeadStatus } from '@/constants/clientStatus'
+
+const SUB_STATUS_OPTIONS = Object.values(LEAD_SUB_STATUS_OPTIONS).flatMap((opts) => opts ?? [])
 
 interface Client {
   phone_no: string
@@ -26,21 +30,43 @@ const PAGE_SIZE = 50
 
 export default function CRMClientList() {
   const searchId = useId()
+  const statusFilterId = useId()
+  const subStatusFilterId = useId()
+  const pocFilterId = useId()
   const [clients, setClients] = useState<Client[]>([])
   const [count, setCount] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [subStatusFilter, setSubStatusFilter] = useState('')
+  const [pocFilter, setPocFilter] = useState('')
+  const [users, setUsers] = useState<User[]>([])
   const [error, setError] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
 
-  const fetchClients = (q = '', p = 1) => {
+  useEffect(() => {
+    userService.list().then((res) => {
+      setUsers(Array.isArray(res) ? res : (res as any).results ?? [])
+    })
+  }, [])
+
+  const fetchClients = (p = 1, overrides: { q?: string; status?: string; subStatus?: string; poc?: string } = {}) => {
+    const q = overrides.q ?? search
+    const status = overrides.status ?? statusFilter
+    const subStatus = overrides.subStatus ?? subStatusFilter
+    const poc = overrides.poc ?? pocFilter
     setLoading(true)
-    api.get<PaginatedClients>('/clients/', { params: { ...(q ? { q } : {}), page: p, page_size: PAGE_SIZE } })
+    const params: Record<string, string | number> = { page: p, page_size: PAGE_SIZE }
+    if (q.trim()) params.q = q.trim()
+    if (status) params.lead_status = status
+    if (subStatus) params.lead_sub_status = subStatus
+    if (poc) params.poc = poc
+    api.get<PaginatedClients>('/clients/', { params })
       .then((r) => {
         setClients(r.data.results)
         setCount(r.data.count)
-        if (q) {
+        if (q.trim() || status || subStatus || poc) {
           const found = r.data.count
           setStatusMessage(found > 0 ? `${found} client${found !== 1 ? 's' : ''} found.` : 'No clients found.')
           setTimeout(() => setStatusMessage(''), 3000)
@@ -50,12 +76,19 @@ export default function CRMClientList() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchClients(search, page) }, [page])
+  useEffect(() => { fetchClients(page) }, [page])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setPage(1)
-    fetchClients(search.trim(), 1)
+    fetchClients(1)
+  }
+
+  const isFiltered = !!(search || statusFilter || subStatusFilter || pocFilter)
+  const resetFilters = () => {
+    setSearch(''); setStatusFilter(''); setSubStatusFilter(''); setPocFilter('')
+    setPage(1)
+    fetchClients(1, { q: '', status: '', subStatus: '', poc: '' })
   }
 
   return (
@@ -86,7 +119,7 @@ export default function CRMClientList() {
               <button
                 type="button"
                 className="btn-secondary text-sm px-4"
-                onClick={() => { setSearch(''); fetchClients() }}
+                onClick={() => { setSearch(''); setPage(1); fetchClients(1, { q: '' }) }}
                 aria-label="Clear search"
               >
                 Clear
@@ -94,6 +127,49 @@ export default function CRMClientList() {
             )}
           </div>
         </form>
+
+        {/* Structured filters */}
+        <div className="flex gap-2 flex-wrap items-end">
+          <div>
+            <label htmlFor={statusFilterId} className="block text-xs text-black/60 dark:text-slate-400 mb-1">Lead Status</label>
+            <select
+              id={statusFilterId}
+              value={statusFilter}
+              onChange={(e) => { const v = e.target.value; setStatusFilter(v); setSubStatusFilter(''); setPage(1); fetchClients(1, { status: v, subStatus: '' }) }}
+              className="border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+            >
+              <option value="">All statuses</option>
+              {LEAD_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor={subStatusFilterId} className="block text-xs text-black/60 dark:text-slate-400 mb-1">Sub-status</label>
+            <select
+              id={subStatusFilterId}
+              value={subStatusFilter}
+              onChange={(e) => { const v = e.target.value; setSubStatusFilter(v); setPage(1); fetchClients(1, { subStatus: v }) }}
+              className="border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+            >
+              <option value="">All sub-statuses</option>
+              {SUB_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor={pocFilterId} className="block text-xs text-black/60 dark:text-slate-400 mb-1">POC</label>
+            <select
+              id={pocFilterId}
+              value={pocFilter}
+              onChange={(e) => { const v = e.target.value; setPocFilter(v); setPage(1); fetchClients(1, { poc: v }) }}
+              className="border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+            >
+              <option value="">All POCs</option>
+              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+          {isFiltered && (
+            <button type="button" onClick={resetFilters} className="btn-secondary text-sm px-3 py-2">Reset</button>
+          )}
+        </div>
 
         {error && (
           <div role="alert" className="text-red-600 dark:text-red-400 text-sm">{error}</div>

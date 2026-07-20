@@ -1,4 +1,4 @@
-import { useEffect, useState, useId } from 'react'
+import { useEffect, useState, useId, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
@@ -13,16 +13,46 @@ const PHASE_OPTIONS: { value: string; label: string }[] = [
   { value: 'order', label: 'Order / Production Phase' },
 ]
 
+const stageLabel = (stage: string) => stage.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+
 export default function CRMProjectList() {
   const [searchParams, setSearchParams] = useSearchParams()
   const searchId = useId()
   const phaseFilterId = useId()
+  const pocFilterId = useId()
+  const stageFilterId = useId()
 
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [phaseFilter, setPhaseFilter] = useState<string>(searchParams.get('phase') ?? '')
+  const [pocFilter, setPocFilter] = useState('')
+  const [stageFilter, setStageFilter] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [delayedOnly, setDelayedOnly] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
+
+  // Options derived from the currently loaded projects — ponytail: no extra endpoint needed
+  const pocOptions = useMemo(() => {
+    const names = new Set<string>()
+    projects.forEach((p) => { if (p.sales_poc_name) names.add(p.sales_poc_name); if (p.formulation_poc_name) names.add(p.formulation_poc_name) })
+    return [...names].sort()
+  }, [projects])
+
+  const stageOptions = useMemo(() => {
+    const stages = new Set(projects.map((p) => p.project_stage).filter(Boolean))
+    return [...stages].sort()
+  }, [projects])
+
+  const filteredProjects = useMemo(() => projects.filter((p) => {
+    if (pocFilter && p.sales_poc_name !== pocFilter && p.formulation_poc_name !== pocFilter) return false
+    if (stageFilter && p.project_stage !== stageFilter) return false
+    if (delayedOnly && !p.has_delays) return false
+    if (dateFrom && (!p.sample_booked_date || p.sample_booked_date < dateFrom)) return false
+    if (dateTo && (!p.sample_booked_date || p.sample_booked_date > dateTo)) return false
+    return true
+  }), [projects, pocFilter, stageFilter, delayedOnly, dateFrom, dateTo])
 
   const fetchProjects = (q = '', phase = '') => {
     setLoading(true)
@@ -86,6 +116,47 @@ export default function CRMProjectList() {
               ))}
             </select>
           </div>
+          <div>
+            <label htmlFor={pocFilterId} className="sr-only">Filter by POC</label>
+            <select
+              id={pocFilterId}
+              value={pocFilter}
+              onChange={(e) => setPocFilter(e.target.value)}
+              className="border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+              aria-label="Filter by POC"
+            >
+              <option value="">All POCs</option>
+              {pocOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor={stageFilterId} className="sr-only">Filter by stage</label>
+            <select
+              id={stageFilterId}
+              value={stageFilter}
+              onChange={(e) => setStageFilter(e.target.value)}
+              className="border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+              aria-label="Filter by stage"
+            >
+              <option value="">All Stages</option>
+              {stageOptions.map((s) => <option key={s} value={s}>{stageLabel(s)}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-1 items-center">
+            <label htmlFor="date-from" className="sr-only">Sample booked from</label>
+            <input id="date-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+              aria-label="Sample booked date from"
+              className="border border-black/20 dark:border-white/20 rounded px-2 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" />
+            <span className="text-black/40 dark:text-slate-500 text-sm">–</span>
+            <label htmlFor="date-to" className="sr-only">Sample booked to</label>
+            <input id="date-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+              aria-label="Sample booked date to"
+              className="border border-black/20 dark:border-white/20 rounded px-2 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" />
+          </div>
+          <label className="flex items-center gap-1.5 text-sm text-black/70 dark:text-slate-300 px-1">
+            <input type="checkbox" checked={delayedOnly} onChange={(e) => setDelayedOnly(e.target.checked)} className="rounded accent-mustard" />
+            Delayed only
+          </label>
           <button type="submit" className="btn-primary text-sm px-4">Search</button>
         </form>
 
@@ -93,7 +164,7 @@ export default function CRMProjectList() {
           <div role="status" aria-live="polite" aria-atomic="true" className="text-black/60 dark:text-slate-300 text-sm">
             Loading projects…
           </div>
-        ) : projects.length === 0 ? (
+        ) : filteredProjects.length === 0 ? (
           <p role="status" aria-live="polite" aria-atomic="true" className="text-black/60 dark:text-slate-300 text-sm">No projects found.</p>
         ) : (
           <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
@@ -108,7 +179,7 @@ export default function CRMProjectList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                {projects.map((p) => (
+                {filteredProjects.map((p) => (
                   <tr key={p.id} className="hover:bg-black/2 dark:hover:bg-white/2">
                     <td className="px-4 py-3">
                       <Link to={`/crm/clients/${p.client}`} className="hover:underline text-black dark:text-white font-medium">

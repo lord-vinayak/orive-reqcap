@@ -247,6 +247,7 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
   const [editing, setEditing] = useState<Manufacturer | null>(null)
   const [viewing, setViewing] = useState<Manufacturer | null>(null)
   const [txnEntity, setTxnEntity] = useState<{ id: string; vendor_id: string; company_name: string; kind: 'manufacturer' | 'vendor' } | null>(null)
+  const [search, setSearch] = useState('')
 
   const load = () => {
     setLoading(true)
@@ -259,23 +260,38 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
 
   if (loading) return <LoadingState />
 
+  const q = search.trim().toLowerCase()
+  const filteredItems = q
+    ? items.filter((m) => m.company_name.toLowerCase().includes(q) || (m.poc_name ?? '').toLowerCase().includes(q))
+    : items
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-2">
-        <button
-          className="btn-secondary text-sm"
-          onClick={() => setShowImport(true)}
-          aria-label="Import manufacturers from Excel"
-        >
-          ↑ Import Excel
-        </button>
-        <button
-          className="btn-primary text-sm"
-          onClick={() => { setEditing(null); setShowModal(true) }}
-          aria-label="Add a new manufacturer"
-        >
-          + Add Manufacturer
-        </button>
+      <div className="flex justify-between gap-2 flex-wrap">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by company or POC name…"
+          aria-label="Search manufacturers"
+          className="min-w-[240px] border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+        />
+        <div className="flex gap-2">
+          <button
+            className="btn-secondary text-sm"
+            onClick={() => setShowImport(true)}
+            aria-label="Import manufacturers from Excel"
+          >
+            ↑ Import Excel
+          </button>
+          <button
+            className="btn-primary text-sm"
+            onClick={() => { setEditing(null); setShowModal(true) }}
+            aria-label="Add a new manufacturer"
+          >
+            + Add Manufacturer
+          </button>
+        </div>
       </div>
 
       {showImport && (
@@ -330,7 +346,7 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
         />
       )}
 
-      {items.length === 0 ? (
+      {filteredItems.length === 0 ? (
         <EmptyState label="manufacturers" />
       ) : (
         <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
@@ -347,7 +363,7 @@ function ManufacturerTab({ isAdmin }: { isAdmin: boolean }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5 dark:divide-white/5">
-              {items.map((m) => (
+              {filteredItems.map((m) => (
                 <tr
                   key={m.id}
                   className="hover:bg-black/2 dark:hover:bg-white/2 cursor-pointer"
@@ -539,6 +555,7 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
   const [editing, setEditing] = useState<Vendor | null>(null)
   const [viewing, setViewing] = useState<Vendor | null>(null)
   const [txnEntity, setTxnEntity] = useState<{ id: string; vendor_id: string; company_name: string; kind: 'manufacturer' | 'vendor' } | null>(null)
+  const [search, setSearch] = useState('')
 
   const load = () => {
     setLoading(true)
@@ -551,23 +568,38 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
 
   if (loading) return <LoadingState />
 
+  const q = search.trim().toLowerCase()
+  const filteredItems = q
+    ? items.filter((v) => v.company_name.toLowerCase().includes(q) || (v.poc_name ?? '').toLowerCase().includes(q))
+    : items
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-2">
-        <button
-          className="btn-secondary text-sm"
-          onClick={() => setShowImport(true)}
-          aria-label={`Import ${vendorType} vendors from Excel`}
-        >
-          ↑ Import Excel
-        </button>
-        <button
-          className="btn-primary text-sm"
-          onClick={() => { setEditing(null); setShowModal(true) }}
-          aria-label={`Add a new ${vendorType} vendor`}
-        >
-          + Add Vendor
-        </button>
+      <div className="flex justify-between gap-2 flex-wrap">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by company or POC name…"
+          aria-label={`Search ${vendorType} vendors`}
+          className="min-w-[240px] border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+        />
+        <div className="flex gap-2">
+          <button
+            className="btn-secondary text-sm"
+            onClick={() => setShowImport(true)}
+            aria-label={`Import ${vendorType} vendors from Excel`}
+          >
+            ↑ Import Excel
+          </button>
+          <button
+            className="btn-primary text-sm"
+            onClick={() => { setEditing(null); setShowModal(true) }}
+            aria-label={`Add a new ${vendorType} vendor`}
+          >
+            + Add Vendor
+          </button>
+        </div>
       </div>
 
       {showImport && (
@@ -621,7 +653,7 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
         />
       )}
 
-      {items.length === 0 ? (
+      {filteredItems.length === 0 ? (
         <EmptyState label={`${vendorType} vendors`} />
       ) : (
         <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
@@ -638,7 +670,7 @@ function VendorTab({ vendorType, isAdmin }: { vendorType: VendorType; isAdmin: b
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5 dark:divide-white/5">
-              {items.map((v) => (
+              {filteredItems.map((v) => (
                 <tr
                   key={v.id}
                   className="hover:bg-black/2 dark:hover:bg-white/2 cursor-pointer"
@@ -784,6 +816,7 @@ function InternalTeamTab({ team, isAdmin }: { team: 'formulation' | 'sales' | 'o
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<InternalTeamMember | null>(null)
+  const [search, setSearch] = useState('')
 
   const load = () => {
     setLoading(true)
@@ -796,9 +829,20 @@ function InternalTeamTab({ team, isAdmin }: { team: 'formulation' | 'sales' | 'o
 
   if (loading) return <LoadingState />
 
+  const q = search.trim().toLowerCase()
+  const filteredMembers = q ? members.filter((m) => m.name.toLowerCase().includes(q)) : members
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-between gap-2 flex-wrap">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name…"
+          aria-label={`Search ${team} team members`}
+          className="min-w-[240px] border border-black/20 dark:border-white/20 rounded px-3 py-2 text-sm bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+        />
         <button
           className="btn-primary text-sm"
           onClick={() => { setEditing(null); setShowModal(true) }}
@@ -822,7 +866,7 @@ function InternalTeamTab({ team, isAdmin }: { team: 'formulation' | 'sales' | 'o
         </Modal>
       )}
 
-      {members.length === 0 ? (
+      {filteredMembers.length === 0 ? (
         <EmptyState label={`${team} team members`} />
       ) : (
         <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
@@ -836,7 +880,7 @@ function InternalTeamTab({ team, isAdmin }: { team: 'formulation' | 'sales' | 'o
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5 dark:divide-white/5">
-              {members.map((m) => (
+              {filteredMembers.map((m) => (
                 <tr key={m.id} className="hover:bg-black/2 dark:hover:bg-white/2">
                   <td className="px-4 py-3 font-medium text-black dark:text-white">{m.name}</td>
                   <td className="px-4 py-3 text-black/70 dark:text-slate-300">{m.email || '—'}</td>
@@ -1162,11 +1206,22 @@ function TxnForm({
   )
 }
 
+const TXN_DIRECTION_OPTIONS: { value: PaymentDirection; label: string }[] = [
+  { value: 'paid', label: 'Paid' },
+  { value: 'received', label: 'Received' },
+  { value: 'payable', label: 'Payable' },
+  { value: 'receivable', label: 'Receivable' },
+]
+
 function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionModalProps) {
   const [payments, setPayments] = useState<ProjectPayment[]>([])
   const [loading, setLoading] = useState(true)
   const [formState, setFormState] = useState<'none' | 'new' | ProjectPayment>('none')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [directionFilter, setDirectionFilter] = useState('')
+  const [subTypeFilter, setSubTypeFilter] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
   const fetchPayments = () =>
     crmApi.listVendorPayments(entity.kind, entity.id)
@@ -1200,8 +1255,21 @@ function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionM
     fetchPayments()
   }
 
-  const totalPaid = payments.filter((p) => p.direction === 'paid').reduce((s, p) => s + Number(p.amount), 0)
-  const totalReceived = payments.filter((p) => p.direction === 'received').reduce((s, p) => s + Number(p.amount), 0)
+  // Sub-type options derived from the loaded transactions — ponytail: no extra endpoint needed
+  const subTypeOptions = [...new Map(payments.map((p) => [p.sub_type, p.sub_type_display])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1]))
+  const isFiltered = !!(directionFilter || subTypeFilter || dateFrom || dateTo)
+
+  const filteredPayments = payments.filter((p) => {
+    if (directionFilter && p.direction !== directionFilter) return false
+    if (subTypeFilter && p.sub_type !== subTypeFilter) return false
+    if (dateFrom && p.payment_date < dateFrom) return false
+    if (dateTo && p.payment_date > dateTo) return false
+    return true
+  })
+
+  const totalPaid = filteredPayments.filter((p) => p.direction === 'paid').reduce((s, p) => s + Number(p.amount), 0)
+  const totalReceived = filteredPayments.filter((p) => p.direction === 'received').reduce((s, p) => s + Number(p.amount), 0)
 
   return (
     <Modal
@@ -1226,10 +1294,55 @@ function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionM
         />
       )}
 
+      {payments.length > 0 && (
+        <div className="flex gap-2 flex-wrap items-end mb-3">
+          <div>
+            <label htmlFor="txn-direction-filter" className="block text-xs text-black/60 dark:text-slate-400 mb-1">Type</label>
+            <select
+              id="txn-direction-filter"
+              value={directionFilter}
+              onChange={(e) => setDirectionFilter(e.target.value)}
+              className="border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+            >
+              <option value="">All Types</option>
+              {TXN_DIRECTION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="txn-subtype-filter" className="block text-xs text-black/60 dark:text-slate-400 mb-1">Sub Type</label>
+            <select
+              id="txn-subtype-filter"
+              value={subTypeFilter}
+              onChange={(e) => setSubTypeFilter(e.target.value)}
+              className="border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
+            >
+              <option value="">All Sub Types</option>
+              {subTypeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-1 items-center">
+            <label htmlFor="txn-date-from" className="sr-only">Date from</label>
+            <input id="txn-date-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+              className="border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" />
+            <span className="text-black/40 dark:text-slate-500 text-sm">–</span>
+            <label htmlFor="txn-date-to" className="sr-only">Date to</label>
+            <input id="txn-date-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+              className="border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" />
+          </div>
+          {isFiltered && (
+            <button type="button" onClick={() => { setDirectionFilter(''); setSubTypeFilter(''); setDateFrom(''); setDateTo('') }} className="btn-secondary text-xs px-3 py-1.5">
+              Reset
+            </button>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <p className="text-sm text-black/70 dark:text-slate-300 py-4">Loading…</p>
-      ) : payments.length === 0 ? (
-        <p className="text-sm text-black/70 dark:text-slate-300 py-4">No payment transactions recorded yet.</p>
+      ) : filteredPayments.length === 0 ? (
+        <p className="text-sm text-black/70 dark:text-slate-300 py-4">
+          {payments.length === 0 ? 'No payment transactions recorded yet.' : 'No transactions match the current filters.'}
+        </p>
       ) : (
         <div className="space-y-4">
           {/* Summary strip */}
@@ -1269,7 +1382,7 @@ function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionM
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                {payments.map((p) => (
+                {filteredPayments.map((p) => (
                   <tr key={p.id} className="hover:bg-black/2 dark:hover:bg-white/2">
                     <td className="px-3 py-2 text-black/70 dark:text-slate-300 whitespace-nowrap">
                       {new Date(p.payment_date).toLocaleDateString('en-IN')}

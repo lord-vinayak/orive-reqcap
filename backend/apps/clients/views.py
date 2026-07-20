@@ -220,6 +220,10 @@ class ClientViewSet(viewsets.ModelViewSet):
         if lead_status:
             qs = qs.filter(lead_status=lead_status)
 
+        lead_sub_status = params.get('lead_sub_status')
+        if lead_sub_status:
+            qs = qs.filter(lead_sub_status=lead_sub_status)
+
         lead_bucket = params.get('lead_bucket')
         if lead_bucket:
             qs = qs.filter(lead_status__in=LEAD_BUCKETS.get(lead_bucket, []))
