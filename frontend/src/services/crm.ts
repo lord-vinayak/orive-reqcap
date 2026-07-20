@@ -311,10 +311,20 @@ export const crmApi = {
       params: { project: projectId },
     }),
 
-  listProjectPayments_range: (dateFrom: string, dateTo: string) =>
-    api.get<PaginatedResponse<ProjectPayment>>('/crm/project-payments/', {
-      params: { date_from: dateFrom, date_to: dateTo },
-    }),
+  // Fetches every page in range — Net P&L sums/breaks down the full set, not just page 1.
+  listProjectPayments_range: async (dateFrom: string, dateTo: string): Promise<ProjectPayment[]> => {
+    const all: ProjectPayment[] = []
+    let page = 1
+    for (;;) {
+      const res = await api.get<PaginatedResponse<ProjectPayment>>('/crm/project-payments/', {
+        params: { date_from: dateFrom, date_to: dateTo, page, page_size: 500 },
+      })
+      all.push(...res.data.results)
+      if (!res.data.next) break
+      page += 1
+    }
+    return all
+  },
 
   listVendorPayments: (kind: 'vendor' | 'manufacturer', entityId: string) =>
     api.get<PaginatedResponse<ProjectPayment>>('/crm/project-payments/', {

@@ -48,7 +48,7 @@ export default function CRMFinancials() {
     setLoading(true)
     setError('')
     crmApi.listProjectPayments_range(dateFrom, dateTo)
-      .then((r) => setPayments(r.data.results ?? r.data))
+      .then(setPayments)
       .catch(() => setError('Failed to load payments.'))
       .finally(() => setLoading(false))
   }, [dateFrom, dateTo])
@@ -135,7 +135,7 @@ export default function CRMFinancials() {
       }
       if (q) {
         const haystack = [
-          p.project_no, p.project_client_name,
+          p.project_no, p.project_client_name, ...p.client_names,
           p.manufacturer_name ?? '', p.vendor_name ?? '',
           p.sub_type_display || SUB_TYPE_LABEL[p.sub_type] || p.sub_type,
         ].join(' ').toLowerCase()
@@ -530,7 +530,9 @@ function AllRowsTable({ payments }: { payments: ProjectPayment[] }) {
               >
                 <td className="px-4 py-2 text-black/70 dark:text-slate-300 whitespace-nowrap">{p.payment_date}</td>
                 <td className="px-4 py-2 font-medium text-black dark:text-white">{p.project_no}</td>
-                <td className="px-4 py-2 text-black/70 dark:text-slate-300">{p.project_client_name}</td>
+                <td className="px-4 py-2 text-black/70 dark:text-slate-300">
+                  {p.project_client_name || (p.client_names.length > 0 ? p.client_names.join(', ') : '—')}
+                </td>
                 <td className="px-4 py-2 text-black/70 dark:text-slate-300">{p.sub_type_display || SUB_TYPE_LABEL[p.sub_type] || p.sub_type}</td>
                 <td className="px-4 py-2 text-black/70 dark:text-slate-300">{p.manufacturer_name ?? p.vendor_name ?? '—'}</td>
                 <td className="px-4 py-2">
