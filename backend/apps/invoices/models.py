@@ -9,8 +9,7 @@ class Invoice(models.Model):
         ('service',        'Service Invoice'),
         ('product_batch',  'Advance Invoice'),
         ('product_simple', 'Sample Invoice'),
-        ('service_size',   'Container Invoice'),
-        ('printing',       'Printing Invoice'),
+        ('printing',       'Packaging or Printing Invoice'),
         ('final',          'Final Invoice'),
     ]
 
