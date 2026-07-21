@@ -5,16 +5,18 @@ from django.http import HttpResponse
 from rest_framework import viewsets, permissions, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdmin
 from .models import (
     Manufacturer, Vendor, VendorCategory, InternalTeamMember,
-    ManufacturerRating, VendorRating, VendorProjectPayment,
+    ManufacturerRating, VendorRating, VendorProjectPayment, ServiceBaseRates,
 )
 from .serializers import (
     ManufacturerSerializer, VendorSerializer, VendorCategorySerializer,
     InternalTeamMemberSerializer,
     ManufacturerRatingSerializer, VendorRatingSerializer, VendorProjectPaymentSerializer,
+    ServiceBaseRatesSerializer,
 )
 
 
@@ -457,6 +459,22 @@ class VendorRatingViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(rated_by=self.request.user)
+
+
+class ServiceBaseRatesView(APIView):
+    """Singleton default price list for the 8 client services. GET for everyone, PATCH admin-only."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(ServiceBaseRatesSerializer(ServiceBaseRates.get_solo()).data)
+
+    def patch(self, request):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admin can edit service rates.'}, status=403)
+        serializer = ServiceBaseRatesSerializer(ServiceBaseRates.get_solo(), data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class VendorProjectPaymentViewSet(viewsets.ModelViewSet):
