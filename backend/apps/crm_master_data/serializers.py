@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     Manufacturer, Vendor, VendorCategory, InternalTeamMember,
-    ManufacturerRating, VendorRating, VendorProjectPayment,
+    ManufacturerRating, VendorRating, VendorProjectPayment, ServiceBaseRates,
 )
 
 
@@ -83,3 +83,14 @@ class VendorProjectPaymentSerializer(serializers.ModelSerializer):
         if data.get('manufacturer') and data.get('vendor'):
             raise serializers.ValidationError('Specify either manufacturer or vendor, not both.')
         return data
+
+
+class ServiceBaseRatesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceBaseRates
+        fields = [
+            'cdsco_registration', 'content_creation', 'logo_design',
+            'label_mono_carton_design', 'dermatology_testing', 'spf_testing',
+            'formulation_support', 'digital_brand_building_support', 'updated_at',
+        ]
+        read_only_fields = ['updated_at']
