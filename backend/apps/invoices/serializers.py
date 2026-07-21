@@ -16,7 +16,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'client_name', 'company_name', 'client_gstin',
             'billing_address', 'shipping_address', 'dispatch_address', 'eway_bill_no',
             'sgst_rate', 'cgst_rate', 'igst_rate',
-            'shipping_cost', 'advance_rate', 'advance_received',
+            'shipping_cost', 'advance_rate', 'advance_received', 'processing_charge_rate',
             'items',
             'drive_file_id', 'drive_url',
             'created_by_name', 'created_at',
