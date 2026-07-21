@@ -15,7 +15,7 @@ interface Props {
 
 type Step = 'template' | 'form' | 'preview' | 'generating' | 'done'
 
-const INVOICE_TYPES: InvoiceType[] = ['service', 'product_batch', 'product_simple', 'service_size', 'printing', 'final']
+const INVOICE_TYPES: InvoiceType[] = ['service', 'product_batch', 'product_simple', 'printing', 'final']
 
 const BLANK_ITEM = (): InvoiceItem => ({
   item_name: '', hsn: '', size_ml: 0,
@@ -27,7 +27,6 @@ const TYPE_ITEM_FIELDS: Record<InvoiceType, (keyof InvoiceItem)[]> = {
   service:        ['item_name', 'hsn', 'rate_per_item', 'qty'],
   product_batch:  ['item_name', 'batch_no', 'exp_date', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
   product_simple: ['item_name', 'rate_per_item', 'qty'],
-  service_size:   ['item_name', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
   printing:       ['item_name', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
   final:          ['item_name', 'batch_no', 'exp_date', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
 }
@@ -38,13 +37,18 @@ const ITEM_FIELD_LABELS: Record<keyof InvoiceItem, string> = {
   rate_per_item: 'Rate/Item', qty: 'Qty', payable: 'Payable',
 }
 
+// Printing prints "HSN / SAC" instead of the shared "HSN" label
+function fieldLabel(f: keyof InvoiceItem, invoiceType: InvoiceType): string {
+  if (f === 'hsn' && invoiceType === 'printing') return 'HSN / SAC'
+  return ITEM_FIELD_LABELS[f]
+}
+
 // Read-only computed columns per type — mirrors COLUMN_SPECS in backend/apps/invoices/pdf_export.py
 const TYPE_COMPUTED_FIELDS: Record<InvoiceType, ('Amount' | 'Payable')[]> = {
   service:        ['Amount', 'Payable'],
   product_batch:  ['Amount'],
   product_simple: ['Amount', 'Payable'],
-  service_size:   ['Payable'],
-  printing:       ['Payable'],
+  printing:       ['Amount'],
   final:          ['Payable'],
 }
 
@@ -175,7 +179,7 @@ export function GenerateInvoiceModal({
     cgst_rate: gstRates.cgst,
     igst_rate: gstRates.igst,
     shipping_cost: (invoiceType === 'product_simple' || invoiceType === 'final') ? shippingCost : 0,
-    advance_rate: invoiceType === 'product_batch' ? advanceRate : 0,
+    advance_rate: (invoiceType === 'product_batch' || invoiceType === 'printing') ? advanceRate : 0,
     dispatch_address: invoiceType === 'final' ? dispatchAddress : '',
     advance_received: invoiceType === 'final' ? advanceReceived : 0,
     items: items.filter((it) => it.item_name).map((it) => ({ ...it, payable: payableValue(it) })),
@@ -325,7 +329,7 @@ export function GenerateInvoiceModal({
                   </div>
                 </div>
               )}
-              {invoiceType === 'product_batch' && (
+              {(invoiceType === 'product_batch' || invoiceType === 'printing') && (
                 <div>
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Extras</h3>
                   <div className="grid grid-cols-2 gap-3">
@@ -352,7 +356,7 @@ export function GenerateInvoiceModal({
                       <tr className="bg-yellow-50 dark:bg-yellow-900/20">
                         {activeFields.map((f) => (
                           <th key={f} className="px-2 py-1 text-left font-semibold text-yellow-700 dark:text-yellow-400 border-b border-gray-200 dark:border-slate-600 whitespace-nowrap">
-                            {ITEM_FIELD_LABELS[f]}
+                            {fieldLabel(f, invoiceType)}
                           </th>
                         ))}
                         {computedFields.map((label) => (
