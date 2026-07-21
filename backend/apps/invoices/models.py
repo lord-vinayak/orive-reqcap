@@ -60,3 +60,36 @@ class Invoice(models.Model):
 
     def __str__(self):
         return f'{self.invoice_number} ({self.get_invoice_type_display()})'
+
+
+class BillingInfo(models.Model):
+    """One-time-per-project billing profile — client details, services taken, and
+    products to be billed. Generating an invoice pre-fills from this instead of
+    asking the user to retype everything each time."""
+    id           = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project      = models.OneToOneField(
+        'crm_projects.CRMProject', on_delete=models.CASCADE, related_name='billing_info'
+    )
+
+    client_name      = models.CharField(max_length=255)
+    company_name     = models.CharField(max_length=255, blank=True, default='')
+    client_gstin     = models.CharField(max_length=30, blank=True, default='')
+    billing_address  = models.TextField(blank=True, default='')
+    phone_no         = models.CharField(max_length=20, blank=True, default='')
+    email            = models.EmailField(blank=True, default='')
+    shipping_address = models.TextField(blank=True, default='')
+
+    # [{key, label, price}] — key matches a ServiceBaseRates field name
+    services = models.JSONField(default=list, blank=True)
+    # [{proposal_item_id, item_name, per_unit_cost}]
+    products = models.JSONField(default=list, blank=True)
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name='billing_infos_created'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'Billing Info — {self.client_name} ({self.project.project_no})'
