@@ -441,9 +441,17 @@ def _build_footer(invoice, w, styles):
 
     if invoice.invoice_type == 'product_simple':
         shipping = _d(invoice.shipping_cost)
+        sgst = sum_total * _d(invoice.sgst_rate) / 100
+        cgst = sum_total * _d(invoice.cgst_rate) / 100
+        igst = sum_total * _d(invoice.igst_rate) / 100
+        net_payable = sum_total + shipping + sgst + cgst + igst
         data = [
             _row('Shipping', _fmt(shipping)),
-            _row('Net Payable', _fmt(sum_total + shipping), bold=True),
+            _row('Sum Total Amount', _fmt(sum_total)),
+            _row('SGST', f'{invoice.sgst_rate}%    {_fmt(sgst)}'),
+            _row('CGST', f'{invoice.cgst_rate}%    {_fmt(cgst)}'),
+            _row('IGST', f'{invoice.igst_rate}%    {_fmt(igst)}'),
+            _row('Net Payable', _fmt(net_payable), bold=True),
         ]
     else:
         sgst = sum_total * _d(invoice.sgst_rate) / 100
