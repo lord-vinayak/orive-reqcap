@@ -252,6 +252,7 @@ export interface CRMProjectList {
   has_delays: boolean
   overall_status: MilestoneStatus
   next_milestone: NextMilestone | null
+  source_requirement: string | null
 }
 
 export interface CRMProject extends CRMProjectList {
@@ -503,6 +504,59 @@ export interface Invoice {
   created_by_name: string | null
   created_at: string
 }
+
+// ─── Billing Info ─────────────────────────────────────────────────────────────
+
+export const SERVICE_KEYS = [
+  'cdsco_registration', 'content_creation', 'logo_design',
+  'label_mono_carton_design', 'dermatology_testing', 'spf_testing',
+  'formulation_support', 'digital_brand_building_support',
+] as const
+
+export type ServiceKey = typeof SERVICE_KEYS[number]
+
+export const SERVICE_LABELS: Record<ServiceKey, string> = {
+  cdsco_registration: 'CDSCO Registration',
+  content_creation: 'Content Creation',
+  logo_design: 'Logo Design',
+  label_mono_carton_design: 'Label & Mono Carton Design',
+  dermatology_testing: 'Dermatology Testing',
+  spf_testing: 'SPF Testing',
+  formulation_support: 'Formulation Support',
+  digital_brand_building_support: 'Digital Brand Building Support',
+}
+
+export type ServiceBaseRates = Record<ServiceKey, number | string | null> & { updated_at: string }
+
+export interface BillingInfoService {
+  key: ServiceKey
+  label: string
+  price: number | string
+}
+
+export interface BillingInfoProduct {
+  proposal_item_id: string
+  item_name: string
+  per_unit_cost: number | string
+}
+
+export interface BillingInfo {
+  id: string
+  project: string
+  client_name: string
+  company_name: string
+  client_gstin: string
+  billing_address: string
+  phone_no: string
+  email: string
+  shipping_address: string
+  services: BillingInfoService[]
+  products: BillingInfoProduct[]
+  created_at: string
+  updated_at: string
+}
+
+export type BillingInfoPayload = Omit<BillingInfo, 'id' | 'created_at' | 'updated_at'>
 
 export interface InvoiceCreatePayload {
   project: string
