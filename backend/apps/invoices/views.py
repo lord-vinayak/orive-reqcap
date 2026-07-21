@@ -4,8 +4,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 
-from .models import Invoice
-from .serializers import InvoiceSerializer
+from .models import Invoice, BillingInfo
+from .serializers import InvoiceSerializer, BillingInfoSerializer
 from .pdf_export import build_invoice_pdf
 
 
@@ -64,3 +64,19 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             pass  # ponytail: non-fatal, same pattern as xlsx_export
 
         return Response(InvoiceSerializer(invoice).data, status=status.HTTP_201_CREATED)
+
+
+class BillingInfoViewSet(viewsets.ModelViewSet):
+    serializer_class = BillingInfoSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'post', 'patch', 'head', 'options']
+
+    def get_queryset(self):
+        qs = BillingInfo.objects.select_related('project')
+        project = self.request.query_params.get('project')
+        if project:
+            qs = qs.filter(project_id=project)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
