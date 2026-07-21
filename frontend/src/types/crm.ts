@@ -460,7 +460,7 @@ export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
 
 export const INVOICE_TYPE_COLUMNS: Record<InvoiceType, string[]> = {
   service:        ['Item', 'HSN', 'Rate/Item', 'Qty', 'Amount', 'Payable'],
-  product_batch:  ['Item', 'Batch No', 'Exp Date', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Amount'],
+  product_batch:  ['Item', 'Batch No', 'Exp Date', 'Size (ml)', 'HSN/SAC', 'Rate/Item', 'Qty', 'Amount', 'Processing Charges', 'Services'],
   product_simple: ['Item', 'Rate/Item', 'Qty', 'Amount', 'Payable'],
   printing:       ['Item', 'Size (ml)', 'HSN/SAC', 'Rate/Item', 'Qty', 'Amount'],
   final:          ['Item', 'Batch No', 'Exp Date', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Payable'],
@@ -476,6 +476,8 @@ export interface InvoiceItem {
   qty: number | string
   /** Editable override for the "Payable" column. Blank = auto (rate x qty). */
   payable?: number | string
+  /** Advance invoice only — which sub-table (Product Details vs Services) this row belongs to. */
+  category?: 'product' | 'service'
 }
 
 export interface Invoice {
@@ -498,6 +500,7 @@ export interface Invoice {
   shipping_cost: string
   advance_rate: string
   advance_received: string
+  processing_charge_rate: string
   items: InvoiceItem[]
   drive_file_id: string
   drive_url: string
@@ -576,5 +579,6 @@ export interface InvoiceCreatePayload {
   shipping_cost: string | number
   advance_rate: string | number
   advance_received?: string | number
+  processing_charge_rate?: string | number
   items: InvoiceItem[]
 }
