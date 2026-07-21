@@ -1,7 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
 from rest_framework import serializers
-from .models import Invoice
+from .models import Invoice, BillingInfo
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -41,3 +41,16 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 except (InvalidOperation, ValueError, TypeError):
                     raise serializers.ValidationError(f"Item {idx}: '{field}' must be a number, got {raw!r}.")
         return value
+
+
+class BillingInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BillingInfo
+        fields = [
+            'id', 'project',
+            'client_name', 'company_name', 'client_gstin', 'billing_address',
+            'phone_no', 'email', 'shipping_address',
+            'services', 'products',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
