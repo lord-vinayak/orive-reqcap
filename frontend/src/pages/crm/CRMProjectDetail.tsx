@@ -2,9 +2,10 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
-import type { CRMProject, ProjectNote, StageStatusResponse, StageStatusItem, ProjectPayment, InternalTeamMember, TaskItem, Invoice } from '@/types/crm'
+import type { CRMProject, ProjectNote, StageStatusResponse, StageStatusItem, ProjectPayment, InternalTeamMember, TaskItem, Invoice, BillingInfo } from '@/types/crm'
 import { INVOICE_TYPE_LABELS } from '@/types/crm'
 import { GenerateInvoiceModal } from '@/components/crm/GenerateInvoiceModal'
+import { BillingInfoModal } from '@/components/crm/BillingInfoModal'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { MilestoneTable } from '@/components/crm/MilestoneTable'
 import { VendorSidePanel } from '@/components/crm/VendorSidePanel'
@@ -74,6 +75,10 @@ export default function CRMProjectDetail() {
   const [vendorPanelOpen, setVendorPanelOpen] = useState(false)
   const [paymentPanelOpen, setPaymentPanelOpen] = useState(false)
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false)
+  const [billingInfo, setBillingInfo] = useState<BillingInfo | null>(null)
+  const [billingInfoLoaded, setBillingInfoLoaded] = useState(false)
+  const [billingInfoModalOpen, setBillingInfoModalOpen] = useState(false)
+  const [pendingInvoiceAfterBilling, setPendingInvoiceAfterBilling] = useState(false)
   const [payments, setPayments] = useState<ProjectPayment[]>([])
   const [actionSaving, setActionSaving] = useState(false)
   const [teamMembers, setTeamMembers] = useState<InternalTeamMember[]>([])
@@ -107,15 +112,39 @@ export default function CRMProjectDetail() {
     })
   }
 
+  const fetchBillingInfo = () => {
+    if (!id) return
+    crmApi.getBillingInfo(id).then((r) => {
+      setBillingInfo(r.data.results[0] ?? null)
+      setBillingInfoLoaded(true)
+    })
+  }
+
   useEffect(() => {
     if (!id) return
     Promise.all([fetchProject(), fetchStageStatus(), fetchPayments()])
       .finally(() => setLoading(false))
+    fetchBillingInfo()
     crmApi.allTeamMembers().then((r) => {
       const arr = Array.isArray(r.data) ? r.data : (r.data as any).results ?? []
       setTeamMembers(arr)
     })
   }, [id])
+
+  const handleAddInvoiceClick = () => {
+    if (billingInfo) { setInvoiceModalOpen(true); return }
+    setPendingInvoiceAfterBilling(true)
+    setBillingInfoModalOpen(true)
+  }
+
+  const handleBillingInfoSaved = (info: BillingInfo) => {
+    setBillingInfo(info)
+    setBillingInfoModalOpen(false)
+    if (pendingInvoiceAfterBilling) {
+      setPendingInvoiceAfterBilling(false)
+      setInvoiceModalOpen(true)
+    }
+  }
 
   // WS: when a task is assigned/updated by anyone, refresh stage status.
   // Skip if stage saves are in-flight — they already reconcile on completion.
@@ -276,72 +305,94 @@ export default function CRMProjectDetail() {
               />
             </div>
           </div>
-          <div className="flex items-start gap-3">
-            <button
-              type="button"
-              onClick={() => setEmailModalOpen(true)}
-              className="btn-secondary text-sm flex items-center gap-1.5"
-              aria-haspopup="dialog"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-              </svg>
-              Send Email
-            </button>
-            <button
-              type="button"
-              onClick={() => setEmailHistoryOpen(true)}
-              className="btn-secondary text-sm flex items-center gap-1.5"
-              aria-haspopup="dialog"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Email History
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaymentPanelOpen(true)}
-              className="btn-secondary text-sm flex items-center gap-1.5"
-              aria-haspopup="dialog"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-              </svg>
-              Payments
-            </button>
-            <button
-              type="button"
-              onClick={() => setVendorPanelOpen(true)}
-              className="btn-secondary text-sm flex items-center gap-1.5"
-              aria-haspopup="dialog"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-              </svg>
-              Vendors
-            </button>
-            <button
-              type="button"
-              onClick={() => setInvoiceModalOpen(true)}
-              className="btn-secondary text-sm flex items-center gap-1.5"
-              aria-haspopup="dialog"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-              </svg>
-              Add Invoice
-            </button>
-            <div className="text-sm text-black/60 dark:text-slate-300 text-right">
-              <div>
-                Project stage:{' '}
-                <span className="font-medium">
-                  {PIPELINE_LEAD_STATUS_LABEL[getPipelineLeadStatus(project.client_lead_status)]}
-                </span>
-              </div>
-              <div className="mt-0.5">Started: {new Date(project.start_date).toLocaleDateString('en-IN')}</div>
+          <div className="text-sm text-black/60 dark:text-slate-300 text-right shrink-0">
+            <div>
+              Project stage:{' '}
+              <span className="font-medium">
+                {PIPELINE_LEAD_STATUS_LABEL[getPipelineLeadStatus(project.client_lead_status)]}
+              </span>
             </div>
+            <div className="mt-0.5">Started: {new Date(project.start_date).toLocaleDateString('en-IN')}</div>
           </div>
+        </div>
+
+        {/* ── Header actions ── */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setEmailModalOpen(true)}
+            className="btn-secondary text-sm flex items-center gap-1.5"
+            aria-haspopup="dialog"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+            </svg>
+            Send Email
+          </button>
+          <button
+            type="button"
+            onClick={() => setEmailHistoryOpen(true)}
+            className="btn-secondary text-sm flex items-center gap-1.5"
+            aria-haspopup="dialog"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Email History
+          </button>
+
+          <span className="w-px h-6 bg-black/10 dark:bg-white/10" aria-hidden="true" />
+
+          <button
+            type="button"
+            onClick={() => setPaymentPanelOpen(true)}
+            className="btn-secondary text-sm flex items-center gap-1.5"
+            aria-haspopup="dialog"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+            </svg>
+            Payments
+          </button>
+          <button
+            type="button"
+            onClick={() => setVendorPanelOpen(true)}
+            className="btn-secondary text-sm flex items-center gap-1.5"
+            aria-haspopup="dialog"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+            </svg>
+            Vendors
+          </button>
+
+          <span className="w-px h-6 bg-black/10 dark:bg-white/10" aria-hidden="true" />
+
+          <button
+            type="button"
+            onClick={() => { setPendingInvoiceAfterBilling(false); setBillingInfoModalOpen(true) }}
+            className="btn-secondary text-sm flex items-center gap-1.5"
+            aria-haspopup="dialog"
+            disabled={!billingInfoLoaded}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.216.456a1.125 1.125 0 01-1.37-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.281z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {billingInfo ? 'Edit Billing Info' : 'Billing Info'}
+          </button>
+          <button
+            type="button"
+            onClick={handleAddInvoiceClick}
+            className="btn-primary text-sm flex items-center gap-1.5"
+            aria-haspopup="dialog"
+            disabled={!billingInfoLoaded}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+            Add Invoice
+          </button>
         </div>
 
         {/* ── Red flags ── */}
@@ -637,8 +688,20 @@ export default function CRMProjectDetail() {
           clientCompany={project.client_company ?? ''}
           modalOpen={invoiceModalOpen}
           setModalOpen={setInvoiceModalOpen}
+          billingInfo={billingInfo}
         />
       </div>
+
+      {billingInfoModalOpen && (
+        <BillingInfoModal
+          projectId={project.id}
+          clientPhone={project.client}
+          requirementId={project.source_requirement}
+          existing={billingInfo}
+          onClose={() => { setBillingInfoModalOpen(false); setPendingInvoiceAfterBilling(false) }}
+          onSaved={handleBillingInfoSaved}
+        />
+      )}
 
       {vendorPanelOpen && (
         <VendorSidePanel
@@ -1128,10 +1191,10 @@ function KeyLearningsSection({ projectId }: { projectId: string }) {
 // ── Invoices Section ──────────────────────────────────────────────────────────
 
 function InvoicesSection({
-  projectId, projectNo, clientName, clientCompany, modalOpen, setModalOpen,
+  projectId, projectNo, clientName, clientCompany, modalOpen, setModalOpen, billingInfo,
 }: {
   projectId: string; projectNo: string; clientName: string; clientCompany: string
-  modalOpen: boolean; setModalOpen: (v: boolean) => void
+  modalOpen: boolean; setModalOpen: (v: boolean) => void; billingInfo: BillingInfo | null
 }) {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
@@ -1199,6 +1262,7 @@ function InvoicesSection({
           projectNo={projectNo}
           clientName={clientName}
           clientCompany={clientCompany}
+          billingInfo={billingInfo}
           onClose={() => setModalOpen(false)}
           onDone={(inv) => {
             setInvoices((prev) => [inv, ...prev])
