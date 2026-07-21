@@ -190,6 +190,41 @@ class VendorRating(models.Model):
         return f'{self.vendor} — {self.rating}★'
 
 
+SERVICE_LABELS = {
+    'cdsco_registration': 'CDSCO Registration',
+    'content_creation': 'Content Creation',
+    'logo_design': 'Logo Design',
+    'label_mono_carton_design': 'Label & Mono Carton Design',
+    'dermatology_testing': 'Dermatology Testing',
+    'spf_testing': 'SPF Testing',
+    'formulation_support': 'Formulation Support',
+    'digital_brand_building_support': 'Digital Brand Building Support',
+}
+
+
+class ServiceBaseRates(models.Model):
+    """Singleton default price list for the 8 fixed client services. Admin-editable;
+    projects' BillingInfo pre-fills from these and can override per client."""
+    cdsco_registration = models.DecimalField(max_digits=10, decimal_places=2, default=5000)
+    content_creation = models.DecimalField(max_digits=10, decimal_places=2, default=5000)
+    logo_design = models.DecimalField(max_digits=10, decimal_places=2, default=5000)
+    label_mono_carton_design = models.DecimalField(max_digits=10, decimal_places=2, default=5000)
+    dermatology_testing = models.DecimalField(max_digits=10, decimal_places=2, default=15000)
+    spf_testing = models.DecimalField(max_digits=10, decimal_places=2, default=20000)
+    formulation_support = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    digital_brand_building_support = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class VendorProjectPayment(models.Model):
     """Per-project payment record for any vendor type."""
     PAYMENT_STATUS = [
