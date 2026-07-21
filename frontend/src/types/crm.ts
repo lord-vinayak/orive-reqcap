@@ -448,14 +448,13 @@ export interface PaginatedResponse<T> {
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────
 
-export type InvoiceType = 'service' | 'product_batch' | 'product_simple' | 'service_size' | 'printing' | 'final'
+export type InvoiceType = 'service' | 'product_batch' | 'product_simple' | 'printing' | 'final'
 
 export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
   service:        'Service Invoice',
   product_batch:  'Advance Invoice',
   product_simple: 'Sample Invoice',
-  service_size:   'Container Invoice',
-  printing:       'Printing Invoice',
+  printing:       'Packaging or Printing Invoice',
   final:          'Final Invoice',
 }
 
@@ -463,8 +462,7 @@ export const INVOICE_TYPE_COLUMNS: Record<InvoiceType, string[]> = {
   service:        ['Item', 'HSN', 'Rate/Item', 'Qty', 'Amount', 'Payable'],
   product_batch:  ['Item', 'Batch No', 'Exp Date', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Amount'],
   product_simple: ['Item', 'Rate/Item', 'Qty', 'Amount', 'Payable'],
-  service_size:   ['Item', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Payable'],
-  printing:       ['Item', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Payable'],
+  printing:       ['Item', 'Size (ml)', 'HSN/SAC', 'Rate/Item', 'Qty', 'Amount'],
   final:          ['Item', 'Batch No', 'Exp Date', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Payable'],
 }
 
