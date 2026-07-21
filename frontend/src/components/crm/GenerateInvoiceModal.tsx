@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { crmApi } from '@/services/crm'
-import type { Invoice, InvoiceType, InvoiceItem, InvoiceCreatePayload } from '@/types/crm'
+import type { Invoice, InvoiceType, InvoiceItem, InvoiceCreatePayload, BillingInfo } from '@/types/crm'
 import { INVOICE_TYPE_LABELS, INVOICE_TYPE_COLUMNS } from '@/types/crm'
 
 interface Props {
@@ -8,6 +8,7 @@ interface Props {
   projectNo: string
   clientName: string
   clientCompany: string
+  billingInfo: BillingInfo | null
   onClose: () => void
   onDone: (invoice: Invoice) => void
 }
@@ -37,12 +38,49 @@ const ITEM_FIELD_LABELS: Record<keyof InvoiceItem, string> = {
   rate_per_item: 'Rate/Item', qty: 'Qty',
 }
 
+// Read-only computed columns per type — mirrors COLUMN_SPECS in backend/apps/invoices/pdf_export.py
+const TYPE_COMPUTED_FIELDS: Record<InvoiceType, ('Amount' | 'Payable')[]> = {
+  service:        ['Amount', 'Payable'],
+  product_batch:  ['Amount'],
+  product_simple: ['Amount', 'Payable'],
+  service_size:   ['Payable'],
+  printing:       ['Payable'],
+  final:          ['Payable'],
+}
+
+function computeAmount(item: InvoiceItem): number {
+  const rate = Number(item.rate_per_item) || 0
+  const qty = Number(item.qty) || 0
+  return rate * qty
+}
+
+function fmtCurrency(n: number): string {
+  return `₹ ${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
 
+// Sample/Advance/Final pull from Billing Info; Printing, Service, and Container
+// stay fully manual for now (Part 1 scope — see project CLAUDE.md).
+function buildInitialItems(type: InvoiceType, billingInfo: BillingInfo | null): InvoiceItem[] {
+  if (!billingInfo) return [BLANK_ITEM()]
+  const productItems: InvoiceItem[] = billingInfo.products.map((p) => ({
+    ...BLANK_ITEM(), item_name: p.item_name, rate_per_item: p.per_unit_cost,
+  }))
+  const serviceItems: InvoiceItem[] = billingInfo.services.map((s) => ({
+    ...BLANK_ITEM(), item_name: s.label, rate_per_item: s.price, qty: 1,
+  }))
+  const items =
+    type === 'product_simple' ? productItems :
+    (type === 'product_batch' || type === 'final') ? [...productItems, ...serviceItems] :
+    []
+  return items.length ? items : [BLANK_ITEM()]
+}
+
 export function GenerateInvoiceModal({
-  projectId, projectNo, clientName, clientCompany, onClose, onDone,
+  projectId, projectNo, clientName, clientCompany, billingInfo, onClose, onDone,
 }: Props) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -56,11 +94,11 @@ export function GenerateInvoiceModal({
   // Header fields
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${projectNo}-${todayStr()}`)
   const [invoiceDate, setInvoiceDate] = useState(todayStr())
-  const [clientNameField, setClientNameField] = useState(clientName)
-  const [companyName, setCompanyName] = useState(clientCompany)
-  const [clientGstin, setClientGstin] = useState('N/A')
-  const [billingAddress, setBillingAddress] = useState('N/A')
-  const [shippingAddress, setShippingAddress] = useState('N/A')
+  const [clientNameField, setClientNameField] = useState(billingInfo?.client_name || clientName)
+  const [companyName, setCompanyName] = useState(billingInfo?.company_name || clientCompany)
+  const [clientGstin, setClientGstin] = useState(billingInfo?.client_gstin || 'N/A')
+  const [billingAddress, setBillingAddress] = useState(billingInfo?.billing_address || 'N/A')
+  const [shippingAddress, setShippingAddress] = useState(billingInfo?.shipping_address || 'N/A')
   const [ewayBillNo, setEwayBillNo] = useState('N/A')
 
   // GST — derived from billing location choice
@@ -167,6 +205,7 @@ export function GenerateInvoiceModal({
   }
 
   const activeFields = TYPE_ITEM_FIELDS[invoiceType]
+  const computedFields = TYPE_COMPUTED_FIELDS[invoiceType]
 
   return (
     <div
@@ -247,32 +286,30 @@ export function GenerateInvoiceModal({
                 </div>
               </div>
 
-              {/* GST — only shown for types that print tax rows */}
-              {invoiceType !== 'product_simple' && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Billing Location</h3>
-                  <div className="flex gap-2">
-                    {(['within', 'outside'] as const).map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => setGstLocation(opt)}
-                        className={`flex-1 rounded-lg border-2 py-2 px-3 text-sm font-medium transition-colors ${
-                          gstLocation === opt
-                            ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400'
-                            : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:border-yellow-300'
-                        }`}
-                        aria-pressed={gstLocation === opt}
-                      >
-                        {opt === 'within' ? 'Within Haryana' : 'Outside Haryana'}
-                        <span className="block text-xs font-normal mt-0.5 opacity-70">
-                          {opt === 'within' ? 'SGST 9% + CGST 9%' : 'IGST 18%'}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+              {/* GST — printed as tax rows for every invoice type */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Billing Location</h3>
+                <div className="flex gap-2">
+                  {(['within', 'outside'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setGstLocation(opt)}
+                      className={`flex-1 rounded-lg border-2 py-2 px-3 text-sm font-medium transition-colors ${
+                        gstLocation === opt
+                          ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400'
+                          : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:border-yellow-300'
+                      }`}
+                      aria-pressed={gstLocation === opt}
+                    >
+                      {opt === 'within' ? 'Within Haryana' : 'Outside Haryana'}
+                      <span className="block text-xs font-normal mt-0.5 opacity-70">
+                        {opt === 'within' ? 'SGST 9% + CGST 9%' : 'IGST 18%'}
+                      </span>
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
 
               {/* Type-specific extras */}
               {invoiceType === 'product_simple' && (
@@ -313,6 +350,11 @@ export function GenerateInvoiceModal({
                             {ITEM_FIELD_LABELS[f]}
                           </th>
                         ))}
+                        {computedFields.map((label) => (
+                          <th key={label} className="px-2 py-1 text-left font-semibold text-yellow-700 dark:text-yellow-400 border-b border-gray-200 dark:border-slate-600 whitespace-nowrap">
+                            {label}
+                          </th>
+                        ))}
                         <th className="px-2 py-1 w-8" />
                       </tr>
                     </thead>
@@ -328,6 +370,11 @@ export function GenerateInvoiceModal({
                                 type={['rate_per_item', 'qty', 'size_ml'].includes(f) ? 'number' : 'text'}
                                 min={0}
                               />
+                            </td>
+                          ))}
+                          {computedFields.map((label) => (
+                            <td key={label} className="px-2 py-1 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                              {fmtCurrency(computeAmount(item))}
                             </td>
                           ))}
                           <td className="px-1 py-1 text-center">
@@ -407,7 +454,7 @@ export function GenerateInvoiceModal({
               </button>
               <button
                 onClick={() => {
-                  setItems([BLANK_ITEM()])
+                  setItems(buildInitialItems(invoiceType, billingInfo))
                   setStep('form')
                 }}
                 className="px-4 py-2 text-sm rounded-lg bg-yellow-500 text-white font-semibold hover:bg-yellow-600"
