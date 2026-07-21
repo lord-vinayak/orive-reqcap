@@ -39,6 +39,8 @@ class Invoice(models.Model):
     advance_rate      = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     dispatch_address  = models.TextField(blank=True, default='')
     advance_received  = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # Advance invoice only — per-unit charge, multiplied by total qty across Product Details rows
+    processing_charge_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     # Line items as JSON — never queried individually
     items            = models.JSONField(default=list)
