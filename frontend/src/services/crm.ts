@@ -7,6 +7,7 @@ import type {
   StageStatusResponse, StageCompletion, TaskItem, TaskStatus,
   TaskComment, StandaloneTaskCreate, ResampleNote,
   Invoice, InvoiceCreatePayload, VendorCategory,
+  ServiceBaseRates, BillingInfo, BillingInfoPayload,
 } from '@/types/crm'
 
 // ─── Projects ────────────────────────────────────────────────────────────────
@@ -359,4 +360,23 @@ export const crmApi = {
 
   previewInvoice: (data: InvoiceCreatePayload) =>
     api.post('/invoices/preview/', data, { responseType: 'blob' }),
+
+  // ─── Billing Info ────────────────────────────────────────────────────────
+
+  getBillingInfo: (projectId: string) =>
+    api.get<PaginatedResponse<BillingInfo>>('/invoices/billing-info/', { params: { project: projectId } }),
+
+  createBillingInfo: (data: BillingInfoPayload) =>
+    api.post<BillingInfo>('/invoices/billing-info/', data),
+
+  updateBillingInfo: (id: string, data: Partial<BillingInfoPayload>) =>
+    api.patch<BillingInfo>(`/invoices/billing-info/${id}/`, data),
+
+  // ─── Service Base Rates (master) ────────────────────────────────────────
+
+  getServiceRates: () =>
+    api.get<ServiceBaseRates>('/crm/service-rates/'),
+
+  updateServiceRates: (data: Partial<ServiceBaseRates>) =>
+    api.patch<ServiceBaseRates>('/crm/service-rates/', data),
 }
