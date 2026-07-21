@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
 import { clientService } from '@/services'
-import type { Manufacturer, Vendor, InternalTeamMember, VendorType, ProjectPayment, VendorCategory, CRMProjectList, PaymentDirection } from '@/types/crm'
+import type { Manufacturer, Vendor, InternalTeamMember, VendorType, ProjectPayment, VendorCategory, CRMProjectList, PaymentDirection, ServiceBaseRates, ServiceKey } from '@/types/crm'
+import { SERVICE_KEYS, SERVICE_LABELS } from '@/types/crm'
 import type { Client } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { Modal } from '@/components/crm/Modal'
@@ -35,6 +36,7 @@ export default function CRMMasterData() {
     { id: 'sales', label: 'Sales Team' },
     { id: 'ops', label: 'Ops Team' },
     { id: 'admin', label: 'Admin' },
+    { id: 'service-rates', label: 'Service Rates' },
     ...(isAdmin ? [{ id: 'manage-categories', label: '⚙ Categories' }] : []),
   ]
   const vendorTabs = vendorCategories.map((c) => ({ id: c.slug, label: c.name }))
@@ -95,6 +97,7 @@ export default function CRMMasterData() {
               {INTERNAL_TABS.includes(activeTab as typeof INTERNAL_TABS[number]) && (
                 <InternalTeamTab team={activeTab as 'formulation' | 'sales' | 'ops'} isAdmin={isAdmin} />
               )}
+              {activeTab === 'service-rates' && <ServiceRatesTab isAdmin={isAdmin} />}
               {activeTab === 'manage-categories' && isAdmin && (
                 <ManageCategoriesPanel
                   categories={vendorCategories}
@@ -217,6 +220,80 @@ function ManageCategoriesPanel({ categories, onChanged }: {
         Slug and prefix are auto-derived from the name. Deletion is blocked if any vendors exist in that category.
       </p>
     </div>
+  )
+}
+
+// ── Service Base Rates Tab ────────────────────────────────────────────────────
+
+function ServiceRatesTab({ isAdmin }: { isAdmin: boolean }) {
+  const [rates, setRates] = useState<ServiceBaseRates | null>(null)
+  const [form, setForm] = useState<Record<ServiceKey, string>>({} as Record<ServiceKey, string>)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    crmApi.getServiceRates().then((r) => {
+      setRates(r.data)
+      setForm(Object.fromEntries(SERVICE_KEYS.map((k) => [k, r.data[k] != null ? String(r.data[k]) : ''])) as Record<ServiceKey, string>)
+    }).finally(() => setLoading(false))
+  }, [])
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true); setError(''); setSaved(false)
+    try {
+      const payload = Object.fromEntries(
+        SERVICE_KEYS.map((k) => [k, form[k] === '' ? null : form[k]])
+      ) as Partial<ServiceBaseRates>
+      const r = await crmApi.updateServiceRates(payload)
+      setRates(r.data)
+      setSaved(true)
+    } catch (err: any) {
+      const d = err.response?.data
+      setError(d ? (d.detail ?? Object.values(d).flat().join(' · ')) : 'Save failed.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading || !rates) return <LoadingState />
+
+  return (
+    <form onSubmit={handleSave} className="space-y-4 max-w-lg" aria-label="Service base rates form">
+      <p className="text-sm text-black/60 dark:text-slate-300">
+        Default prices for the 8 client services. These pre-fill a project's Billing Info when a service is selected,
+        and can still be overridden per client.
+      </p>
+      <div className="grid grid-cols-2 gap-4">
+        {SERVICE_KEYS.map((key) => (
+          <MField key={key} label={SERVICE_LABELS[key]}>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={form[key] ?? ''}
+              onChange={(e) => { setForm((f) => ({ ...f, [key]: e.target.value })); setSaved(false) }}
+              className={inp()}
+              disabled={!isAdmin}
+              placeholder="—"
+            />
+          </MField>
+        ))}
+      </div>
+
+      {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {saved && <p className="text-sm text-green-600 dark:text-green-400">Saved.</p>}
+
+      {isAdmin ? (
+        <button type="submit" className="btn-primary" disabled={saving} aria-busy={saving}>
+          {saving ? 'Saving…' : 'Save Rates'}
+        </button>
+      ) : (
+        <p className="text-xs text-black/50 dark:text-slate-500">Only admins can edit service rates.</p>
+      )}
+    </form>
   )
 }
 
