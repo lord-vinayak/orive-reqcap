@@ -34,12 +34,12 @@ const TYPE_ITEM_FIELDS: Record<InvoiceType, (keyof InvoiceItem)[]> = {
 const ITEM_FIELD_LABELS: Record<keyof InvoiceItem, string> = {
   item_name: 'Item', hsn: 'HSN', size_ml: 'Size (ml)',
   batch_no: 'Batch No', exp_date: 'Exp Date',
-  rate_per_item: 'Rate/Item', qty: 'Qty', payable: 'Payable',
+  rate_per_item: 'Rate/Item', qty: 'Qty', payable: 'Payable', category: 'Category',
 }
 
-// Printing prints "HSN / SAC" instead of the shared "HSN" label
+// Printing and Advance print "HSN / SAC" instead of the shared "HSN" label
 function fieldLabel(f: keyof InvoiceItem, invoiceType: InvoiceType): string {
-  if (f === 'hsn' && invoiceType === 'printing') return 'HSN / SAC'
+  if (f === 'hsn' && (invoiceType === 'printing' || invoiceType === 'product_batch')) return 'HSN / SAC'
   return ITEM_FIELD_LABELS[f]
 }
 
@@ -76,10 +76,10 @@ function todayStr() {
 function buildInitialItems(type: InvoiceType, billingInfo: BillingInfo | null): InvoiceItem[] {
   if (!billingInfo) return [BLANK_ITEM()]
   const productItems: InvoiceItem[] = billingInfo.products.map((p) => ({
-    ...BLANK_ITEM(), item_name: p.item_name, rate_per_item: p.per_unit_cost,
+    ...BLANK_ITEM(), item_name: p.item_name, rate_per_item: p.per_unit_cost, category: 'product',
   }))
   const serviceItems: InvoiceItem[] = billingInfo.services.map((s) => ({
-    ...BLANK_ITEM(), item_name: s.label, rate_per_item: s.price, qty: 1,
+    ...BLANK_ITEM(), item_name: s.label, rate_per_item: s.price, qty: 1, category: 'service',
   }))
   const items =
     type === 'product_simple' ? productItems :
@@ -121,6 +121,7 @@ export function GenerateInvoiceModal({
   const [advanceRate, setAdvanceRate] = useState('0')
   const [dispatchAddress, setDispatchAddress] = useState('N/A')
   const [advanceReceived, setAdvanceReceived] = useState('0')
+  const [processingChargeRate, setProcessingChargeRate] = useState('0')
 
   // Line items
   const [items, setItems] = useState<InvoiceItem[]>([BLANK_ITEM()])
@@ -162,6 +163,8 @@ export function GenerateInvoiceModal({
     setItems((prev) => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it))
   }
   const addItem = () => setItems((prev) => [...prev, BLANK_ITEM()])
+  const addProductRow = () => setItems((prev) => [...prev, { ...BLANK_ITEM(), category: 'product' }])
+  const addServiceRow = () => setItems((prev) => [...prev, { ...BLANK_ITEM(), category: 'service', qty: 1 }])
   const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx))
 
   const buildPayload = (): InvoiceCreatePayload => ({
@@ -182,6 +185,7 @@ export function GenerateInvoiceModal({
     advance_rate: (invoiceType === 'product_batch' || invoiceType === 'printing') ? advanceRate : 0,
     dispatch_address: invoiceType === 'final' ? dispatchAddress : '',
     advance_received: invoiceType === 'final' ? advanceReceived : 0,
+    processing_charge_rate: invoiceType === 'product_batch' ? processingChargeRate : 0,
     items: items.filter((it) => it.item_name).map((it) => ({ ...it, payable: payableValue(it) })),
   })
 
@@ -333,6 +337,9 @@ export function GenerateInvoiceModal({
                 <div>
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Extras</h3>
                   <div className="grid grid-cols-2 gap-3">
+                    {invoiceType === 'product_batch' && (
+                      <Field label="Processing Charge Rate (₹/unit)" value={processingChargeRate} onChange={setProcessingChargeRate} type="number" />
+                    )}
                     <Field label="Advance to be paid (%)" value={advanceRate} onChange={setAdvanceRate} type="number" />
                   </div>
                 </div>
@@ -348,74 +355,56 @@ export function GenerateInvoiceModal({
               )}
 
               {/* Line items */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Line Items</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs border border-gray-200 dark:border-slate-600 rounded">
-                    <thead>
-                      <tr className="bg-yellow-50 dark:bg-yellow-900/20">
-                        {activeFields.map((f) => (
-                          <th key={f} className="px-2 py-1 text-left font-semibold text-yellow-700 dark:text-yellow-400 border-b border-gray-200 dark:border-slate-600 whitespace-nowrap">
-                            {fieldLabel(f, invoiceType)}
-                          </th>
-                        ))}
-                        {computedFields.map((label) => (
-                          <th key={label} className="px-2 py-1 text-left font-semibold text-yellow-700 dark:text-yellow-400 border-b border-gray-200 dark:border-slate-600 whitespace-nowrap">
-                            {label}
-                          </th>
-                        ))}
-                        <th className="px-2 py-1 w-8" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((item, idx) => (
-                        <tr key={idx} className="border-b border-gray-100 dark:border-slate-700 last:border-0">
-                          {activeFields.map((f) => (
-                            <td key={f} className="px-1 py-1">
-                              <input
-                                className="w-full border border-gray-200 dark:border-slate-600 rounded px-1.5 py-1 text-xs bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-yellow-400 min-w-[60px]"
-                                value={String(item[f] ?? '')}
-                                onChange={(e) => setItem(idx, f, e.target.value)}
-                                type={['rate_per_item', 'qty', 'size_ml'].includes(f) ? 'number' : 'text'}
-                                min={0}
-                              />
-                            </td>
-                          ))}
-                          {computedFields.map((label) => (
-                            <td key={label} className="px-1 py-1 whitespace-nowrap">
-                              {label === 'Payable' ? (
-                                <input
-                                  className="w-full border border-gray-200 dark:border-slate-600 rounded px-1.5 py-1 text-xs bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-yellow-400 min-w-[70px]"
-                                  value={String(payableValue(item))}
-                                  onChange={(e) => setItem(idx, 'payable', e.target.value)}
-                                  type="number"
-                                  min={0}
-                                  aria-label={`Payable for row ${idx + 1}`}
-                                />
-                              ) : (
-                                <span className="px-1 text-gray-700 dark:text-gray-300">{fmtCurrency(computeAmount(item))}</span>
-                              )}
-                            </td>
-                          ))}
-                          <td className="px-1 py-1 text-center">
-                            {items.length > 1 && (
-                              <button
-                                onClick={() => removeItem(idx)}
-                                className="text-red-400 hover:text-red-600 text-sm leading-none"
-                                aria-label="Remove row"
-                              >×</button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {invoiceType === 'product_batch' ? (
+                <>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Product Details</h3>
+                    <ItemsTable
+                      rows={items.map((item, idx) => ({ item, idx })).filter((r) => r.item.category !== 'service')}
+                      fields={activeFields}
+                      computedFields={computedFields}
+                      invoiceType={invoiceType}
+                      setItem={setItem}
+                      removeItem={removeItem}
+                    />
+                    <button
+                      onClick={addProductRow}
+                      className="mt-2 text-xs text-yellow-600 dark:text-yellow-400 hover:underline"
+                    >+ Add product row</button>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Services</h3>
+                    <ItemsTable
+                      rows={items.map((item, idx) => ({ item, idx })).filter((r) => r.item.category === 'service')}
+                      fields={['item_name', 'rate_per_item', 'qty']}
+                      computedFields={['Amount']}
+                      invoiceType={invoiceType}
+                      setItem={setItem}
+                      removeItem={removeItem}
+                    />
+                    <button
+                      onClick={addServiceRow}
+                      className="mt-2 text-xs text-yellow-600 dark:text-yellow-400 hover:underline"
+                    >+ Add service row</button>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Line Items</h3>
+                  <ItemsTable
+                    rows={items.map((item, idx) => ({ item, idx }))}
+                    fields={activeFields}
+                    computedFields={computedFields}
+                    invoiceType={invoiceType}
+                    setItem={setItem}
+                    removeItem={removeItem}
+                  />
+                  <button
+                    onClick={addItem}
+                    className="mt-2 text-xs text-yellow-600 dark:text-yellow-400 hover:underline"
+                  >+ Add row</button>
                 </div>
-                <button
-                  onClick={addItem}
-                  className="mt-2 text-xs text-yellow-600 dark:text-yellow-400 hover:underline"
-                >+ Add row</button>
-              </div>
+              )}
 
               {error && (
                 <p className="text-red-500 text-sm" role="alert">{error}</p>
@@ -519,6 +508,81 @@ export function GenerateInvoiceModal({
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function ItemsTable({
+  rows, fields, computedFields, invoiceType, setItem, removeItem,
+}: {
+  rows: { item: InvoiceItem; idx: number }[]
+  fields: (keyof InvoiceItem)[]
+  computedFields: ('Amount' | 'Payable')[]
+  invoiceType: InvoiceType
+  setItem: (idx: number, key: keyof InvoiceItem, val: string) => void
+  removeItem: (idx: number) => void
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs border border-gray-200 dark:border-slate-600 rounded">
+        <thead>
+          <tr className="bg-yellow-50 dark:bg-yellow-900/20">
+            {fields.map((f) => (
+              <th key={f} className="px-2 py-1 text-left font-semibold text-yellow-700 dark:text-yellow-400 border-b border-gray-200 dark:border-slate-600 whitespace-nowrap">
+                {fieldLabel(f, invoiceType)}
+              </th>
+            ))}
+            {computedFields.map((label) => (
+              <th key={label} className="px-2 py-1 text-left font-semibold text-yellow-700 dark:text-yellow-400 border-b border-gray-200 dark:border-slate-600 whitespace-nowrap">
+                {label}
+              </th>
+            ))}
+            <th className="px-2 py-1 w-8" />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ item, idx }) => (
+            <tr key={idx} className="border-b border-gray-100 dark:border-slate-700 last:border-0">
+              {fields.map((f) => (
+                <td key={f} className="px-1 py-1">
+                  <input
+                    className="w-full border border-gray-200 dark:border-slate-600 rounded px-1.5 py-1 text-xs bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-yellow-400 min-w-[60px]"
+                    value={String(item[f] ?? '')}
+                    onChange={(e) => setItem(idx, f, e.target.value)}
+                    type={['rate_per_item', 'qty', 'size_ml'].includes(f) ? 'number' : 'text'}
+                    min={0}
+                  />
+                </td>
+              ))}
+              {computedFields.map((label) => (
+                <td key={label} className="px-1 py-1 whitespace-nowrap">
+                  {label === 'Payable' ? (
+                    <input
+                      className="w-full border border-gray-200 dark:border-slate-600 rounded px-1.5 py-1 text-xs bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-yellow-400 min-w-[70px]"
+                      value={String(payableValue(item))}
+                      onChange={(e) => setItem(idx, 'payable', e.target.value)}
+                      type="number"
+                      min={0}
+                      aria-label={`Payable for row ${idx + 1}`}
+                    />
+                  ) : (
+                    <span className="px-1 text-gray-700 dark:text-gray-300">{fmtCurrency(computeAmount(item))}</span>
+                  )}
+                </td>
+              ))}
+              <td className="px-1 py-1 text-center">
+                {rows.length > 1 && (
+                  <button
+                    onClick={() => removeItem(idx)}
+                    className="text-red-400 hover:text-red-600 text-sm leading-none"
+                    aria-label="Remove row"
+                  >×</button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
