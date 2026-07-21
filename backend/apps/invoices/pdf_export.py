@@ -118,21 +118,13 @@ COLUMN_SPECS = {
         ('Amount',      '_amount',      28),
         ('Payable',     '_payable',      34),
     ],
-    'service_size': [
-        ('Item',        'item_name',    56),
-        ('Size (in ml)','size_ml',      22),
-        ('HSN',         'hsn',          18),
-        ('Rate / Item', 'rate_per_item',26),
-        ('Qty',         'qty',          14),
-        ('Payable',     '_payable',      32),
-    ],
     'printing': [
-        ('Item',        'item_name',    56),
-        ('Size (in ml)','size_ml',      22),
-        ('HSN',         'hsn',          18),
-        ('Rate / Item', 'rate_per_item',26),
+        ('Item',        'item_name',    50),
+        ('Size (in ml)','size_ml',      20),
+        ('HSN / SAC',   'hsn',          20),
+        ('Rate / Item', 'rate_per_item',24),
         ('Qty',         'qty',          14),
-        ('Payable',     '_payable',      32),
+        ('Amount',      '_amount',      26),
     ],
     'final': [
         ('Item',        'item_name',    44),
@@ -327,6 +319,23 @@ def _build_bill_to(invoice, w, styles):
         ]
         col_widths = [col1_w, col2_w, col3_w, col4_w]
         hdr_span = (0, 0), (3, 0)
+    elif invoice.invoice_type == 'printing':
+        col1_w = w * 0.45
+        col2_w = w * 0.55
+        hdr_row = [
+            Paragraph('BILL TO', hdr_s),
+            Paragraph('BILLING ADDRESS', hdr_s),
+        ]
+        data_row = [
+            Table([
+                [Paragraph('CLIENT',  lbl_s), Paragraph(invoice.client_name, bold_s)],
+                [Paragraph('COMPANY', lbl_s), Paragraph(invoice.company_name or '0', val_s)],
+                [Paragraph('GSTIN:',  lbl_s), Paragraph(invoice.client_gstin or '0', val_s)],
+            ], colWidths=[col1_w * 0.4, col1_w * 0.6]),
+            Paragraph(invoice.billing_address or '0', val_s),
+        ]
+        col_widths = [col1_w, col2_w]
+        hdr_span = (0, 0), (1, 0)
     else:
         col1_w = w * 0.35
         col2_w = w * 0.325
@@ -472,7 +481,7 @@ def _build_footer(invoice, w, styles):
             _row('Net Payable', _fmt(net), bold=True),
         ]
 
-        if invoice.invoice_type == 'product_batch' and _d(invoice.advance_rate):
+        if invoice.invoice_type in ('product_batch', 'printing') and _d(invoice.advance_rate):
             advance_amt = net * _d(invoice.advance_rate) / 100
             data.append(_row('Advance to be paid', f'{invoice.advance_rate}%    {_fmt(advance_amt)}'))
 
