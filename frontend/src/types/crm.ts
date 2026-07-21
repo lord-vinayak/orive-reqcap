@@ -476,6 +476,8 @@ export interface InvoiceItem {
   exp_date: string
   rate_per_item: number | string
   qty: number | string
+  /** Editable override for the "Payable" column. Blank = auto (rate x qty). */
+  payable?: number | string
 }
 
 export interface Invoice {

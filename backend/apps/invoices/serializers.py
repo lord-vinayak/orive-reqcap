@@ -32,7 +32,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         for idx, item in enumerate(value, start=1):
             if not isinstance(item, dict):
                 raise serializers.ValidationError(f'Item {idx} must be an object.')
-            for field in ('rate_per_item', 'qty'):
+            for field in ('rate_per_item', 'qty', 'payable'):
                 raw = item.get(field)
                 if raw is None or raw == '':
                     continue

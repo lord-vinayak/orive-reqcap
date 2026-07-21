@@ -19,7 +19,7 @@ const INVOICE_TYPES: InvoiceType[] = ['service', 'product_batch', 'product_simpl
 
 const BLANK_ITEM = (): InvoiceItem => ({
   item_name: '', hsn: '', size_ml: 0,
-  batch_no: 'NA', exp_date: 'NA', rate_per_item: 0, qty: 0,
+  batch_no: 'NA', exp_date: 'NA', rate_per_item: 0, qty: 0, payable: '',
 })
 
 // Which item fields each template uses
@@ -35,7 +35,7 @@ const TYPE_ITEM_FIELDS: Record<InvoiceType, (keyof InvoiceItem)[]> = {
 const ITEM_FIELD_LABELS: Record<keyof InvoiceItem, string> = {
   item_name: 'Item', hsn: 'HSN', size_ml: 'Size (ml)',
   batch_no: 'Batch No', exp_date: 'Exp Date',
-  rate_per_item: 'Rate/Item', qty: 'Qty',
+  rate_per_item: 'Rate/Item', qty: 'Qty', payable: 'Payable',
 }
 
 // Read-only computed columns per type — mirrors COLUMN_SPECS in backend/apps/invoices/pdf_export.py
@@ -52,6 +52,11 @@ function computeAmount(item: InvoiceItem): number {
   const rate = Number(item.rate_per_item) || 0
   const qty = Number(item.qty) || 0
   return rate * qty
+}
+
+// Payable defaults to rate x qty but can be overridden per row; blank means "auto".
+function payableValue(item: InvoiceItem): number | string {
+  return item.payable === '' || item.payable == null ? computeAmount(item) : item.payable
 }
 
 function fmtCurrency(n: number): string {
@@ -173,7 +178,7 @@ export function GenerateInvoiceModal({
     advance_rate: invoiceType === 'product_batch' ? advanceRate : 0,
     dispatch_address: invoiceType === 'final' ? dispatchAddress : '',
     advance_received: invoiceType === 'final' ? advanceReceived : 0,
-    items: items.filter((it) => it.item_name),
+    items: items.filter((it) => it.item_name).map((it) => ({ ...it, payable: payableValue(it) })),
   })
 
   const handlePreview = async () => {
@@ -373,8 +378,19 @@ export function GenerateInvoiceModal({
                             </td>
                           ))}
                           {computedFields.map((label) => (
-                            <td key={label} className="px-2 py-1 whitespace-nowrap text-gray-700 dark:text-gray-300">
-                              {fmtCurrency(computeAmount(item))}
+                            <td key={label} className="px-1 py-1 whitespace-nowrap">
+                              {label === 'Payable' ? (
+                                <input
+                                  className="w-full border border-gray-200 dark:border-slate-600 rounded px-1.5 py-1 text-xs bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-yellow-400 min-w-[70px]"
+                                  value={String(payableValue(item))}
+                                  onChange={(e) => setItem(idx, 'payable', e.target.value)}
+                                  type="number"
+                                  min={0}
+                                  aria-label={`Payable for row ${idx + 1}`}
+                                />
+                              ) : (
+                                <span className="px-1 text-gray-700 dark:text-gray-300">{fmtCurrency(computeAmount(item))}</span>
+                              )}
                             </td>
                           ))}
                           <td className="px-1 py-1 text-center">

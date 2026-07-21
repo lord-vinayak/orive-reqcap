@@ -99,7 +99,7 @@ COLUMN_SPECS = {
         ('Rate / Item', 'rate_per_item',28),
         ('Qty',         'qty',          14),
         ('Amount',      '_amount',      28),
-        ('Payable',     '_amount',      28),
+        ('Payable',     '_payable',      28),
     ],
     'product_batch': [
         ('Item',        'item_name',    44),
@@ -116,7 +116,7 @@ COLUMN_SPECS = {
         ('Rate / Item', 'rate_per_item',30),
         ('Qty',         'qty',          16),
         ('Amount',      '_amount',      28),
-        ('Payable',     '_amount',      34),
+        ('Payable',     '_payable',      34),
     ],
     'service_size': [
         ('Item',        'item_name',    56),
@@ -124,7 +124,7 @@ COLUMN_SPECS = {
         ('HSN',         'hsn',          18),
         ('Rate / Item', 'rate_per_item',26),
         ('Qty',         'qty',          14),
-        ('Payable',     '_amount',      32),
+        ('Payable',     '_payable',      32),
     ],
     'printing': [
         ('Item',        'item_name',    56),
@@ -132,7 +132,7 @@ COLUMN_SPECS = {
         ('HSN',         'hsn',          18),
         ('Rate / Item', 'rate_per_item',26),
         ('Qty',         'qty',          14),
-        ('Payable',     '_amount',      32),
+        ('Payable',     '_payable',      32),
     ],
     'final': [
         ('Item',        'item_name',    44),
@@ -142,7 +142,7 @@ COLUMN_SPECS = {
         ('HSN',         'hsn',          16),
         ('Rate / Item', 'rate_per_item',22),
         ('Qty',         'qty',          12),
-        ('Payable',     '_amount',      22),
+        ('Payable',     '_payable',      22),
     ],
 }
 
@@ -164,6 +164,11 @@ def _fmt(val):
 def _get_cell(item, key):
     if key == '_amount':
         return _fmt(_d(item.get('rate_per_item', 0)) * _d(item.get('qty', 0)))
+    if key == '_payable':
+        payable = item.get('payable')
+        if payable is None or payable == '':
+            payable = _d(item.get('rate_per_item', 0)) * _d(item.get('qty', 0))
+        return _fmt(payable)
     v = item.get(key, '')
     if v is None or v == '':
         return '0'
@@ -396,7 +401,7 @@ def _build_items_table(invoice, w, styles):
         row = []
         for label, key, _ in specs:
             raw = _get_cell(item, key)
-            if key in ('rate_per_item', '_amount') or (key == 'qty' and raw != '0'):
+            if key in ('rate_per_item', '_amount', '_payable') or (key == 'qty' and raw != '0'):
                 row.append(Paragraph(raw, num_s))
             else:
                 row.append(Paragraph(raw, cell_s))
