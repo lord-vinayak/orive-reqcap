@@ -44,6 +44,9 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
   const [phoneNo, setPhoneNo] = useState(existing?.phone_no ?? clientPhone)
   const [email, setEmail] = useState(existing?.email ?? '')
   const [shippingAddress, setShippingAddress] = useState(existing?.shipping_address ?? '')
+  const [dispatchFromName, setDispatchFromName] = useState(existing?.dispatch_from_name ?? '')
+  const [dispatchFromGstin, setDispatchFromGstin] = useState(existing?.dispatch_from_gstin ?? '')
+  const [dispatchFromAddress, setDispatchFromAddress] = useState(existing?.dispatch_from_address ?? '')
 
   const [servicePrices, setServicePrices] = useState<Record<ServiceKey, string>>(
     () => Object.fromEntries(SERVICE_KEYS.map((k) => [k, ''])) as Record<ServiceKey, string>
@@ -184,6 +187,9 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
       phone_no: phoneNo,
       email,
       shipping_address: shippingAddress,
+      dispatch_from_name: dispatchFromName,
+      dispatch_from_gstin: dispatchFromGstin,
+      dispatch_from_address: dispatchFromAddress,
       services: SERVICE_KEYS.filter((k) => selectedServices.has(k)).map((k) => ({
         key: k, label: SERVICE_LABELS[k], price: servicePrices[k] || 0,
       })),
@@ -236,6 +242,16 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
               <Field label="Email" value={email} onChange={setEmail} type="email" />
               <Field label="Billing Address (as per GST)" value={billingAddress} onChange={setBillingAddress} />
               <Field label="Shipping Address (for dispatches)" value={shippingAddress} onChange={setShippingAddress} />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Dispatch From (Final invoice)</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Where the goods actually ship from — e.g. a manufacturer's facility, if different from us.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Dispatch From — Name" value={dispatchFromName} onChange={setDispatchFromName} />
+              <Field label="Dispatch From — GSTIN" value={dispatchFromGstin} onChange={setDispatchFromGstin} />
+              <Field label="Dispatch From — Address" value={dispatchFromAddress} onChange={setDispatchFromAddress} />
             </div>
           </div>
 
