@@ -93,14 +93,6 @@ def _find_logo():
 
 # ── Column specs per invoice type ────────────────────────────────────────────
 COLUMN_SPECS = {
-    'service': [
-        ('Item',        'item_name',    60),
-        ('HSN',         'hsn',          20),
-        ('Rate / Item', 'rate_per_item',28),
-        ('Qty',         'qty',          14),
-        ('Amount',      '_amount',      28),
-        ('Payable',     '_payable',      28),
-    ],
     'product_batch': [
         ('Item',        'item_name',    44),
         ('Batch No',    'batch_no',     18),
@@ -131,10 +123,10 @@ COLUMN_SPECS = {
         ('Batch No',    'batch_no',     18),
         ('Exp Date',    'exp_date',     18),
         ('Size (in ml)','size_ml',      18),
-        ('HSN',         'hsn',          16),
+        ('HSN / SAC',   'hsn',          16),
         ('Rate / Item', 'rate_per_item',22),
         ('Qty',         'qty',          12),
-        ('Payable',     '_payable',      22),
+        ('Amount',      '_amount',      22),
     ],
 }
 
@@ -188,6 +180,8 @@ def build_invoice_pdf(invoice) -> bytes:
     story += _build_bill_to(invoice, w, styles)
     if invoice.invoice_type == 'product_batch':
         story += _build_advance_body(invoice, w, styles)
+    elif invoice.invoice_type == 'final':
+        story += _build_final_body(invoice, w, styles)
     else:
         story += _build_items_table(invoice.items or [], COLUMN_SPECS[invoice.invoice_type], w, styles)
         story += _build_footer(invoice, w, styles)
@@ -297,32 +291,7 @@ def _build_bill_to(invoice, w, styles):
     bold_s = ParagraphStyle('BillBold', parent=styles['Normal'],
                              fontSize=8, fontName=_FONT_BOLD, textColor=BLACK)
 
-    is_final = invoice.invoice_type == 'final'
-
-    if is_final:
-        col1_w = w * 0.28
-        col2_w = w * 0.24
-        col3_w = w * 0.24
-        col4_w = w * 0.24
-        hdr_row = [
-            Paragraph('BILL TO', hdr_s),
-            Paragraph('BILLING ADDRESS', hdr_s),
-            Paragraph('SHIPPING ADDRESS', hdr_s),
-            Paragraph('DISPATCH ADDRESS', hdr_s),
-        ]
-        data_row = [
-            Table([
-                [Paragraph('CLIENT',  lbl_s), Paragraph(invoice.client_name, bold_s)],
-                [Paragraph('COMPANY', lbl_s), Paragraph(invoice.company_name or '0', val_s)],
-                [Paragraph('GSTIN:',  lbl_s), Paragraph(invoice.client_gstin or '0', val_s)],
-            ], colWidths=[col1_w * 0.4, col1_w * 0.6]),
-            Paragraph(invoice.billing_address or '0', val_s),
-            Paragraph(invoice.shipping_address or '0', val_s),
-            Paragraph(getattr(invoice, 'dispatch_address', '') or '0', val_s),
-        ]
-        col_widths = [col1_w, col2_w, col3_w, col4_w]
-        hdr_span = (0, 0), (3, 0)
-    elif invoice.invoice_type == 'printing':
+    if invoice.invoice_type == 'printing':
         col1_w = w * 0.45
         col2_w = w * 0.55
         hdr_row = [
@@ -375,9 +344,16 @@ def _build_bill_to(invoice, w, styles):
         ('RIGHTPADDING', (0,0),(-1,-1), 3),
     ]))
 
+    result = [outer]
+
+    # Final invoices add an ISSUED BY / DISPATCH FROM row — dispatch may be from a
+    # manufacturer's facility, not our own registered office.
+    if invoice.invoice_type == 'final':
+        result.append(_build_issued_dispatch_row(invoice, w, styles))
+
     # Advance invoices skip the Eway Bill row (not applicable pre-dispatch)
     if invoice.invoice_type == 'product_batch':
-        return [outer]
+        return result
 
     eway_tbl = Table(
         [[Paragraph('Eway Bill No', lbl_s), Paragraph(invoice.eway_bill_no or 'XX', val_s)]],
@@ -390,8 +366,44 @@ def _build_bill_to(invoice, w, styles):
         ('LEFTPADDING',  (0,0),(-1,-1), 3),
         ('RIGHTPADDING', (0,0),(-1,-1), 3),
     ]))
+    result.append(eway_tbl)
 
-    return [outer, eway_tbl]
+    return result
+
+
+def _build_issued_dispatch_row(invoice, w, styles):
+    """Final invoice only — ISSUED BY (fixed Skinovation address) / DISPATCH FROM
+    (manufacturer details captured in Billing Info, copied onto the invoice)."""
+    hdr_s = ParagraphStyle('IssuedHdr', parent=styles['Normal'],
+                            fontSize=8, fontName=_FONT_BOLD, textColor=BLACK)
+    val_s = ParagraphStyle('IssuedVal', parent=styles['Normal'],
+                            fontSize=8, textColor=BLACK, fontName=_FONT)
+
+    col1_w = w * 0.45
+    col2_w = w * 0.55
+
+    dispatch_parts = [
+        invoice.dispatch_from_name,
+        f'GSTIN: {invoice.dispatch_from_gstin}' if invoice.dispatch_from_gstin else '',
+        invoice.dispatch_from_address,
+    ]
+    dispatch_text = ' | '.join(p for p in dispatch_parts if p) or '0'
+
+    tbl = Table([
+        [Paragraph('ISSUED BY', hdr_s), Paragraph('DISPATCH FROM', hdr_s)],
+        [Paragraph(f'{COMPANY_NAME}. {COMPANY_ADDR}', val_s), Paragraph(dispatch_text, val_s)],
+    ], colWidths=[col1_w, col2_w])
+    tbl.setStyle(TableStyle([
+        ('BOX',       (0,0),(-1,-1), 0.5, colors.black),
+        ('LINEBELOW', (0,0),(-1,0),  0.5, colors.black),
+        ('BACKGROUND',(0,0),(-1,0),  LIGHT_BG),
+        ('VALIGN',    (0,0),(-1,-1), 'TOP'),
+        ('TOPPADDING',   (0,0),(-1,-1), 2),
+        ('BOTTOMPADDING',(0,0),(-1,-1), 2),
+        ('LEFTPADDING',  (0,0),(-1,-1), 3),
+        ('RIGHTPADDING', (0,0),(-1,-1), 3),
+    ]))
+    return tbl
 
 
 def _build_items_table(items, specs, w, styles):
@@ -493,17 +505,6 @@ def _build_footer(invoice, w, styles):
             advance_amt = net * _d(invoice.advance_rate) / 100
             data.append(_row('Advance to be paid', _fmt(advance_amt), rate=f'{invoice.advance_rate}%'))
 
-        if invoice.invoice_type == 'final':
-            shipping = _d(getattr(invoice, 'shipping_cost', 0))
-            advance_received = _d(getattr(invoice, 'advance_received', 0))
-            total_payable = net + shipping
-            net_payable = total_payable - advance_received
-            data[-1] = _row('Total Payable', _fmt(total_payable), bold=True)
-            if shipping:
-                data.insert(-1, _row('Shipping', _fmt(shipping)))
-            data.append(_row('Advance Received', _fmt(advance_received)))
-            data.append(_row('Net Payable', _fmt(net_payable), bold=True))
-
     return [_labelval_table(data, label_w, rate_w, val_w)]
 
 
@@ -548,22 +549,24 @@ ADVANCE_NOTE = (
 )
 
 
-def _build_advance_body(invoice, w, styles):
-    """Advance invoice — Product Details (+ Processing Charges) / Services / totals.
-
-    Structurally different from every other type: two separate item sub-tables with
-    their own sub-totals, a per-unit Processing Charges line, and a fixed disclaimer note.
-    """
-    lbl_s  = ParagraphStyle('AdvLbl',  parent=styles['Normal'],
+def _labelval_styles(styles, prefix):
+    """Label/rate/amount ParagraphStyle set, shared by Advance and Final's totals tables."""
+    lbl_s  = ParagraphStyle(f'{prefix}Lbl',  parent=styles['Normal'],
                              fontSize=8, fontName=_FONT_BOLD, textColor=MUSTARD)
-    rate_s = ParagraphStyle('AdvRate', parent=styles['Normal'],
+    rate_s = ParagraphStyle(f'{prefix}Rate', parent=styles['Normal'],
                              fontSize=8, textColor=GREY_TEXT, fontName=_FONT, alignment=TA_RIGHT)
-    val_s  = ParagraphStyle('AdvVal',  parent=styles['Normal'],
+    val_s  = ParagraphStyle(f'{prefix}Val',  parent=styles['Normal'],
                              fontSize=8, textColor=BLACK, fontName=_FONT, alignment=TA_RIGHT)
-    bold_s = ParagraphStyle('AdvBold', parent=styles['Normal'],
+    bold_s = ParagraphStyle(f'{prefix}Bold', parent=styles['Normal'],
                              fontSize=8, fontName=_FONT_BOLD, textColor=BLACK, alignment=TA_RIGHT)
-    note_s = ParagraphStyle('AdvNote', parent=styles['Normal'],
-                             fontSize=7, fontName=_FONT_BOLD, textColor=BLACK, leading=10)
+    return lbl_s, rate_s, val_s, bold_s
+
+
+def _build_product_services_sections(invoice, w, styles, column_spec_key):
+    """Shared by Advance and Final invoices — Product Details (with an inline Processing
+    Charges row) and Services sub-tables, each ending in a bold sub-total row.
+    Returns (story, product_total, services_total) so the caller appends its own footer."""
+    lbl_s, rate_s, val_s, bold_s = _labelval_styles(styles, 'PS')
 
     def _row(label, value, rate='', bold=False):
         return [Paragraph(label, lbl_s), Paragraph(rate, rate_s), Paragraph(value, bold_s if bold else val_s)]
@@ -589,8 +592,36 @@ def _build_advance_body(invoice, w, styles):
         'qty': str(total_qty),
     }
     product_total = product_sum + processing_amt
-
     services_total = sum(_d(it.get('rate_per_item', 0)) * _d(it.get('qty', 1) or 1) for it in services)
+
+    story = []
+    story.append(_section_bar('Product Details', w, styles))
+    story += _build_items_table(products + [processing_row], COLUMN_SPECS[column_spec_key], w, styles)
+    story.append(_labelval_table([_row('Product Total', _fmt(product_total), bold=True)], label_w, rate_w, val_w))
+    story.append(Spacer(1, 2*mm))
+
+    story.append(_section_bar('Services', w, styles))
+    story += _build_items_table(services, COLUMN_SPECS[column_spec_key], w, styles)
+    story.append(_labelval_table([_row('Services Total', _fmt(services_total), bold=True)], label_w, rate_w, val_w))
+    story.append(Spacer(1, 2*mm))
+
+    return story, product_total, services_total
+
+
+def _build_advance_body(invoice, w, styles):
+    """Advance invoice — Product Details (+ Processing Charges) / Services / totals,
+    ending in a percentage-based Advance-to-be-paid row and a fixed disclaimer note."""
+    story, product_total, services_total = _build_product_services_sections(invoice, w, styles, 'product_batch')
+    lbl_s, rate_s, val_s, bold_s = _labelval_styles(styles, 'Adv')
+    note_s = ParagraphStyle('AdvNote', parent=styles['Normal'],
+                             fontSize=7, fontName=_FONT_BOLD, textColor=BLACK, leading=10)
+
+    def _row(label, value, rate='', bold=False):
+        return [Paragraph(label, lbl_s), Paragraph(rate, rate_s), Paragraph(value, bold_s if bold else val_s)]
+
+    label_w = w * 0.55
+    rate_w  = w * 0.15
+    val_w   = w * 0.30
 
     total_payable = product_total + services_total
     sgst = total_payable * _d(invoice.sgst_rate) / 100
@@ -598,17 +629,6 @@ def _build_advance_body(invoice, w, styles):
     igst = total_payable * _d(invoice.igst_rate) / 100
     net_payable = total_payable + sgst + cgst + igst
     advance_amt = net_payable * _d(invoice.advance_rate) / 100
-
-    story = []
-    story.append(_section_bar('Product Details', w, styles))
-    story += _build_items_table(products + [processing_row], COLUMN_SPECS['product_batch'], w, styles)
-    story.append(_labelval_table([_row('Product Total', _fmt(product_total), bold=True)], label_w, rate_w, val_w))
-    story.append(Spacer(1, 2*mm))
-
-    story.append(_section_bar('Services', w, styles))
-    story += _build_items_table(services, COLUMN_SPECS['product_batch'], w, styles)
-    story.append(_labelval_table([_row('Services Total', _fmt(services_total), bold=True)], label_w, rate_w, val_w))
-    story.append(Spacer(1, 2*mm))
 
     story.append(_labelval_table([
         _row('Total Payable (Product+Services)', _fmt(total_payable)),
@@ -620,4 +640,39 @@ def _build_advance_body(invoice, w, styles):
     ], label_w, rate_w, val_w))
     story.append(Spacer(1, 1*mm))
     story.append(Paragraph(ADVANCE_NOTE, note_s))
+    return story
+
+
+def _build_final_body(invoice, w, styles):
+    """Final invoice — Product Details (+ Processing Charges) / Services / Shipment / totals,
+    settling against the flat Advance Paid amount already collected on a prior Advance invoice."""
+    story, product_total, services_total = _build_product_services_sections(invoice, w, styles, 'final')
+    lbl_s, rate_s, val_s, bold_s = _labelval_styles(styles, 'Fin')
+
+    def _row(label, value, rate='', bold=False):
+        return [Paragraph(label, lbl_s), Paragraph(rate, rate_s), Paragraph(value, bold_s if bold else val_s)]
+
+    label_w = w * 0.55
+    rate_w  = w * 0.15
+    val_w   = w * 0.30
+
+    shipment = _d(invoice.shipping_cost)
+    total_payable = product_total + services_total + shipment
+    sgst = total_payable * _d(invoice.sgst_rate) / 100
+    cgst = total_payable * _d(invoice.cgst_rate) / 100
+    igst = total_payable * _d(invoice.igst_rate) / 100
+    payable_post_tax = total_payable + sgst + cgst + igst
+    advance_paid = _d(invoice.advance_received)
+    net_payable = payable_post_tax - advance_paid
+
+    story.append(_labelval_table([
+        _row('Shipment', _fmt(shipment)),
+        _row('Total Payable (Product+Services + Shipment)', _fmt(total_payable)),
+        _row('SGST', _fmt(sgst), rate=f'{invoice.sgst_rate}%'),
+        _row('CGST', _fmt(cgst), rate=f'{invoice.cgst_rate}%'),
+        _row('IGST', _fmt(igst), rate=f'{invoice.igst_rate}%'),
+        _row('Payable Post Tax', _fmt(payable_post_tax), bold=True),
+        _row('Advance Paid', _fmt(advance_paid)),
+        _row('Net Payable', _fmt(net_payable), bold=True),
+    ], label_w, rate_w, val_w))
     return story
