@@ -14,7 +14,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'id', 'project', 'invoice_type', 'invoice_type_label',
             'invoice_number', 'date',
             'client_name', 'company_name', 'client_gstin',
-            'billing_address', 'shipping_address', 'dispatch_address', 'eway_bill_no',
+            'billing_address', 'shipping_address', 'eway_bill_no',
+            'dispatch_from_name', 'dispatch_from_gstin', 'dispatch_from_address',
             'sgst_rate', 'cgst_rate', 'igst_rate',
             'shipping_cost', 'advance_rate', 'advance_received', 'processing_charge_rate',
             'items',
@@ -50,6 +51,7 @@ class BillingInfoSerializer(serializers.ModelSerializer):
             'id', 'project',
             'client_name', 'company_name', 'client_gstin', 'billing_address',
             'phone_no', 'email', 'shipping_address',
+            'dispatch_from_name', 'dispatch_from_gstin', 'dispatch_from_address',
             'services', 'products',
             'created_at', 'updated_at',
         ]
