@@ -247,7 +247,6 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
 
           <div>
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Dispatch From (Final invoice)</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Where the goods actually ship from — e.g. a manufacturer's facility, if different from us.</p>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Dispatch From — Name" value={dispatchFromName} onChange={setDispatchFromName} />
               <Field label="Dispatch From — GSTIN" value={dispatchFromGstin} onChange={setDispatchFromGstin} />
