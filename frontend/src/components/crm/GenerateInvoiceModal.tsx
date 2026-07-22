@@ -15,7 +15,7 @@ interface Props {
 
 type Step = 'template' | 'form' | 'preview' | 'generating' | 'done'
 
-const INVOICE_TYPES: InvoiceType[] = ['service', 'product_batch', 'product_simple', 'printing', 'final']
+const INVOICE_TYPES: InvoiceType[] = ['product_simple', 'printing', 'product_batch', 'final']
 
 const BLANK_ITEM = (): InvoiceItem => ({
   item_name: '', hsn: '', size_ml: 0,
@@ -24,7 +24,6 @@ const BLANK_ITEM = (): InvoiceItem => ({
 
 // Which item fields each template uses
 const TYPE_ITEM_FIELDS: Record<InvoiceType, (keyof InvoiceItem)[]> = {
-  service:        ['item_name', 'hsn', 'rate_per_item', 'qty'],
   product_batch:  ['item_name', 'batch_no', 'exp_date', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
   product_simple: ['item_name', 'rate_per_item', 'qty'],
   printing:       ['item_name', 'size_ml', 'hsn', 'rate_per_item', 'qty'],
@@ -37,19 +36,20 @@ const ITEM_FIELD_LABELS: Record<keyof InvoiceItem, string> = {
   rate_per_item: 'Rate/Item', qty: 'Qty', payable: 'Payable', category: 'Category',
 }
 
-// Printing and Advance print "HSN / SAC" instead of the shared "HSN" label
+// Printing, Advance, and Final print "HSN / SAC" instead of the shared "HSN" label
 function fieldLabel(f: keyof InvoiceItem, invoiceType: InvoiceType): string {
-  if (f === 'hsn' && (invoiceType === 'printing' || invoiceType === 'product_batch')) return 'HSN / SAC'
+  if (f === 'hsn' && (invoiceType === 'printing' || invoiceType === 'product_batch' || invoiceType === 'final')) {
+    return 'HSN / SAC'
+  }
   return ITEM_FIELD_LABELS[f]
 }
 
 // Read-only computed columns per type — mirrors COLUMN_SPECS in backend/apps/invoices/pdf_export.py
 const TYPE_COMPUTED_FIELDS: Record<InvoiceType, ('Amount' | 'Payable')[]> = {
-  service:        ['Amount', 'Payable'],
   product_batch:  ['Amount'],
   product_simple: ['Amount', 'Payable'],
   printing:       ['Amount'],
-  final:          ['Payable'],
+  final:          ['Amount'],
 }
 
 function computeAmount(item: InvoiceItem): number {
@@ -71,8 +71,8 @@ function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
 
-// Sample/Advance/Final pull from Billing Info; Printing, Service, and Container
-// stay fully manual for now (Part 1 scope — see project CLAUDE.md).
+// Sample/Advance/Final pull from Billing Info; Printing stays fully manual
+// for now (Part 1 scope — see project CLAUDE.md).
 function buildInitialItems(type: InvoiceType, billingInfo: BillingInfo | null): InvoiceItem[] {
   if (!billingInfo) return [BLANK_ITEM()]
   const productItems: InvoiceItem[] = billingInfo.products.map((p) => ({
@@ -96,7 +96,7 @@ export function GenerateInvoiceModal({
   const previousFocus = useRef<Element | null>(null)
 
   const [step, setStep] = useState<Step>('template')
-  const [invoiceType, setInvoiceType] = useState<InvoiceType>('service')
+  const [invoiceType, setInvoiceType] = useState<InvoiceType>('product_simple')
   const [error, setError] = useState('')
   const [result, setResult] = useState<Invoice | null>(null)
 
@@ -119,9 +119,11 @@ export function GenerateInvoiceModal({
   // Type-specific
   const [shippingCost, setShippingCost] = useState('0')
   const [advanceRate, setAdvanceRate] = useState('0')
-  const [dispatchAddress, setDispatchAddress] = useState('N/A')
   const [advanceReceived, setAdvanceReceived] = useState('0')
   const [processingChargeRate, setProcessingChargeRate] = useState('0')
+  const [dispatchFromName, setDispatchFromName] = useState(billingInfo?.dispatch_from_name || '')
+  const [dispatchFromGstin, setDispatchFromGstin] = useState(billingInfo?.dispatch_from_gstin || '')
+  const [dispatchFromAddress, setDispatchFromAddress] = useState(billingInfo?.dispatch_from_address || '')
 
   // Line items
   const [items, setItems] = useState<InvoiceItem[]>([BLANK_ITEM()])
@@ -183,9 +185,11 @@ export function GenerateInvoiceModal({
     igst_rate: gstRates.igst,
     shipping_cost: (invoiceType === 'product_simple' || invoiceType === 'final') ? shippingCost : 0,
     advance_rate: (invoiceType === 'product_batch' || invoiceType === 'printing') ? advanceRate : 0,
-    dispatch_address: invoiceType === 'final' ? dispatchAddress : '',
     advance_received: invoiceType === 'final' ? advanceReceived : 0,
-    processing_charge_rate: invoiceType === 'product_batch' ? processingChargeRate : 0,
+    processing_charge_rate: (invoiceType === 'product_batch' || invoiceType === 'final') ? processingChargeRate : 0,
+    dispatch_from_name: invoiceType === 'final' ? dispatchFromName : '',
+    dispatch_from_gstin: invoiceType === 'final' ? dispatchFromGstin : '',
+    dispatch_from_address: invoiceType === 'final' ? dispatchFromAddress : '',
     items: items.filter((it) => it.item_name).map((it) => ({ ...it, payable: payableValue(it) })),
   })
 
@@ -293,11 +297,19 @@ export function GenerateInvoiceModal({
                   <Field label="Eway Bill No" value={ewayBillNo} onChange={setEwayBillNo} />
                   <Field label="Billing Address" value={billingAddress} onChange={setBillingAddress} />
                   <Field label="Shipping Address" value={shippingAddress} onChange={setShippingAddress} />
-                  {invoiceType === 'final' && (
-                    <Field label="Dispatch Address" value={dispatchAddress} onChange={setDispatchAddress} />
-                  )}
                 </div>
               </div>
+
+              {invoiceType === 'final' && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Dispatch From</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Dispatch From — Name" value={dispatchFromName} onChange={setDispatchFromName} />
+                    <Field label="Dispatch From — GSTIN" value={dispatchFromGstin} onChange={setDispatchFromGstin} />
+                    <Field label="Dispatch From — Address" value={dispatchFromAddress} onChange={setDispatchFromAddress} />
+                  </div>
+                </div>
+              )}
 
               {/* GST — printed as tax rows for every invoice type */}
               <div>
@@ -348,14 +360,15 @@ export function GenerateInvoiceModal({
                 <div>
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Extras</h3>
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="Shipping Cost (₹)" value={shippingCost} onChange={setShippingCost} type="number" />
-                    <Field label="Advance Received (₹)" value={advanceReceived} onChange={setAdvanceReceived} type="number" />
+                    <Field label="Processing Charge Rate (₹/unit)" value={processingChargeRate} onChange={setProcessingChargeRate} type="number" />
+                    <Field label="Shipment (₹)" value={shippingCost} onChange={setShippingCost} type="number" />
+                    <Field label="Advance Paid (₹)" value={advanceReceived} onChange={setAdvanceReceived} type="number" />
                   </div>
                 </div>
               )}
 
               {/* Line items */}
-              {invoiceType === 'product_batch' ? (
+              {(invoiceType === 'product_batch' || invoiceType === 'final') ? (
                 <>
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Product Details</h3>
@@ -592,10 +605,12 @@ function Field({
 }: {
   label: string; value: string; onChange: (v: string) => void; type?: string
 }) {
+  const id = useId()
   return (
     <div>
-      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">{label}</label>
+      <label htmlFor={id} className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">{label}</label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
