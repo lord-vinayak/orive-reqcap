@@ -6,7 +6,6 @@ from django.conf import settings
 
 class Invoice(models.Model):
     TYPES = [
-        ('service',        'Service Invoice'),
         ('product_batch',  'Advance Invoice'),
         ('product_simple', 'Sample Invoice'),
         ('printing',       'Packaging or Printing Invoice'),
@@ -28,6 +27,10 @@ class Invoice(models.Model):
     billing_address  = models.TextField(blank=True, default='0')
     shipping_address = models.TextField(blank=True, default='0')
     eway_bill_no     = models.CharField(max_length=50, blank=True, default='XX')
+    # Final invoice only — where the goods actually ship from (not necessarily our office)
+    dispatch_from_name    = models.CharField(max_length=255, blank=True, default='')
+    dispatch_from_gstin   = models.CharField(max_length=30, blank=True, default='')
+    dispatch_from_address = models.TextField(blank=True, default='')
 
     # GST rates (stored as %, e.g. 9.00 for 9%)
     sgst_rate        = models.DecimalField(max_digits=5, decimal_places=2, default=0)
@@ -37,9 +40,8 @@ class Invoice(models.Model):
     # Type-specific extras
     shipping_cost     = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     advance_rate      = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    dispatch_address  = models.TextField(blank=True, default='')
     advance_received  = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    # Advance invoice only — per-unit charge, multiplied by total qty across Product Details rows
+    # Advance/Final only — per-unit charge, multiplied by total qty across Product Details rows
     processing_charge_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     # Line items as JSON — never queried individually
@@ -79,6 +81,10 @@ class BillingInfo(models.Model):
     phone_no         = models.CharField(max_length=20, blank=True, default='')
     email            = models.EmailField(blank=True, default='')
     shipping_address = models.TextField(blank=True, default='')
+    # Final invoice only — where the goods actually ship from (e.g. a manufacturer's facility)
+    dispatch_from_name    = models.CharField(max_length=255, blank=True, default='')
+    dispatch_from_gstin   = models.CharField(max_length=30, blank=True, default='')
+    dispatch_from_address = models.TextField(blank=True, default='')
 
     # [{key, label, price}] — key matches a ServiceBaseRates field name
     services = models.JSONField(default=list, blank=True)
