@@ -448,10 +448,9 @@ export interface PaginatedResponse<T> {
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────
 
-export type InvoiceType = 'service' | 'product_batch' | 'product_simple' | 'printing' | 'final'
+export type InvoiceType = 'product_batch' | 'product_simple' | 'printing' | 'final'
 
 export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
-  service:        'Service Invoice',
   product_batch:  'Advance Invoice',
   product_simple: 'Sample Invoice',
   printing:       'Packaging or Printing Invoice',
@@ -459,11 +458,10 @@ export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
 }
 
 export const INVOICE_TYPE_COLUMNS: Record<InvoiceType, string[]> = {
-  service:        ['Item', 'HSN', 'Rate/Item', 'Qty', 'Amount', 'Payable'],
   product_batch:  ['Item', 'Batch No', 'Exp Date', 'Size (ml)', 'HSN/SAC', 'Rate/Item', 'Qty', 'Amount', 'Processing Charges', 'Services'],
   product_simple: ['Item', 'Rate/Item', 'Qty', 'Amount', 'Payable'],
   printing:       ['Item', 'Size (ml)', 'HSN/SAC', 'Rate/Item', 'Qty', 'Amount'],
-  final:          ['Item', 'Batch No', 'Exp Date', 'Size (ml)', 'HSN', 'Rate/Item', 'Qty', 'Payable'],
+  final:          ['Item', 'Batch No', 'Exp Date', 'Size (ml)', 'HSN/SAC', 'Rate/Item', 'Qty', 'Amount', 'Processing Charges', 'Services', 'Shipment'],
 }
 
 export interface InvoiceItem {
@@ -492,8 +490,10 @@ export interface Invoice {
   client_gstin: string
   billing_address: string
   shipping_address: string
-  dispatch_address: string
   eway_bill_no: string
+  dispatch_from_name: string
+  dispatch_from_gstin: string
+  dispatch_from_address: string
   sgst_rate: string
   cgst_rate: string
   igst_rate: string
@@ -553,6 +553,9 @@ export interface BillingInfo {
   phone_no: string
   email: string
   shipping_address: string
+  dispatch_from_name: string
+  dispatch_from_gstin: string
+  dispatch_from_address: string
   services: BillingInfoService[]
   products: BillingInfoProduct[]
   created_at: string
@@ -571,8 +574,10 @@ export interface InvoiceCreatePayload {
   client_gstin: string
   billing_address: string
   shipping_address: string
-  dispatch_address?: string
   eway_bill_no: string
+  dispatch_from_name?: string
+  dispatch_from_gstin?: string
+  dispatch_from_address?: string
   sgst_rate: string | number
   cgst_rate: string | number
   igst_rate: string | number
