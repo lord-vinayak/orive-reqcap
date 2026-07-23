@@ -22,6 +22,8 @@ export interface Client {
   poc_name?: string
   lead_status: import('@/constants/clientStatus').LeadStatus
   lead_sub_status: string
+  lead_sub_status_changed_at: string | null
+  rag: import('@/constants/clientStatus').RagStatus | null
   created_at: string
   updated_at: string
 }
