@@ -36,6 +36,7 @@ from . import costing_email_template as costing_tpl
 from . import proposal_email_template as proposal_tpl
 from . import commercial_sample_approval_email_template as commercial_sample_approval_tpl
 from . import shipment_details_email_template as shipment_details_tpl
+from . import tracking_link_email_template as tracking_link_tpl
 
 LEAD_BUCKETS = {
     'prospective':      ['initial_conversation', 'proposal', 'costing'],
@@ -61,6 +62,7 @@ _TEMPLATE_MAP = {
     'proposal': proposal_tpl,
     'commercial_sample_approval': commercial_sample_approval_tpl,
     'shipment_details': shipment_details_tpl,
+    'tracking_link': tracking_link_tpl,
 }
 
 _TEMPLATE_LABELS = {
@@ -79,6 +81,7 @@ _TEMPLATE_LABELS = {
     'proposal': 'Proposal Email',
     'commercial_sample_approval': 'Commercial Sample Approval Email',
     'shipment_details': 'Shipment Details Email',
+    'tracking_link': 'Tracking Link Email',
 }
 
 # ---------------------------------------------------------------------------

@@ -32,6 +32,7 @@ export const PROJECT_EMAIL_TEMPLATES: { value: string; label: string }[] = [
   { value: 'proposal', label: 'Proposal Email' },
   { value: 'commercial_sample_approval', label: 'Commercial Sample Approval Email' },
   { value: 'shipment_details', label: 'Shipment Details Email' },
+  { value: 'tracking_link', label: 'Tracking Link Email' },
 ]
 
 // Dynamic fields per template — only define for templates that need user input
@@ -90,5 +91,9 @@ export const TEMPLATE_FIELDS: Record<string, TemplateField[]> = {
       options: ['Sample', 'Packaging', 'Commercial Sample', 'Final Production'],
     },
     { key: 'tracking_link', label: 'Tracking Link', type: 'text', placeholder: 'e.g. https://track.example.com/...' },
+  ],
+  tracking_link: [
+    { key: 'shipped_item', label: 'What is being shipped', type: 'text', placeholder: 'e.g. your commercial samples' },
+    { key: 'tracking_details', label: 'Tracking Details', type: 'text', placeholder: 'e.g. https://track.example.com/... or AWB number' },
   ],
 }
