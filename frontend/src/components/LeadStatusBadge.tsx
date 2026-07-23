@@ -3,12 +3,12 @@ import { createPortal } from 'react-dom'
 import type { Client } from '@/types'
 import {
   LEAD_STATUS_COLOR, LEAD_STATUS_OPTIONS, LEAD_SUB_STATUS_OPTIONS,
-  formatLeadStatus, type LeadStatus,
+  formatLeadStatus, type LeadStatus, RAG_COLOR, RAG_LABEL,
 } from '@/constants/clientStatus'
 import { clientService } from '@/services'
 
 interface Props {
-  client: Pick<Client, 'phone_no' | 'lead_status' | 'lead_sub_status'>
+  client: Pick<Client, 'phone_no' | 'lead_status' | 'lead_sub_status'> & { rag?: Client['rag'] }
   onUpdated?: (patch: { lead_status: LeadStatus; lead_sub_status: string }) => void
   readOnly?: boolean
 }
@@ -103,7 +103,7 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
   const subOpts = LEAD_SUB_STATUS_OPTIONS[pendingStatus] ?? []
 
   return (
-    <div className="relative inline-block" ref={ref}>
+    <div className="relative inline-flex items-center gap-1.5" ref={ref}>
       {saving && <span className="sr-only" role="status" aria-live="polite">Saving lead status…</span>}
       <button
         ref={triggerRef}
@@ -121,6 +121,14 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
         <span>{label}</span>
         {!readOnly && <span aria-hidden="true" className="opacity-50">▾</span>}
       </button>
+      {client.rag && (
+        <span
+          className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${RAG_COLOR[client.rag]}`}
+          role="img"
+          aria-label={RAG_LABEL[client.rag]}
+          title={RAG_LABEL[client.rag]}
+        />
+      )}
 
       {open && menuPos && createPortal(
         <div
