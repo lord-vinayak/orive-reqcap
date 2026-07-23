@@ -42,7 +42,8 @@ LEAD_BUCKETS = {
     'prospective':      ['initial_conversation', 'proposal', 'costing'],
     'sample':           ['sample'],
     'converted':        ['order'],
-    'business_earned':  ['production', 'testing', 'filling', 'order_dispatch', 'order_closed'],
+    'production':       ['production', 'testing', 'filling', 'order_dispatch'],
+    'business_earned':  ['order_closed'],
     'lost':             ['lead_closed'],
 }
 
@@ -785,6 +786,10 @@ class ClientViewSet(viewsets.ModelViewSet):
                     status=400,
                 )
 
-        fields = {'lead_status': new_status, 'lead_sub_status': new_sub_status}
+        fields = {
+            'lead_status': new_status,
+            'lead_sub_status': new_sub_status,
+            'lead_sub_status_changed_at': timezone.now(),
+        }
         updated = Client.objects.filter(phone_no__in=phone_nos).update(**fields)
         return Response({'updated': updated}, status=200)
