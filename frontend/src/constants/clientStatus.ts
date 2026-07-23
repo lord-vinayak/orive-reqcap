@@ -13,8 +13,8 @@ export type LeadStatus =
 
 export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'initial_conversation', label: 'Initial Conversation' },
-  { value: 'proposal',             label: 'Proposal' },
-  { value: 'costing',                      label: 'Costing' },
+  { value: 'proposal',             label: 'Proposal shared' },
+  { value: 'costing',                      label: 'Costing shared' },
   { value: 'sample',                       label: 'Sample' },
   { value: 'order',                        label: 'Order' },
   { value: 'production',                   label: 'Production' },
@@ -22,7 +22,7 @@ export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'filling',                      label: 'Filling' },
   { value: 'order_dispatch',               label: 'Order Dispatch' },
   { value: 'order_closed',  label: 'Order Closed' },
-  { value: 'lead_closed',  label: 'Lead Closed' },
+  { value: 'lead_closed',  label: 'Lost' },
 ]
 
 export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = Object.fromEntries(
@@ -48,16 +48,16 @@ export interface SubStatusOption { value: string; label: string }
 export const LEAD_SUB_STATUS_OPTIONS: Partial<Record<LeadStatus, SubStatusOption[]>> = {
   initial_conversation: [
     { value: 'initial_conversation__product_requirement_captured', label: 'Product Requirement Captured' },
-    { value: 'initial_conversation__need_follow_up',               label: 'Need Follow-up' },
+    { value: 'initial_conversation__need_follow_up',               label: 'Needs Follow-up' },
   ],
   proposal: [
     { value: 'proposal__requested', label: 'Requested' },
-    { value: 'proposal__send',      label: 'Send' },
+    { value: 'proposal__send',      label: 'Sent' },
     { value: 'proposal__approved',  label: 'Approved' },
   ],
   costing: [
     { value: 'costing__requested', label: 'Requested' },
-    { value: 'costing__send',      label: 'Send' },
+    { value: 'costing__send',      label: 'Sent' },
     { value: 'costing__approved',  label: 'Approved' },
   ],
   sample: [
@@ -158,12 +158,13 @@ export function getPipelineLeadStatus(leadStatus: LeadStatus | string): Pipeline
 }
 
 // Mirrors LEAD_BUCKETS in backend/apps/clients/views.py — keep in sync.
-export type LeadBucket = 'prospective' | 'sample' | 'converted' | 'business_earned' | 'lost'
+export type LeadBucket = 'prospective' | 'sample' | 'converted' | 'production' | 'business_earned' | 'lost'
 
 export const LEAD_BUCKET_LABEL: Record<LeadBucket, string> = {
   prospective:     'Prospective',
   sample:          'Sample',
   converted:       'Converted',
+  production:      'Production',
   business_earned: 'Business Earned',
   lost:            'Lost',
 }
@@ -171,9 +172,26 @@ export const LEAD_BUCKET_LABEL: Record<LeadBucket, string> = {
 export const LEAD_BUCKET_COLOR: Record<LeadBucket, string> = {
   prospective:     '#8b5cf6',  // purple
   sample:          '#f97316',  // orange
-  converted:       '#14b8a6',  // teal
+  converted:       '#eab308',  // yellow
+  production:      '#06b6d4',  // cyan
   business_earned: '#22c55e',  // green
   lost:            '#ef4444',  // red
+}
+
+// ── RAG (Red / Amber / Green staleness indicator) ──────────────────────────────
+
+export type RagStatus = 'green' | 'amber' | 'red'
+
+export const RAG_LABEL: Record<RagStatus, string> = {
+  green: 'On track',
+  amber: 'Getting stale',
+  red:   'Stale — needs attention',
+}
+
+export const RAG_COLOR: Record<RagStatus, string> = {
+  green: 'bg-green-500',
+  amber: 'bg-amber-500',
+  red:   'bg-red-500',
 }
 
 export function formatLeadStatus(leadStatus: LeadStatus | string, subStatus?: string): string {
