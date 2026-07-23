@@ -5,6 +5,7 @@ from .models import Client, EmailLog, ClientFile, ClientNote
 
 class ClientSerializer(serializers.ModelSerializer):
     poc_name = serializers.CharField(source='poc.name', read_only=True)
+    rag = serializers.SerializerMethodField()
 
     class Meta:
         model = Client
@@ -13,10 +14,13 @@ class ClientSerializer(serializers.ModelSerializer):
             'gst_details', 'physical_address',
             'no_of_products', 'planned_selling_price_range', 'how_many_units_per_product',
             'poc', 'poc_name',
-            'lead_status', 'lead_sub_status',
+            'lead_status', 'lead_sub_status', 'lead_sub_status_changed_at', 'rag',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at', 'lead_sub_status_changed_at']
+
+    def get_rag(self, obj):
+        return obj.get_rag_status()
 
     def validate_phone_no(self, value):
         if not re.fullmatch(r'\d{10}', value):
