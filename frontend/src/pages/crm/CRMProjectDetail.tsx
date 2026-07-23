@@ -1011,19 +1011,21 @@ function PLSection({ payments }: { payments: import('@/types/crm').ProjectPaymen
     )
   }
 
-  const bySubType: Record<string, { label: string; paid: number; received: number }> = {}
+  const bySubType: Record<string, { label: string; paid: number; received: number; payable: number; receivable: number }> = {}
   for (const p of payments) {
-    const key = `${p.direction}::${p.sub_type}`
-    if (!bySubType[key]) bySubType[key] = { label: p.sub_type_display, paid: 0, received: 0 }
-    if (p.direction === 'paid') bySubType[key].paid += Number(p.amount)
-    else bySubType[key].received += Number(p.amount)
+    const key = p.sub_type
+    if (!bySubType[key]) bySubType[key] = { label: p.sub_type_display, paid: 0, received: 0, payable: 0, receivable: 0 }
+    bySubType[key][p.direction] += Number(p.amount)
   }
   const rows = Object.entries(bySubType).map(([key, vals]) => ({
-    key, label: vals.label, direction: key.startsWith('paid') ? 'paid' : 'received',
-    paid: vals.paid, received: vals.received, net: vals.received - vals.paid,
+    key, label: vals.label,
+    paid: vals.paid, received: vals.received, payable: vals.payable, receivable: vals.receivable,
+    net: vals.received - vals.paid,
   }))
   const totalPaid = payments.filter((p) => p.direction === 'paid').reduce((s, p) => s + Number(p.amount), 0)
   const totalReceived = payments.filter((p) => p.direction === 'received').reduce((s, p) => s + Number(p.amount), 0)
+  const totalPayable = payments.filter((p) => p.direction === 'payable').reduce((s, p) => s + Number(p.amount), 0)
+  const totalReceivable = payments.filter((p) => p.direction === 'receivable').reduce((s, p) => s + Number(p.amount), 0)
   const totalNet = totalReceived - totalPaid
 
   return (
@@ -1046,24 +1048,22 @@ function PLSection({ payments }: { payments: import('@/types/crm').ProjectPaymen
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-black/5 dark:bg-white/5 text-left">
-                <th className="px-4 py-2 font-semibold text-black/70 dark:text-slate-300">Type</th>
                 <th className="px-4 py-2 font-semibold text-black/70 dark:text-slate-300">Sub Type</th>
-                <th className="px-4 py-2 font-semibold text-red-600 dark:text-red-400 text-right">Total Paid (₹)</th>
-                <th className="px-4 py-2 font-semibold text-green-600 dark:text-green-400 text-right">Total Received (₹)</th>
+                <th className="px-4 py-2 font-semibold text-red-600 dark:text-red-400 text-right">Paid (₹)</th>
+                <th className="px-4 py-2 font-semibold text-green-600 dark:text-green-400 text-right">Received (₹)</th>
+                <th className="px-4 py-2 font-semibold text-amber-600 dark:text-amber-400 text-right">Payable (₹)</th>
+                <th className="px-4 py-2 font-semibold text-blue-600 dark:text-blue-400 text-right">Receivable (₹)</th>
                 <th className="px-4 py-2 font-semibold text-black/70 dark:text-slate-300 text-right">Net (₹)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5 dark:divide-white/5">
               {rows.map((r) => (
                 <tr key={r.key} className="hover:bg-black/2 dark:hover:bg-white/2">
-                  <td className="px-4 py-2">
-                    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${r.direction === 'paid' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
-                      {r.direction === 'paid' ? 'Paid' : 'Received'}
-                    </span>
-                  </td>
                   <td className="px-4 py-2 text-black dark:text-white">{r.label}</td>
                   <td className="px-4 py-2 text-right text-red-600 dark:text-red-400 tabular-nums">{r.paid > 0 ? fmt(r.paid) : '—'}</td>
                   <td className="px-4 py-2 text-right text-green-600 dark:text-green-400 tabular-nums">{r.received > 0 ? fmt(r.received) : '—'}</td>
+                  <td className="px-4 py-2 text-right text-amber-600 dark:text-amber-400 tabular-nums">{r.payable > 0 ? fmt(r.payable) : '—'}</td>
+                  <td className="px-4 py-2 text-right text-blue-600 dark:text-blue-400 tabular-nums">{r.receivable > 0 ? fmt(r.receivable) : '—'}</td>
                   <td className={`px-4 py-2 text-right tabular-nums font-medium ${r.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {r.net >= 0 ? '+' : ''}{fmt(r.net)}
                   </td>
@@ -1072,9 +1072,11 @@ function PLSection({ payments }: { payments: import('@/types/crm').ProjectPaymen
             </tbody>
             <tfoot>
               <tr className="bg-black/5 dark:bg-white/5 border-t-2 border-black/20 dark:border-white/20 font-semibold">
-                <td className="px-4 py-2 text-black dark:text-white" colSpan={2}>Total</td>
+                <td className="px-4 py-2 text-black dark:text-white">Total</td>
                 <td className="px-4 py-2 text-right text-red-600 dark:text-red-400 tabular-nums">{fmt(totalPaid)}</td>
                 <td className="px-4 py-2 text-right text-green-600 dark:text-green-400 tabular-nums">{fmt(totalReceived)}</td>
+                <td className="px-4 py-2 text-right text-amber-600 dark:text-amber-400 tabular-nums">{fmt(totalPayable)}</td>
+                <td className="px-4 py-2 text-right text-blue-600 dark:text-blue-400 tabular-nums">{fmt(totalReceivable)}</td>
                 <td className={`px-4 py-2 text-right tabular-nums text-base ${totalNet >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {totalNet >= 0 ? '+' : ''}₹{fmt(totalNet)}
                 </td>
