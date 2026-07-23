@@ -1,6 +1,22 @@
 import uuid
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
+
+# Time-based staleness thresholds (in days) per lead_sub_status, used to compute
+# the client's RAG (Red/Amber/Green) indicator. Sub-statuses not listed have no RAG.
+RAG_RULES = {
+    'initial_conversation__product_requirement_captured': {'amber': 2, 'red': 4},
+    'initial_conversation__need_follow_up':                {'amber': 2, 'red': 4},
+    'proposal__requested':                                 {'amber': 2, 'red': 4},
+    'costing__requested':                                  {'amber': 2, 'red': 4},
+    'costing__approved':                                   {'amber': 2, 'red': 4},
+    'sample__invoice_shared':                              {'amber': 2, 'red': 4},
+    'sample__in_pipeline':                                 {'amber': 6, 'red': 15},
+    'sample__in_transit':                                  {'amber': 5, 'red': 10},
+    'sample__user_testing':                                {'amber': 8, 'red': 15},
+    'order__invoice_shared':                               {'amber': 2, 'red': 4},
+}
 
 
 class Client(models.Model):
@@ -24,8 +40,8 @@ class Client(models.Model):
 
     LEAD_STATUS_CHOICES = [
         ('initial_conversation',           'Initial Conversation'),
-        ('proposal',                       'Proposal'),
-        ('costing',                        'Costing'),
+        ('proposal',                       'Proposal shared'),
+        ('costing',                        'Costing shared'),
         ('sample',                         'Sample'),
         ('order',                          'Order'),
         ('production',                     'Production'),
@@ -33,20 +49,20 @@ class Client(models.Model):
         ('filling',                        'Filling'),
         ('order_dispatch',                 'Order Dispatch'),
         ('order_closed',                   'Order Closed'),
-        ('lead_closed',                    'Lead Closed'),
+        ('lead_closed',                    'Lost'),
     ]
 
     LEAD_SUB_STATUS_CHOICES = [
         # Initial Conversation
         ('initial_conversation__product_requirement_captured', 'Product Requirement Captured'),
-        ('initial_conversation__need_follow_up', 'Need Follow-up'),
+        ('initial_conversation__need_follow_up', 'Needs Follow-up'),
         # Proposal
         ('proposal__requested',            'Requested'),
-        ('proposal__send',                 'Send'),
+        ('proposal__send',                 'Sent'),
         ('proposal__approved',             'Approved'),
         # Costing
         ('costing__requested',             'Requested'),
-        ('costing__send',                  'Send'),
+        ('costing__send',                  'Sent'),
         ('costing__approved',              'Approved'),
         # Sample
         ('sample__invoice_shared',         'Invoice Shared'),
@@ -120,6 +136,8 @@ class Client(models.Model):
         default='initial_conversation', blank=True,
     )
     lead_sub_status = models.CharField(max_length=50, blank=True, default='')
+    # When lead_sub_status was last changed — drives the RAG (staleness) indicator.
+    lead_sub_status_changed_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -132,6 +150,27 @@ class Client(models.Model):
 
     def __str__(self):
         return f'{self.name} ({self.phone_no})'
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old_sub_status = Client.objects.filter(pk=self.pk).values_list('lead_sub_status', flat=True).first()
+            if old_sub_status is not None and old_sub_status != self.lead_sub_status:
+                self.lead_sub_status_changed_at = timezone.now()
+        elif self.lead_sub_status:
+            self.lead_sub_status_changed_at = timezone.now()
+        super().save(*args, **kwargs)
+
+    def get_rag_status(self) -> str | None:
+        """Red/Amber/Green staleness of the current lead_sub_status, or None if no rule applies."""
+        rule = RAG_RULES.get(self.lead_sub_status)
+        if not rule or not self.lead_sub_status_changed_at:
+            return None
+        days = (timezone.now() - self.lead_sub_status_changed_at).days
+        if days >= rule['red']:
+            return 'red'
+        if days >= rule['amber']:
+            return 'amber'
+        return 'green'
 
 
 class ClientFile(models.Model):
