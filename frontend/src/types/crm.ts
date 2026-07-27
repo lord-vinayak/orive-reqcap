@@ -513,7 +513,7 @@ export interface Invoice {
 export const SERVICE_KEYS = [
   'cdsco_registration', 'content_creation', 'logo_design',
   'label_mono_carton_design', 'dermatology_testing', 'spf_testing',
-  'formulation_support', 'digital_brand_building_support',
+  'formulation_support', 'digital_brand_building_support', 'batch_testing',
 ] as const
 
 export type ServiceKey = typeof SERVICE_KEYS[number]
@@ -527,6 +527,7 @@ export const SERVICE_LABELS: Record<ServiceKey, string> = {
   spf_testing: 'SPF Testing',
   formulation_support: 'Formulation Support',
   digital_brand_building_support: 'Digital Brand Building Support',
+  batch_testing: 'Batch Testing',
 }
 
 export type ServiceBaseRates = Record<ServiceKey, number | string | null> & { updated_at: string }

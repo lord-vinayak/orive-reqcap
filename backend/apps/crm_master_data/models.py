@@ -199,11 +199,12 @@ SERVICE_LABELS = {
     'spf_testing': 'SPF Testing',
     'formulation_support': 'Formulation Support',
     'digital_brand_building_support': 'Digital Brand Building Support',
+    'batch_testing': 'Batch Testing',
 }
 
 
 class ServiceBaseRates(models.Model):
-    """Singleton default price list for the 8 fixed client services. Admin-editable;
+    """Singleton default price list for the fixed client services. Admin-editable;
     projects' BillingInfo pre-fills from these and can override per client."""
     cdsco_registration = models.DecimalField(max_digits=10, decimal_places=2, default=5000)
     content_creation = models.DecimalField(max_digits=10, decimal_places=2, default=5000)
@@ -213,6 +214,7 @@ class ServiceBaseRates(models.Model):
     spf_testing = models.DecimalField(max_digits=10, decimal_places=2, default=20000)
     formulation_support = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     digital_brand_building_support = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    batch_testing = models.DecimalField(max_digits=10, decimal_places=2, default=4500)
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):

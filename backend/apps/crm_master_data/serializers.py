@@ -91,6 +91,6 @@ class ServiceBaseRatesSerializer(serializers.ModelSerializer):
         fields = [
             'cdsco_registration', 'content_creation', 'logo_design',
             'label_mono_carton_design', 'dermatology_testing', 'spf_testing',
-            'formulation_support', 'digital_brand_building_support', 'updated_at',
+            'formulation_support', 'digital_brand_building_support', 'batch_testing', 'updated_at',
         ]
         read_only_fields = ['updated_at']
