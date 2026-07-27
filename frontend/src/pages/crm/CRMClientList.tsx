@@ -204,7 +204,11 @@ export default function CRMClientList() {
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
                 {clients.map((c) => (
-                  <tr key={c.phone_no} className={c.rag ? RAG_ROW_CLASS[c.rag] : 'hover:bg-black/2 dark:hover:bg-white/2'}>
+                  <tr
+                    key={c.phone_no}
+                    className={c.rag ? RAG_ROW_CLASS[c.rag] : 'hover:bg-black/2 dark:hover:bg-white/2'}
+                    title={c.rag ? RAG_LABEL[c.rag] : undefined}
+                  >
                     <td className="px-4 py-3 font-medium">
                       <Link
                         to={`/crm/clients/${c.phone_no}`}
