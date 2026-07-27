@@ -715,7 +715,7 @@ export default function CRMDashboard() {
                     <tr className="bg-black/5 dark:bg-white/5 text-left">
                       <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project</th>
                       <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Client</th>
-                      <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Phone</th>
+                      <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Manufacturer</th>
                       <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Current Stage</th>
                       <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Progress</th>
                     </tr>
@@ -736,7 +736,9 @@ export default function CRMDashboard() {
                           <div>{p.client_name}</div>
                           {p.client_company && <div className="text-xs text-black/50 dark:text-slate-400">{p.client_company}</div>}
                         </td>
-                        <td className="px-4 py-3 text-black/70 dark:text-slate-300">{p.client_phone}</td>
+                        <td className="px-4 py-3 text-black/70 dark:text-slate-300">
+                          {p.manufacturers.length > 0 ? p.manufacturers.map((m) => m.company_name).join(', ') : '—'}
+                        </td>
                         <td className="px-4 py-3 text-black/70 dark:text-slate-300 capitalize">
                           {p.project_stage.replace(/_/g, ' ')}
                         </td>
