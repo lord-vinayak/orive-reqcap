@@ -361,6 +361,9 @@ export const crmApi = {
   previewInvoice: (data: InvoiceCreatePayload) =>
     api.post('/invoices/preview/', data, { responseType: 'blob' }),
 
+  deleteInvoice: (id: string) =>
+    api.delete(`/invoices/${id}/`),
+
   // ─── Billing Info ────────────────────────────────────────────────────────
 
   getBillingInfo: (projectId: string) =>
