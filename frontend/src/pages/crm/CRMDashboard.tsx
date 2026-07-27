@@ -182,6 +182,17 @@ export default function CRMDashboard() {
       .finally(() => setClientBucketLoading(false))
   }, [activeClientBucket, clientSearch, clientPage, clientPocFilter, clientStageFilter, clientSubStageFilter])
 
+  const handleDeleteProject = async (id: string, projectNo: string) => {
+    if (!confirm(`Delete project ${projectNo}? This cannot be undone.`)) return
+    try {
+      await crmApi.deleteProject(id)
+      setProjects((prev) => prev.filter((p) => p.id !== id))
+      setProjectCount((prev) => prev - 1)
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete project.')
+    }
+  }
+
   const filteredProjects = useMemo(() => {
     if (!activeSegment) return projects
     if (activeSegment === 'sample')       return projects.filter(p => p.phase === 'sample')
@@ -408,6 +419,7 @@ export default function CRMDashboard() {
                             <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Project Status</th>
                             <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Progress</th>
                             <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
+                            {isAdmin && <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white"><span className="sr-only">Actions</span></th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-black/5 dark:divide-white/5">
@@ -445,6 +457,18 @@ export default function CRMDashboard() {
                               <td className="px-4 py-3">
                                 <StatusBadge hasDelays={p.has_delays} />
                               </td>
+                              {isAdmin && (
+                                <td className="px-4 py-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteProject(p.id, p.project_no)}
+                                    className="text-xs text-red-700 dark:text-red-400 underline-offset-2 hover:underline"
+                                    aria-label={`Delete project ${p.project_no}`}
+                                  >
+                                    delete
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
