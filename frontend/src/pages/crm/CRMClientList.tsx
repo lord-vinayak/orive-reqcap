@@ -5,10 +5,17 @@ import { api } from '@/services/api'
 import { userService } from '@/services'
 import type { User } from '@/types'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
-import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL, LEAD_STATUS_OPTIONS, LEAD_SUB_STATUS_OPTIONS } from '@/constants/clientStatus'
-import type { LeadStatus } from '@/constants/clientStatus'
+import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL, LEAD_STATUS_OPTIONS, LEAD_SUB_STATUS_OPTIONS, RAG_LABEL } from '@/constants/clientStatus'
+import type { LeadStatus, RagStatus } from '@/constants/clientStatus'
 
 const SUB_STATUS_OPTIONS = Object.values(LEAD_SUB_STATUS_OPTIONS).flatMap((opts) => opts ?? [])
+
+// Subtle row tint by staleness — green stays neutral so only stale rows draw the eye.
+const RAG_ROW_CLASS: Record<RagStatus, string> = {
+  green: 'hover:bg-black/2 dark:hover:bg-white/2',
+  amber: 'bg-amber-50/60 dark:bg-amber-500/[0.06] hover:bg-amber-50 dark:hover:bg-amber-500/10',
+  red:   'bg-red-50/60 dark:bg-red-500/[0.06] hover:bg-red-50 dark:hover:bg-red-500/10',
+}
 
 interface Client {
   phone_no: string
@@ -19,6 +26,7 @@ interface Client {
   lead_status: LeadStatus
   lead_sub_status: string
   poc: string | null
+  rag?: RagStatus
 }
 
 interface PaginatedClients {
@@ -196,7 +204,7 @@ export default function CRMClientList() {
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
                 {clients.map((c) => (
-                  <tr key={c.phone_no} className="hover:bg-black/2 dark:hover:bg-white/2">
+                  <tr key={c.phone_no} className={c.rag ? RAG_ROW_CLASS[c.rag] : 'hover:bg-black/2 dark:hover:bg-white/2'}>
                     <td className="px-4 py-3 font-medium">
                       <Link
                         to={`/crm/clients/${c.phone_no}`}
@@ -213,8 +221,12 @@ export default function CRMClientList() {
                     <td className="px-4 py-3">
                       <LeadStatusBadge
                         client={c}
+                        hideRag
                         onUpdated={(patch) => setClients((prev) => prev.map((x) => x.phone_no === c.phone_no ? { ...x, ...patch } : x))}
                       />
+                      {c.rag && c.rag !== 'green' && (
+                        <span className="sr-only">, {RAG_LABEL[c.rag]}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <Link
