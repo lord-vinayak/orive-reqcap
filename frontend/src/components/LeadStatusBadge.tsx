@@ -11,9 +11,10 @@ interface Props {
   client: Pick<Client, 'phone_no' | 'lead_status' | 'lead_sub_status'> & { rag?: Client['rag'] }
   onUpdated?: (patch: { lead_status: LeadStatus; lead_sub_status: string }) => void
   readOnly?: boolean
+  hideRag?: boolean
 }
 
-export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) {
+export function LeadStatusBadge({ client, onUpdated, readOnly = false, hideRag = false }: Props) {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<'status' | 'sub'>('status')
   const [pendingStatus, setPendingStatus] = useState<LeadStatus>(client.lead_status)
@@ -121,7 +122,7 @@ export function LeadStatusBadge({ client, onUpdated, readOnly = false }: Props) 
         <span>{label}</span>
         {!readOnly && <span aria-hidden="true" className="opacity-50">▾</span>}
       </button>
-      {client.rag && (
+      {!hideRag && client.rag && (
         <span
           className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${RAG_COLOR[client.rag]}`}
           role="img"
