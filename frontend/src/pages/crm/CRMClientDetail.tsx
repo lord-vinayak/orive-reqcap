@@ -12,6 +12,7 @@ import { PipelineStatusBadge } from '@/components/PipelineStatusBadge'
 import ClientFilesSection from '@/components/crm/ClientFilesSection'
 import ClientNotesSection from '@/components/crm/ClientNotesSection'
 import type { LeadStatus } from '@/constants/clientStatus'
+import { useAuthStore } from '@/store/authStore'
 
 interface Client {
   phone_no: string
@@ -37,6 +38,7 @@ interface Requirement {
 export default function CRMClientDetail() {
   const { phoneNo } = useParams<{ phoneNo: string }>()
   const navigate = useNavigate()
+  const isAdmin = useAuthStore((s) => s.user?.role === 'admin')
 
   const [client, setClient] = useState<Client | null>(null)
   const [crmProjects, setCrmProjects] = useState<CRMProjectList[]>([])
@@ -60,6 +62,16 @@ export default function CRMClientDetail() {
       .finally(() => setLoading(false))
   }, [phoneNo])
 
+
+  const handleDeleteProject = async (id: string, projectNo: string) => {
+    if (!confirm(`Delete project ${projectNo}? This cannot be undone.`)) return
+    try {
+      await crmApi.deleteProject(id)
+      setCrmProjects((prev) => prev.filter((p) => p.id !== id))
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete project.')
+    }
+  }
 
   if (loading) {
     return (
@@ -164,21 +176,32 @@ export default function CRMClientDetail() {
           ) : (
             <div className="space-y-3">
               {crmProjects.map((p) => (
-                <Link
-                  key={p.id}
-                  to={`/crm/projects/${p.id}`}
-                  className="flex items-center gap-4 p-4 rounded border border-black/10 dark:border-white/10 hover:border-mustard focus-visible:ring-2 focus-visible:ring-mustard transition-colors bg-white dark:bg-slate-800"
-                  aria-label={`Project ${p.project_no}, stage: ${p.project_stage.replace(/_/g, ' ')}, ${p.progress_percentage}% complete`}
-                >
-                  <div className="font-medium text-black dark:text-white w-36 shrink-0">{p.project_no}</div>
-                  <div className="text-sm text-black/60 dark:text-slate-300 capitalize w-32 shrink-0">
-                    {p.project_stage.replace(/_/g, ' ')}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <ProgressBar value={p.progress_percentage} size="sm" />
-                  </div>
-                  <StatusBadge hasDelays={p.has_delays} />
-                </Link>
+                <div key={p.id} className="flex items-center gap-2">
+                  <Link
+                    to={`/crm/projects/${p.id}`}
+                    className="flex flex-1 min-w-0 items-center gap-4 p-4 rounded border border-black/10 dark:border-white/10 hover:border-mustard focus-visible:ring-2 focus-visible:ring-mustard transition-colors bg-white dark:bg-slate-800"
+                    aria-label={`Project ${p.project_no}, stage: ${p.project_stage.replace(/_/g, ' ')}, ${p.progress_percentage}% complete`}
+                  >
+                    <div className="font-medium text-black dark:text-white w-36 shrink-0">{p.project_no}</div>
+                    <div className="text-sm text-black/60 dark:text-slate-300 capitalize w-32 shrink-0">
+                      {p.project_stage.replace(/_/g, ' ')}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <ProgressBar value={p.progress_percentage} size="sm" />
+                    </div>
+                    <StatusBadge hasDelays={p.has_delays} />
+                  </Link>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProject(p.id, p.project_no)}
+                      className="shrink-0 text-xs text-red-700 dark:text-red-400 underline-offset-2 hover:underline px-2"
+                      aria-label={`Delete project ${p.project_no}`}
+                    >
+                      delete
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
