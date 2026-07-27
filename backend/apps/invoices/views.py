@@ -1,6 +1,7 @@
 from django.http import HttpResponse
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -12,7 +13,7 @@ from .pdf_export import build_invoice_pdf
 class InvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = InvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['get', 'post', 'head', 'options']
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     @action(detail=False, methods=['post'])
     def preview(self, request):
@@ -64,6 +65,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             pass  # ponytail: non-fatal, same pattern as xlsx_export
 
         return Response(InvoiceSerializer(invoice).data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != 'admin':
+            raise PermissionDenied('Only admins can delete invoices.')
+        return super().destroy(request, *args, **kwargs)
 
 
 class BillingInfoViewSet(viewsets.ModelViewSet):
