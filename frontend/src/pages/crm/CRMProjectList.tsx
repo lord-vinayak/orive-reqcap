@@ -6,6 +6,7 @@ import type { CRMProjectList as Project } from '@/types/crm'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { StatusBadge } from '@/components/crm/StatusBadge'
 import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL } from '@/constants/clientStatus'
+import { useAuthStore } from '@/store/authStore'
 
 const PHASE_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'All Phases' },
@@ -17,6 +18,7 @@ const stageLabel = (stage: string) => stage.replace(/_/g, ' ').replace(/\b\w/g, 
 
 export default function CRMProjectList() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const isAdmin = useAuthStore((s) => s.user?.role === 'admin')
   const searchId = useId()
   const phaseFilterId = useId()
   const pocFilterId = useId()
@@ -74,6 +76,16 @@ export default function CRMProjectList() {
   }
 
   useEffect(() => { fetchProjects(search, phaseFilter) }, [phaseFilter])
+
+  const handleDelete = async (id: string, projectNo: string) => {
+    if (!confirm(`Delete project ${projectNo}? This cannot be undone.`)) return
+    try {
+      await crmApi.deleteProject(id)
+      setProjects((prev) => prev.filter((p) => p.id !== id))
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete project.')
+    }
+  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -182,6 +194,7 @@ export default function CRMProjectList() {
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Stage</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Progress</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white">Status</th>
+                  {isAdmin && <th scope="col" className="px-4 py-3 font-semibold text-black dark:text-white"><span className="sr-only">Actions</span></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
@@ -213,6 +226,18 @@ export default function CRMProjectList() {
                     <td className="px-4 py-3">
                       <StatusBadge status={p.overall_status} />
                     </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(p.id, p.project_no)}
+                          className="text-xs text-red-700 dark:text-red-400 underline-offset-2 hover:underline"
+                          aria-label={`Delete project ${p.project_no}`}
+                        >
+                          delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
