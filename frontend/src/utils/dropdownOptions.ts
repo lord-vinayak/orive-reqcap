@@ -5,8 +5,13 @@ export const BODY_PARTS = ['Face', 'Body', 'Hair', 'Lip', 'Eye', 'Others'] as co
 
 export const CATEGORIES = [
   'Wash', 'Moisturizer', 'Serum', 'Toner', 'Mask',
-  'Sunscreen', 'Scrub', 'Oil', 'Shampoo', 'Conditioner', 'Spray', 'Balm', 'Others',
+  'Sunscreen', 'Scrub', 'Oil', 'Shampoo', 'Conditioning Shampoo', 'Conditioner', 'Spray', 'Balm', 'Others',
 ] as const
+
+// Categories restricted to a single body part — filtered into the Category dropdown in ProductTable.
+export const CATEGORY_BODY_PART: Record<string, string> = {
+  'Conditioning Shampoo': 'Hair',
+}
 
 export const SUB_CATEGORIES: Record<string, string[]> = {
   Wash: ['Foaming', 'Gel', 'Creamy', 'Gel with beads', 'Pearly', 'Transparent', 'Gloss'],
@@ -19,6 +24,7 @@ export const SUB_CATEGORIES: Record<string, string[]> = {
   Scrub: ['Physical', 'Chemical'],
   Oil: ['Light Weight', 'Normal'],
   Shampoo: ['Pearly', 'Transparent', 'Gel', 'Creamy'],
+  'Conditioning Shampoo': ['Pearly', 'Transparent', 'Gel', 'Creamy'],
   Conditioner: ['Lotion', 'Cream - light', 'Cream - thick'],
   Spray: ['Mist', 'Deodorant'],
   Balm: [],

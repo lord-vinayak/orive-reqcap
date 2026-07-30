@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { RequirementProduct } from '@/types'
 import {
-  BODY_PARTS, CATEGORIES, SUB_CATEGORIES, SIZES, PACKAGING,
+  BODY_PARTS, CATEGORIES, CATEGORY_BODY_PART, SUB_CATEGORIES, SIZES, PACKAGING,
 } from '@/utils/dropdownOptions'
 import KeyBenefitsCell from './KeyBenefitsCell'
 
@@ -153,7 +153,15 @@ export default function ProductTable({
                       aria-labelledby={`body-part-lbl-${p.id}`}
                       aria-describedby={`body-part-help-${p.id} body-part-err-${p.id}`}
                       value={p.body_part}
-                      onChange={(e) => onChange(i, { body_part: e.target.value, key_benefits: [] })}
+                      onChange={(e) => {
+                        const newBodyPart = e.target.value
+                        const categoryStillValid = !CATEGORY_BODY_PART[p.category] || CATEGORY_BODY_PART[p.category] === newBodyPart
+                        onChange(i, {
+                          body_part: newBodyPart,
+                          key_benefits: [],
+                          ...(categoryStillValid ? {} : { category: '', sub_category: '' }),
+                        })
+                      }}
                       className={`${inputCls} ${invalid(!p.body_part?.trim())}`}
                       aria-invalid={showValidation && !p.body_part?.trim() ? true : undefined}
                       required
@@ -194,7 +202,7 @@ export default function ProductTable({
                       required
                     >
                       <option value="">Select Category</option>
-                      {CATEGORIES.map((c) => (
+                      {CATEGORIES.filter((c) => !CATEGORY_BODY_PART[c] || CATEGORY_BODY_PART[c] === p.body_part).map((c) => (
                         <option key={c} value={c}>{c === 'Scrub' && p.body_part === 'Face' ? 'Exfoliant' : c}</option>
                       ))}
                     </select>
