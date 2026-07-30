@@ -252,24 +252,7 @@ export default function CRMDashboard() {
             {/* ── Pie charts ── */}
             <section aria-labelledby="pipeline-heading">
               <h2 id="pipeline-heading" className="sr-only">Pipeline breakdown</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg p-5">
-                  <h3 className="text-base font-semibold text-black dark:text-white mb-3">Projects Pipeline</h3>
-                  <PhasePieChart
-                    data={[
-                      { key: 'sample',       name: 'Sample Stage',      value: stats.phase_breakdown.sample,       color: PHASE_COLORS.sample },
-                      { key: 'order_active', name: 'Order in Progress', value: stats.phase_breakdown.order_active, color: PHASE_COLORS.order_active },
-                      { key: 'completed',    name: 'Completed Orders',  value: stats.phase_breakdown.completed,    color: PHASE_COLORS.completed },
-                    ]}
-                    activeSegment={activeSegment}
-                    onSegmentClick={(key) => {
-                      setActiveSegment(prev => prev === key ? null : key)
-                      setActiveTab('projects')
-                    }}
-                    unitLabel="projects"
-                  />
-                </div>
-
+              <div className="grid grid-cols-1 gap-4">
                 <div className="bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg p-5">
                   <h3 className="text-base font-semibold text-black dark:text-white mb-3">Clients by Lead Status</h3>
                   {clientBucketCounts && (
