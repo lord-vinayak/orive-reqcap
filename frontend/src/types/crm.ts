@@ -485,6 +485,7 @@ export interface Invoice {
   invoice_type_label: string
   invoice_number: string
   date: string
+  comment: string
   client_name: string
   company_name: string
   client_gstin: string
@@ -570,6 +571,7 @@ export interface InvoiceCreatePayload {
   invoice_type: InvoiceType
   invoice_number: string
   date: string
+  comment?: string
   client_name: string
   company_name: string
   client_gstin: string
