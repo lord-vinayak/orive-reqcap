@@ -179,11 +179,11 @@ class ProposalViewSet(viewsets.ModelViewSet):
             XLSX_MIMETYPE,
         )
 
-        # Auto-attach the static Fragrance Notes spreadsheet
-        _fragrance_path = os.path.join(_STATIC_FILES_DIR, 'Fragrance Notes.xlsx')
+        # Auto-attach the static Fragrance Notes PDF
+        _fragrance_path = os.path.join(_STATIC_FILES_DIR, 'Fragrance-Notes-for-Personal-Care.pdf')
         try:
             with open(_fragrance_path, 'rb') as _f:
-                msg.attach('Fragrance Notes.xlsx', _f.read(), XLSX_MIMETYPE)
+                msg.attach('Fragrance-Notes-for-Personal-Care.pdf', _f.read(), 'application/pdf')
         except Exception:
             pass  # Missing file is non-fatal
 
