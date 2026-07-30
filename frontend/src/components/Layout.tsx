@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+import TaskReminderToasts from "@/components/TaskReminderToasts";
 
 const BASE_TITLE = "Skinovation Sciences CRM";
 
@@ -160,6 +161,8 @@ export default function Layout({
         )}
         {children}
       </main>
+
+      <TaskReminderToasts />
     </div>
   );
 }
