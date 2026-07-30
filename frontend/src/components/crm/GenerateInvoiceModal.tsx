@@ -103,6 +103,7 @@ export function GenerateInvoiceModal({
   // Header fields
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${projectNo}-${todayStr()}`)
   const [invoiceDate, setInvoiceDate] = useState(todayStr())
+  const [comment, setComment] = useState('')
   const [clientNameField, setClientNameField] = useState(billingInfo?.client_name || clientName)
   const [companyName, setCompanyName] = useState(billingInfo?.company_name || clientCompany)
   const [clientGstin, setClientGstin] = useState(billingInfo?.client_gstin || 'N/A')
@@ -174,6 +175,7 @@ export function GenerateInvoiceModal({
     invoice_type: invoiceType,
     invoice_number: invoiceNumber,
     date: invoiceDate,
+    comment,
     client_name: clientNameField,
     company_name: companyName,
     client_gstin: clientGstin,
@@ -297,6 +299,7 @@ export function GenerateInvoiceModal({
                   <Field label="Eway Bill No" value={ewayBillNo} onChange={setEwayBillNo} />
                   <Field label="Billing Address" value={billingAddress} onChange={setBillingAddress} />
                   <Field label="Shipping Address" value={shippingAddress} onChange={setShippingAddress} />
+                  <Field label="Tag / Comment" value={comment} onChange={setComment} />
                 </div>
               </div>
 
