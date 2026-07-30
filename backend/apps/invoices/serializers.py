@@ -12,7 +12,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = [
             'id', 'project', 'invoice_type', 'invoice_type_label',
-            'invoice_number', 'date',
+            'invoice_number', 'date', 'comment',
             'client_name', 'company_name', 'client_gstin',
             'billing_address', 'shipping_address', 'eway_bill_no',
             'dispatch_from_name', 'dispatch_from_gstin', 'dispatch_from_address',
