@@ -19,6 +19,7 @@ class Invoice(models.Model):
     invoice_type     = models.CharField(max_length=20, choices=TYPES)
     invoice_number   = models.CharField(max_length=50)
     date             = models.DateField(default=date.today)
+    comment          = models.CharField(max_length=255, blank=True, default='')
 
     # Bill-to (auto-filled from project/client, user-editable before generate)
     client_name      = models.CharField(max_length=255)
