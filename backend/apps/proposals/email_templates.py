@@ -105,11 +105,13 @@ HTML_BODY = """\
   <p>Looking forward to your approval.</p>
 
   <br>
-  <p style="margin: 0;">Warm regards,</p>
+  <p style="margin: 0;">Best Wishes,</p>
   <p style="margin: 4px 0 0 0;"><strong>Team Skinovation Sciences</strong></p>
   <p style="margin: 4px 0 0 0; color: #666666; font-size: 13px;">
-    Phone/WhatsApp: +91 98184 67515<br>
-    Email: hello@skinovationsciences.com
+    Your Skincare Brand Architect &ndash; Idea to Shelf<br>
+    Brand Ideation &bull; Formulation Development &bull; Packaging Support &bull; Compliance &bull; Private Label Manufacturing &bull; Brand Launch<br>
+    For more information on product and process pls refer to this link - <a href="https://shorturl.at/roha4">https://shorturl.at/roha4</a><br>
+    Reach out to us at - Hello@skinovationsciences.com | +91-9818467515 | Sector 48, Gurgaon, Haryana
   </p>
 
 </body>
@@ -159,8 +161,10 @@ Once we receive your confirmation, we will move ahead with sample booking and in
 
 Looking forward to your approval.
 
-Warm regards,
+Best Wishes,
 Team Skinovation Sciences
-Phone/WhatsApp: +91 98184 67515
-Email: hello@skinovationsciences.com
+Your Skincare Brand Architect - Idea to Shelf
+Brand Ideation - Formulation Development - Packaging Support - Compliance - Private Label Manufacturing - Brand Launch
+For more information on product and process pls refer to this link - https://shorturl.at/roha4
+Reach out to us at - Hello@skinovationsciences.com | +91-9818467515 | Sector 48, Gurgaon, Haryana
 """
