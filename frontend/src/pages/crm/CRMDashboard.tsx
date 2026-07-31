@@ -741,7 +741,7 @@ export default function CRMDashboard() {
   )
 }
 
-function StatCard({ label, value, accent, onClick }: { label: string; value: number; accent?: 'red'; onClick?: () => void }) {
+function StatCard({ label, value, accent, onClick, actionLabel = 'projects' }: { label: string; value: number; accent?: 'red'; onClick?: () => void; actionLabel?: string }) {
   const base = 'bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg p-4'
   const inner = (
     <>
@@ -757,7 +757,7 @@ function StatCard({ label, value, accent, onClick }: { label: string; value: num
         type="button"
         onClick={onClick}
         className={`${base} text-left w-full hover:ring-2 hover:ring-mustard/40 focus-visible:ring-2 focus-visible:ring-mustard transition-shadow`}
-        aria-label={`${label}: ${value}. Click to view projects.`}
+        aria-label={`${label}: ${value}. Click to view ${actionLabel}.`}
       >
         {inner}
       </button>
