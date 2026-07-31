@@ -264,17 +264,23 @@ export default function CRMDashboard() {
             {/* ── Pipeline snapshot ── */}
             <section aria-labelledby="snapshot-heading">
               <h2 id="snapshot-heading" className="text-base font-semibold text-black dark:text-white mb-3">Pipeline Snapshot</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {pipelineSnapshotCounts && PIPELINE_SNAPSHOT_ITEMS.map((item) => (
-                  <StatCard
-                    key={item.key}
-                    label={item.label}
-                    value={pipelineSnapshotCounts[item.key] ?? 0}
-                    actionLabel="clients"
-                    onClick={() => openSnapshotFilter(item)}
-                  />
-                ))}
-              </div>
+              {pipelineSnapshotCounts ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {PIPELINE_SNAPSHOT_ITEMS.map((item) => (
+                    <StatCard
+                      key={item.key}
+                      label={item.label}
+                      value={pipelineSnapshotCounts[item.key] ?? 0}
+                      actionLabel="clients"
+                      onClick={() => openSnapshotFilter(item)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div role="status" aria-live="polite" className="text-black/60 dark:text-slate-300 text-sm">
+                  Loading pipeline snapshot…
+                </div>
+              )}
             </section>
 
             {/* ── Pie charts ── */}
