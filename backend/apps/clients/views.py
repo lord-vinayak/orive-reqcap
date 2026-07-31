@@ -47,6 +47,20 @@ LEAD_BUCKETS = {
     'lost':             ['lead_closed'],
 }
 
+# (key, lead_status, lead_sub_status_or_None) — dashboard "Pipeline Snapshot" cards.
+# lead_sub_status of None means "count all sub-statuses under this lead_status".
+PIPELINE_SNAPSHOT_ITEMS = [
+    ('initial_conversation_needs_follow_up', 'initial_conversation', 'initial_conversation__need_follow_up'),
+    ('proposal_requested',                   'proposal',             'proposal__requested'),
+    ('costing_requested',                    'costing',              'costing__requested'),
+    ('sample_invoice_shared',                'sample',               'sample__invoice_shared'),
+    ('sample_in_pipeline',                   'sample',               'sample__in_pipeline'),
+    ('sample_in_transit',                    'sample',               'sample__in_transit'),
+    ('sample_user_testing',                  'sample',               'sample__user_testing'),
+    ('order_invoice_shared',                 'order',                'order__invoice_shared'),
+    ('production_all',                       'production',           None),
+]
+
 _TEMPLATE_MAP = {
     'welcome': welcome_tpl,
     'reminder_1': reminder1_tpl,
@@ -756,6 +770,20 @@ class ClientViewSet(viewsets.ModelViewSet):
             bucket: qs.filter(lead_status__in=statuses).count()
             for bucket, statuses in LEAD_BUCKETS.items()
         }
+        return Response(counts)
+
+    # ------------------------------------------------------------------
+    # GET /api/clients/pipeline-snapshot-counts/
+    # ------------------------------------------------------------------
+    @action(detail=False, methods=['get'], url_path='pipeline-snapshot-counts')
+    def pipeline_snapshot_counts(self, request):
+        qs = self.get_queryset()
+        counts = {}
+        for key, lead_status, lead_sub_status in PIPELINE_SNAPSHOT_ITEMS:
+            item_qs = qs.filter(lead_status=lead_status)
+            if lead_sub_status:
+                item_qs = item_qs.filter(lead_sub_status=lead_sub_status)
+            counts[key] = item_qs.count()
         return Response(counts)
 
     # ------------------------------------------------------------------
