@@ -9,8 +9,8 @@ import type { Client } from '@/types'
 import { StatusBadge } from '@/components/crm/StatusBadge'
 import { ProgressBar } from '@/components/crm/ProgressBar'
 import { LeadStatusBadge } from '@/components/LeadStatusBadge'
-import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL, LEAD_BUCKET_LABEL, LEAD_BUCKET_COLOR, LEAD_STATUS_OPTIONS, LEAD_SUB_STATUS_OPTIONS } from '@/constants/clientStatus'
-import type { LeadStatus, LeadBucket } from '@/constants/clientStatus'
+import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL, LEAD_BUCKET_LABEL, LEAD_BUCKET_COLOR, LEAD_STATUS_OPTIONS, LEAD_SUB_STATUS_OPTIONS, PIPELINE_SNAPSHOT_ITEMS, LEAD_STATUS_TO_BUCKET } from '@/constants/clientStatus'
+import type { LeadStatus, LeadBucket, PipelineSnapshotKey } from '@/constants/clientStatus'
 import { useAuthStore } from '@/store/authStore'
 import { userService } from '@/services'
 import type { User } from '@/types'
@@ -53,6 +53,7 @@ export default function CRMDashboard() {
   const PROJECT_PAGE_SIZE = 50
   const [users, setUsers] = useState<User[]>([])
   const [clientBucketCounts, setClientBucketCounts] = useState<Record<LeadBucket, number> | null>(null)
+  const [pipelineSnapshotCounts, setPipelineSnapshotCounts] = useState<Record<PipelineSnapshotKey, number> | null>(null)
   const [activeClientBucket, setActiveClientBucket] = useState<LeadBucket | null>(null)
   const [clientBucketRows, setClientBucketRows] = useState<Client[]>([])
   const [clientBucketCount, setClientBucketCount] = useState(0)
@@ -75,6 +76,13 @@ export default function CRMDashboard() {
     crmApi.getPipelineProjects(filter)
       .then(res => setPipelineModal(prev => prev ? { ...prev, projects: res.data, loading: false } : null))
       .catch(() => setPipelineModal(prev => prev ? { ...prev, loading: false } : null))
+  }
+
+  function openSnapshotFilter(item: { leadStatus: LeadStatus; subStatus: string | null }) {
+    setActiveClientBucket(LEAD_STATUS_TO_BUCKET[item.leadStatus])
+    setClientStageFilter(item.leadStatus)
+    setClientSubStageFilter(item.subStatus ?? '')
+    setActiveTab('clients')
   }
 
   useEffect(() => {
@@ -101,6 +109,10 @@ export default function CRMDashboard() {
 
     clientService.getLeadBucketCounts()
       .then(setClientBucketCounts)
+      .catch(() => {})
+
+    clientService.getPipelineSnapshotCounts()
+      .then(setPipelineSnapshotCounts)
       .catch(() => {})
 
     userService.list().then((res) => {
@@ -246,6 +258,22 @@ export default function CRMDashboard() {
                 <StatCard label="Delayed Projects" value={stats.delayed_projects} accent="red" onClick={() => openPipelineModal('delayed')} />
                 <StatCard label="Formula Pending" value={stats.pipeline.formula_pending} onClick={() => openPipelineModal('formula_pending')} />
                 <StatCard label="Sample in Pipeline" value={stats.pipeline.sample_in_pipeline} onClick={() => openPipelineModal('sample_in_pipeline')} />
+              </div>
+            </section>
+
+            {/* ── Pipeline snapshot ── */}
+            <section aria-labelledby="snapshot-heading">
+              <h2 id="snapshot-heading" className="text-base font-semibold text-black dark:text-white mb-3">Pipeline Snapshot</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {pipelineSnapshotCounts && PIPELINE_SNAPSHOT_ITEMS.map((item) => (
+                  <StatCard
+                    key={item.key}
+                    label={item.label}
+                    value={pipelineSnapshotCounts[item.key] ?? 0}
+                    actionLabel="clients"
+                    onClick={() => openSnapshotFilter(item)}
+                  />
+                ))}
               </div>
             </section>
 
