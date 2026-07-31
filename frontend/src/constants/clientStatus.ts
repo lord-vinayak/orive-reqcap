@@ -200,3 +200,51 @@ export function formatLeadStatus(leadStatus: LeadStatus | string, subStatus?: st
   const sub = getSubStatusLabel(subStatus)
   return `${main} · ${sub}`
 }
+
+// ── Dashboard "Pipeline Snapshot" cards ─────────────────────────────────────
+// Mirrors backend PIPELINE_SNAPSHOT_ITEMS in backend/apps/clients/views.py — keep in sync.
+
+export type PipelineSnapshotKey =
+  | 'initial_conversation_needs_follow_up'
+  | 'proposal_requested'
+  | 'costing_requested'
+  | 'sample_invoice_shared'
+  | 'sample_in_pipeline'
+  | 'sample_in_transit'
+  | 'sample_user_testing'
+  | 'order_invoice_shared'
+  | 'production_all'
+
+export interface PipelineSnapshotItem {
+  key: PipelineSnapshotKey
+  label: string
+  leadStatus: LeadStatus
+  subStatus: string | null
+}
+
+export const PIPELINE_SNAPSHOT_ITEMS: PipelineSnapshotItem[] = [
+  { key: 'initial_conversation_needs_follow_up', label: 'Initial conversation – needs follow-up', leadStatus: 'initial_conversation', subStatus: 'initial_conversation__need_follow_up' },
+  { key: 'proposal_requested',                   label: 'Proposal Requested',                      leadStatus: 'proposal',             subStatus: 'proposal__requested' },
+  { key: 'costing_requested',                    label: 'Costing Requested',                        leadStatus: 'costing',              subStatus: 'costing__requested' },
+  { key: 'sample_invoice_shared',                label: 'Sample – Invoice Shared',                  leadStatus: 'sample',                subStatus: 'sample__invoice_shared' },
+  { key: 'sample_in_pipeline',                   label: 'Sample – In Pipeline',                     leadStatus: 'sample',                subStatus: 'sample__in_pipeline' },
+  { key: 'sample_in_transit',                    label: 'Sample – In Transit',                      leadStatus: 'sample',                subStatus: 'sample__in_transit' },
+  { key: 'sample_user_testing',                  label: 'Sample – User Testing',                    leadStatus: 'sample',                subStatus: 'sample__user_testing' },
+  { key: 'order_invoice_shared',                 label: 'Order Invoice Shared',                     leadStatus: 'order',                 subStatus: 'order__invoice_shared' },
+  { key: 'production_all',                       label: 'Production – All',                         leadStatus: 'production',            subStatus: null },
+]
+
+// Mirrors backend LEAD_BUCKETS in backend/apps/clients/views.py — keep in sync.
+export const LEAD_STATUS_TO_BUCKET: Record<LeadStatus, LeadBucket> = {
+  initial_conversation: 'prospective',
+  proposal:             'prospective',
+  costing:              'prospective',
+  sample:               'sample',
+  order:                'converted',
+  production:           'production',
+  testing:              'production',
+  filling:              'production',
+  order_dispatch:       'production',
+  order_closed:         'business_earned',
+  lead_closed:          'lost',
+}
