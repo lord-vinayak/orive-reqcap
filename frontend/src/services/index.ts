@@ -3,7 +3,7 @@ import type {
   Client, Requirement, RequirementProduct, Note, FileRecord, ClientFile, ClientNote,
   CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, IngredientRecord, PackagingRecord,
 } from '@/types'
-import type { LeadBucket } from '@/constants/clientStatus'
+import type { LeadBucket, PipelineSnapshotKey } from '@/constants/clientStatus'
 
 export interface SendEmailPayload {
   to_email: string
@@ -65,6 +65,10 @@ export const clientService = {
   /** Client counts grouped into the 5 lead-status buckets used on the dashboard pie chart. */
   getLeadBucketCounts: async (): Promise<Record<LeadBucket, number>> =>
     (await api.get<Record<LeadBucket, number>>('/clients/lead-bucket-counts/')).data,
+
+  /** Client counts for the dashboard's 9 pipeline-checkpoint cards. */
+  getPipelineSnapshotCounts: async (): Promise<Record<PipelineSnapshotKey, number>> =>
+    (await api.get<Record<PipelineSnapshotKey, number>>('/clients/pipeline-snapshot-counts/')).data,
   get: async (phone: string) => (await api.get<Client>(`/clients/${phone}/`)).data,
   create: async (data: Partial<Client>) => (await api.post<Client>('/clients/', data)).data,
   update: async (phone: string, data: Partial<Client>) =>
