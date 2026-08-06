@@ -18,12 +18,16 @@ import type { User } from '@/types'
 const SUB_STATUS_OPTIONS = Object.values(LEAD_SUB_STATUS_OPTIONS).flatMap((opts) => opts ?? [])
 
 type SegmentKey = 'sample' | 'order_active' | 'completed'
-type PipelineFilter = 'formula_pending' | 'sample_in_pipeline' | 'delayed'
+type PipelineFilter = 'formula_pending' | 'sample_in_pipeline' | 'pickup_pending' | 'production_pending' | 'pkg_pending' | 'pkg_order_pending' | 'delayed'
 type DashboardTab = 'projects' | 'clients'
 
 const PIPELINE_MODAL_TITLE: Record<PipelineFilter, string> = {
   formula_pending: 'Formula Pending',
   sample_in_pipeline: 'Sample in Pipeline',
+  pickup_pending: 'Pickup Pending',
+  production_pending: 'Production Pending',
+  pkg_pending: 'Packaging Pending',
+  pkg_order_pending: 'Packaging Order Pending',
   delayed: 'Delayed Projects',
 }
 
@@ -258,6 +262,10 @@ export default function CRMDashboard() {
                 <StatCard label="Delayed Projects" value={stats.delayed_projects} accent="red" onClick={() => openPipelineModal('delayed')} />
                 <StatCard label="Formula Pending" value={stats.pipeline.formula_pending} onClick={() => openPipelineModal('formula_pending')} />
                 <StatCard label="Sample in Pipeline" value={stats.pipeline.sample_in_pipeline} onClick={() => openPipelineModal('sample_in_pipeline')} />
+                <StatCard label="Pickup Pending" value={stats.pipeline.pickup_pending} onClick={() => openPipelineModal('pickup_pending')} />
+                <StatCard label="Production Pending" value={stats.pipeline.production_pending} onClick={() => openPipelineModal('production_pending')} />
+                <StatCard label="Packaging Pending" value={stats.pipeline.pkg_pending} onClick={() => openPipelineModal('pkg_pending')} />
+                <StatCard label="Packaging Order Pending" value={stats.pipeline.pkg_order_pending} onClick={() => openPipelineModal('pkg_order_pending')} />
               </div>
             </section>
 
