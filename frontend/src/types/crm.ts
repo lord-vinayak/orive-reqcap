@@ -420,6 +420,10 @@ export interface DashboardStats {
   pipeline: {
     formula_pending: number
     sample_in_pipeline: number
+    pickup_pending: number
+    production_pending: number
+    pkg_pending: number
+    pkg_order_pending: number
   }
   phase_breakdown: {
     sample: number
