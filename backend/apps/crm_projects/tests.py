@@ -2,6 +2,7 @@ from django.test import TestCase
 from apps.clients.models import Client
 from apps.crm_projects.models import CRMProject, StageCompletion
 from apps.crm_projects.stage_definitions import ALL_INITIAL_STAGE_KEYS
+from apps.crm_projects.views import _is_pending
 
 class CRMStageCompletionTests(TestCase):
     def setUp(self):
@@ -23,3 +24,15 @@ class CRMStageCompletionTests(TestCase):
         )
         self.assertEqual(sc.stage_key, "pkg_req_captured")
         self.assertTrue(sc.is_complete)
+
+    def test_new_pending_stages_registered(self):
+        for key in ('pickup_pending', 'production_pending', 'pkg_pending', 'pkg_order_pending'):
+            self.assertIn(key, ALL_INITIAL_STAGE_KEYS)
+
+    def test_pkg_order_pending_logic(self):
+        # ticked with next stage not ticked -> pending
+        sc = {'pkg_order_pending': True, 'pkg_ordered': False}
+        self.assertTrue(_is_pending(self.project, sc, 'pkg_order_pending'))
+        # next stage also ticked -> no longer pending
+        sc['pkg_ordered'] = True
+        self.assertFalse(_is_pending(self.project, sc, 'pkg_order_pending'))
