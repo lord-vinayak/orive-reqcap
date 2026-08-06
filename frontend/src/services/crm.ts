@@ -40,7 +40,7 @@ export const crmApi = {
   getDashboardStats: () =>
     api.get<DashboardStats>('/crm/projects/dashboard_stats/'),
 
-  getPipelineProjects: (filter: 'formula_pending' | 'sample_in_pipeline' | 'delayed') =>
+  getPipelineProjects: (filter: 'formula_pending' | 'sample_in_pipeline' | 'pickup_pending' | 'production_pending' | 'pkg_pending' | 'pkg_order_pending' | 'delayed') =>
     api.get<CRMProjectList[]>(`/crm/projects/pipeline-projects/?filter=${filter}`),
 
   getSimilarLearnings: (projectId: string) =>
