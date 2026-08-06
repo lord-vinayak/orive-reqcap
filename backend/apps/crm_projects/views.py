@@ -294,12 +294,28 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
     }
 
 
-# Keys needed for pipeline card filtering — all cycles, only the 4 relevant bases.
+# Each "X Pending" pipeline card = stage_key is complete but `next` isn't yet.
+# `loop` stages live inside the resample cycle and need the cycle suffix applied.
+PENDING_STAGE_DEFS = {
+    'formula_pending':    {'next': 'formula_made',        'loop': True,  'phase': 'sample'},
+    'sample_in_pipeline': {'next': 'sample_created',       'loop': True,  'phase': 'sample'},
+    'pickup_pending':     {'next': 'shipment_created',     'loop': True,  'phase': 'sample'},
+    'production_pending': {'next': 'production_initiated', 'loop': False, 'phase': 'order'},
+    'pkg_pending':        {'next': 'pkg_req_captured',     'loop': False, 'phase': 'order'},
+    'pkg_order_pending':  {'next': 'pkg_ordered',          'loop': False, 'phase': 'order'},
+}
+
+# Keys needed for pipeline card filtering — all cycles for loop-based stages.
 PIPELINE_STAGE_KEYS = [
     get_loop_key(base, cycle)
     for cycle in range(1, MAX_RESAMPLE_CYCLES + 1)
-    for base in ('formula_pending', 'formula_made', 'sample_in_pipeline', 'sample_created')
-]
+    for def_key, d in PENDING_STAGE_DEFS.items() if d['loop']
+    for base in (def_key, d['next'])
+] + [
+    key
+    for d in PENDING_STAGE_DEFS.values() if not d['loop']
+    for key in (d['next'],)
+] + [def_key for def_key, d in PENDING_STAGE_DEFS.items() if not d['loop']]
 
 # ── Pipeline helpers ──────────────────────────────────────────────────────────
 
@@ -308,32 +324,28 @@ def _sc_map(project):
     return {sc.stage_key: sc.is_complete for sc in project.stage_completions.all()}
 
 
-def _is_formula_pending(p, sc):
-    cycle = p.resample_cycle
-    return sc.get(get_loop_key('formula_pending', cycle), False) and not sc.get(get_loop_key('formula_made', cycle), False)
+def _is_pending(p, sc, def_key):
+    d = PENDING_STAGE_DEFS[def_key]
+    cycle = p.resample_cycle if d['loop'] else 1
+    stage_key = get_loop_key(def_key, cycle) if d['loop'] else def_key
+    next_key = get_loop_key(d['next'], cycle) if d['loop'] else d['next']
+    return sc.get(stage_key, False) and not sc.get(next_key, False)
 
 
-def _is_sample_in_pipeline(p, sc):
-    cycle = p.resample_cycle
-    return sc.get(get_loop_key('sample_in_pipeline', cycle), False) and not sc.get(get_loop_key('sample_created', cycle), False)
-
-
-def _pipeline_counts(sample_qs):
-    """Return (formula_pending_count, sample_in_pipeline_count) for a sample-phase queryset."""
-    fp = sip = 0
-    for p in sample_qs:
+def _pipeline_counts(qs, def_keys):
+    """Return {def_key: count} of projects matching each pending definition."""
+    counts = {k: 0 for k in def_keys}
+    for p in qs:
         sc = _sc_map(p)
-        if _is_formula_pending(p, sc):
-            fp += 1
-        if _is_sample_in_pipeline(p, sc):
-            sip += 1
-    return fp, sip
+        for k in def_keys:
+            if _is_pending(p, sc, k):
+                counts[k] += 1
+    return counts
 
 
 def _filter_pipeline(projects, filter_key):
     """Filter a list of CRMProject objects to those matching the pipeline filter."""
-    check = _is_formula_pending if filter_key == 'formula_pending' else _is_sample_in_pipeline
-    return [p for p in projects if check(p, _sc_map(p))]
+    return [p for p in projects if _is_pending(p, _sc_map(p), filter_key)]
 
 
 # ── ViewSet ───────────────────────────────────────────────────────────────────
@@ -821,19 +833,24 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
             )
         ).filter(order_done=order_total).count()
 
-        fp_count, sip_count = _pipeline_counts(
-            CRMProject.objects.filter(phase='sample')
-            .prefetch_related(
-                Prefetch(
-                    'stage_completions',
-                    queryset=StageCompletion.objects.filter(
-                        stage_key__in=PIPELINE_STAGE_KEYS
-                    ).only('id', 'project_id', 'stage_key', 'is_complete'),
-                )
-            )
-            .only('id', 'resample_cycle')
+        sample_keys = [k for k, d in PENDING_STAGE_DEFS.items() if d['phase'] == 'sample']
+        order_keys = [k for k, d in PENDING_STAGE_DEFS.items() if d['phase'] == 'order']
+        stage_prefetch = Prefetch(
+            'stage_completions',
+            queryset=StageCompletion.objects.filter(
+                stage_key__in=PIPELINE_STAGE_KEYS
+            ).only('id', 'project_id', 'stage_key', 'is_complete'),
         )
-        pipeline = {'formula_pending': fp_count, 'sample_in_pipeline': sip_count}
+        pipeline = {
+            **_pipeline_counts(
+                CRMProject.objects.filter(phase='sample').prefetch_related(stage_prefetch).only('id', 'resample_cycle'),
+                sample_keys,
+            ),
+            **_pipeline_counts(
+                CRMProject.objects.filter(phase='order').prefetch_related(stage_prefetch).only('id', 'resample_cycle'),
+                order_keys,
+            ),
+        }
         return Response({
             'stage_distribution': {'Sample Phase': sample_count, 'Order Phase': order_count},
             'total_projects': sample_count + order_count,
@@ -873,7 +890,7 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='pipeline-projects')
     def pipeline_projects(self, request):
         filter_key = request.query_params.get('filter')
-        if filter_key not in ('formula_pending', 'sample_in_pipeline', 'delayed'):
+        if filter_key != 'delayed' and filter_key not in PENDING_STAGE_DEFS:
             return Response({'error': 'Invalid filter'}, status=400)
 
         if filter_key == 'delayed':
@@ -885,12 +902,13 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
             ]
             return Response(CRMProjectListSerializer(projects, many=True).data)
 
-        all_sample = list(
-            CRMProject.objects.filter(phase='sample')
+        phase = PENDING_STAGE_DEFS[filter_key]['phase']
+        all_projects = list(
+            CRMProject.objects.filter(phase=phase)
             .prefetch_related('milestones', 'stage_completions')
             .select_related('client')
         )
-        projects = _filter_pipeline(all_sample, filter_key)
+        projects = _filter_pipeline(all_projects, filter_key)
         return Response(CRMProjectListSerializer(projects, many=True).data)
 
     @action(detail=True, methods=['get'], url_path='similar-learnings')
