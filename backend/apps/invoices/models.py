@@ -12,10 +12,16 @@ class Invoice(models.Model):
         ('final',          'Final Invoice'),
     ]
 
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('final', 'Final'),
+    ]
+
     id               = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project          = models.ForeignKey(
         'crm_projects.CRMProject', on_delete=models.CASCADE, related_name='invoices'
     )
+    status           = models.CharField(max_length=10, choices=STATUS_CHOICES, default='final')
     invoice_type     = models.CharField(max_length=20, choices=TYPES)
     invoice_number   = models.CharField(max_length=50)
     date             = models.DateField(default=date.today)
