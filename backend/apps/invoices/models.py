@@ -95,7 +95,8 @@ class BillingInfo(models.Model):
 
     # [{key, label, price}] — key matches a ServiceBaseRates field name
     services = models.JSONField(default=list, blank=True)
-    # [{proposal_item_id, item_name, per_unit_cost}]
+    # [{proposal_item_id, item_name, per_unit_cost, body_part, category}] — body_part/category
+    # come from the Client Costing item's catalog data and drive invoice HSN classification.
     products = models.JSONField(default=list, blank=True)
 
     created_by = models.ForeignKey(

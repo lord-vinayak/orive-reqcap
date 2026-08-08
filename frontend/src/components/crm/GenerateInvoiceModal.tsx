@@ -75,12 +75,36 @@ function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
 
+// HSN by product category. Prefers the structured body_part/category from the
+// Client Costing item (set when a product is added to Billing Info); falls back to
+// keyword-matching the item name for freeform rows with no such link (e.g. Printing,
+// or a manually typed row). Hair takes priority — a hair wash/shampoo is still 3305,
+// not 3401 (face/body wash only).
+const HAIR_KEYWORDS = ['hair', 'shampoo', 'conditioner', 'scalp']
+const WASH_KEYWORDS = ['wash', 'soap', 'cleanser', 'cleansing', 'cleanse']
+
+function classifyHsn(itemName: string, bodyPart?: string, category?: string): string {
+  if (bodyPart) {
+    if (bodyPart === 'Hair') return '3305'
+    if (category === 'Wash') return '3401'
+    return '3304'
+  }
+  const name = itemName.toLowerCase()
+  if (HAIR_KEYWORDS.some((k) => name.includes(k))) return '3305'
+  if (WASH_KEYWORDS.some((k) => name.includes(k))) return '3401'
+  return '3304'
+}
+
 // Sample/Advance/Final pull from Billing Info; Printing stays fully manual
 // for now (Part 1 scope — see project CLAUDE.md).
 function buildInitialItems(type: InvoiceType, billingInfo: BillingInfo | null): InvoiceItem[] {
   if (!billingInfo) return [BLANK_ITEM()]
   const productItems: InvoiceItem[] = billingInfo.products.map((p) => ({
-    ...BLANK_ITEM(), item_name: p.item_name, rate_per_item: p.per_unit_cost, category: 'product',
+    ...BLANK_ITEM(),
+    item_name: p.item_name,
+    hsn: classifyHsn(p.item_name, p.body_part, p.category),
+    rate_per_item: p.per_unit_cost,
+    category: 'product',
   }))
   const serviceItems: InvoiceItem[] = billingInfo.services.map((s) => ({
     ...BLANK_ITEM(), item_name: s.label, rate_per_item: s.price, qty: 1, category: 'service',
@@ -174,7 +198,12 @@ export function GenerateInvoiceModal({
 
   // Item helpers
   const setItem = (idx: number, key: keyof InvoiceItem, val: string) => {
-    setItems((prev) => prev.map((it, i) => i === idx ? { ...it, [key]: val } : it))
+    setItems((prev) => prev.map((it, i) => {
+      if (i !== idx) return it
+      // Re-derive HSN whenever the name changes, so typed rows get it too — still freely editable after.
+      const hsn = key === 'item_name' && it.category !== 'service' ? classifyHsn(val) : it.hsn
+      return { ...it, [key]: val, hsn }
+    }))
   }
   const addItem = () => setItems((prev) => [...prev, BLANK_ITEM()])
   const addProductRow = () => setItems((prev) => [...prev, { ...BLANK_ITEM(), category: 'product' }])

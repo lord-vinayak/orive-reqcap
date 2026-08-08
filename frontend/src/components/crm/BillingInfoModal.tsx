@@ -159,12 +159,17 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
     })
   }
 
-  const toggleProduct = (proposalItemId: string, name: string, unitCost: number | string) => {
+  const toggleProduct = (
+    proposalItemId: string, name: string, unitCost: number | string, bodyPart: string, category: string
+  ) => {
     setProducts((prev) => {
       if (prev.some((p) => p.proposal_item_id === proposalItemId)) {
         return prev.filter((p) => p.proposal_item_id !== proposalItemId)
       }
-      return [...prev, { proposal_item_id: proposalItemId, item_name: name, per_unit_cost: unitCost }]
+      return [...prev, {
+        proposal_item_id: proposalItemId, item_name: name, per_unit_cost: unitCost,
+        body_part: bodyPart, category,
+      }]
     })
   }
 
@@ -327,15 +332,18 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
                 {proposals.length > 0 && (
                   <div className="border border-gray-200 dark:border-slate-600 rounded-lg divide-y divide-gray-100 dark:divide-slate-700 max-h-48 overflow-y-auto">
                     {(selectedProposal?.items ?? []).map((it) => {
-                      const name = itemName(it.catalog_data as unknown as Record<string, unknown>)
-                      const cost = defaultUnitCost(it.catalog_data as unknown as Record<string, unknown>)
+                      const catalogData = it.catalog_data as unknown as Record<string, unknown>
+                      const name = itemName(catalogData)
+                      const cost = defaultUnitCost(catalogData)
+                      const bodyPart = typeof catalogData.body_part === 'string' ? catalogData.body_part : ''
+                      const category = typeof catalogData.product_type === 'string' ? catalogData.product_type : ''
                       const checked = products.some((p) => p.proposal_item_id === it.id)
                       return (
                         <label key={it.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer">
                           <input
                             type="checkbox"
                             checked={checked}
-                            onChange={() => toggleProduct(it.id, name, cost)}
+                            onChange={() => toggleProduct(it.id, name, cost, bodyPart, category)}
                             className="h-4 w-4 accent-yellow-500"
                           />
                           <span className="flex-1 text-black dark:text-white">{name}</span>

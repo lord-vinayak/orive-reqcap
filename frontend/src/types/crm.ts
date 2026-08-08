@@ -550,6 +550,9 @@ export interface BillingInfoProduct {
   proposal_item_id: string
   item_name: string
   per_unit_cost: number | string
+  /** From the Client Costing item's catalog data — drives HSN classification. Optional: absent on billing info saved before this field existed. */
+  body_part?: string
+  category?: string
 }
 
 export interface BillingInfo {
