@@ -130,6 +130,16 @@ COLUMN_SPECS = {
     ],
 }
 
+# Services sub-table (Advance/Final) — mirrors the fields the edit form actually
+# collects for services (item, SAC, rate, qty); batch/expiry/size don't apply.
+SERVICES_COLUMN_SPEC = [
+    ('Item',        'item_name',    58),
+    ('HSN / SAC',   'hsn',          20),
+    ('Rate / Item', 'rate_per_item',22),
+    ('Qty',         'qty',          12),
+    ('Amount',      '_amount',      22),
+]
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -145,6 +155,11 @@ def _fmt(val):
     return f'{_CURRENCY}{_d(val):,.2f}'
 
 
+# These are identifiers, not quantities — a missing value should render blank,
+# not '0' (used by rows like the synthetic Processing Charges that don't set them).
+_BLANK_WHEN_MISSING = {'batch_no', 'exp_date', 'size_ml', 'hsn'}
+
+
 def _get_cell(item, key):
     if key == '_amount':
         return _fmt(_d(item.get('rate_per_item', 0)) * _d(item.get('qty', 0)))
@@ -155,7 +170,7 @@ def _get_cell(item, key):
         return _fmt(payable)
     v = item.get(key, '')
     if v is None or v == '':
-        return '0'
+        return '' if key in _BLANK_WHEN_MISSING else '0'
     if key == 'rate_per_item':
         return _fmt(_d(v))
     return str(v)
@@ -602,7 +617,7 @@ def _build_product_services_sections(invoice, w, styles, column_spec_key):
     story.append(Spacer(1, 2*mm))
 
     story.append(_section_bar('Services', w, styles))
-    story += _build_items_table(services, COLUMN_SPECS[column_spec_key], w, styles)
+    story += _build_items_table(services, SERVICES_COLUMN_SPEC, w, styles)
     story.append(_labelval_table([_row('Services Total', _fmt(services_total), bold=True)], label_w, rate_w, val_w))
     story.append(Spacer(1, 2*mm))
 

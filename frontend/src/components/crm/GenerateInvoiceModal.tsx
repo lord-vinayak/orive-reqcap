@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { crmApi } from '@/services/crm'
-import type { Invoice, InvoiceType, InvoiceItem, InvoiceCreatePayload, InvoiceStatus, BillingInfo } from '@/types/crm'
-import { INVOICE_TYPE_LABELS, INVOICE_TYPE_COLUMNS } from '@/types/crm'
+import type { Invoice, InvoiceType, InvoiceItem, InvoiceCreatePayload, InvoiceStatus, BillingInfo, ServiceKey } from '@/types/crm'
+import { INVOICE_TYPE_LABELS, INVOICE_TYPE_COLUMNS, SERVICE_LABELS } from '@/types/crm'
 
 interface Props {
   projectId: string
@@ -95,6 +95,27 @@ function classifyHsn(itemName: string, bodyPart?: string, category?: string): st
   return '3304'
 }
 
+// SAC codes for services — keyed the same as SERVICE_KEYS/SERVICE_LABELS in types/crm.ts.
+// batch_testing has no SAC yet, so it's left unmapped (blank until entered manually).
+const SAC_BY_SERVICE_KEY: Partial<Record<ServiceKey, string>> = {
+  cdsco_registration: '998312',
+  content_creation: '998361',
+  logo_design: '998391',
+  label_mono_carton_design: '998391',
+  dermatology_testing: '998346',
+  spf_testing: '998346',
+  formulation_support: '998393',
+  digital_brand_building_support: '998397',
+}
+
+// Fallback for a freeform/manually typed service row — match the typed name against
+// a known service label so it still gets its SAC code without needing the source key.
+function sacForServiceName(name: string): string | undefined {
+  const key = (Object.keys(SERVICE_LABELS) as ServiceKey[])
+    .find((k) => SERVICE_LABELS[k].toLowerCase() === name.trim().toLowerCase())
+  return key ? SAC_BY_SERVICE_KEY[key] : undefined
+}
+
 // Sample/Advance/Final pull from Billing Info; Printing stays fully manual
 // for now (Part 1 scope — see project CLAUDE.md).
 function buildInitialItems(type: InvoiceType, billingInfo: BillingInfo | null): InvoiceItem[] {
@@ -107,7 +128,7 @@ function buildInitialItems(type: InvoiceType, billingInfo: BillingInfo | null): 
     category: 'product',
   }))
   const serviceItems: InvoiceItem[] = billingInfo.services.map((s) => ({
-    ...BLANK_ITEM(), item_name: s.label, rate_per_item: s.price, qty: 1, category: 'service',
+    ...BLANK_ITEM(), item_name: s.label, hsn: SAC_BY_SERVICE_KEY[s.key] ?? '', rate_per_item: s.price, qty: 1, category: 'service',
   }))
   const items =
     type === 'product_simple' ? productItems :
@@ -200,9 +221,10 @@ export function GenerateInvoiceModal({
   const setItem = (idx: number, key: keyof InvoiceItem, val: string) => {
     setItems((prev) => prev.map((it, i) => {
       if (i !== idx) return it
-      // Re-derive HSN whenever the name changes, so typed rows get it too — still freely editable after.
-      const hsn = key === 'item_name' && it.category !== 'service' ? classifyHsn(val) : it.hsn
-      return { ...it, [key]: val, hsn }
+      if (key !== 'item_name') return { ...it, [key]: val }
+      // Re-derive HSN/SAC whenever the name changes, so typed rows get it too — still freely editable after.
+      const hsn = it.category === 'service' ? (sacForServiceName(val) ?? it.hsn) : classifyHsn(val)
+      return { ...it, item_name: val, hsn }
     }))
   }
   const addItem = () => setItems((prev) => [...prev, BLANK_ITEM()])
@@ -455,7 +477,7 @@ export function GenerateInvoiceModal({
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Services</h3>
                     <ItemsTable
                       rows={items.map((item, idx) => ({ item, idx })).filter((r) => r.item.category === 'service')}
-                      fields={['item_name', 'rate_per_item', 'qty']}
+                      fields={['item_name', 'hsn', 'rate_per_item', 'qty']}
                       computedFields={['Amount']}
                       invoiceType={invoiceType}
                       setItem={setItem}
