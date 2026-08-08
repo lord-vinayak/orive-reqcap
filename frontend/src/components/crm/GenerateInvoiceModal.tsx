@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { crmApi } from '@/services/crm'
-import type { Invoice, InvoiceType, InvoiceItem, InvoiceCreatePayload, BillingInfo } from '@/types/crm'
+import type { Invoice, InvoiceType, InvoiceItem, InvoiceCreatePayload, InvoiceStatus, BillingInfo } from '@/types/crm'
 import { INVOICE_TYPE_LABELS, INVOICE_TYPE_COLUMNS } from '@/types/crm'
 
 interface Props {
@@ -9,8 +9,12 @@ interface Props {
   clientName: string
   clientCompany: string
   billingInfo: BillingInfo | null
+  /** When set, the modal opens straight into the form pre-filled from this draft instead of the template picker. */
+  draftInvoice?: Invoice | null
   onClose: () => void
   onDone: (invoice: Invoice) => void
+  /** Fired after "Save as Draft" — unlike onDone, the modal stays open so the user can keep editing. */
+  onDraftSaved: (invoice: Invoice) => void
 }
 
 type Step = 'template' | 'form' | 'preview' | 'generating' | 'done'
@@ -89,45 +93,52 @@ function buildInitialItems(type: InvoiceType, billingInfo: BillingInfo | null): 
 }
 
 export function GenerateInvoiceModal({
-  projectId, projectNo, clientName, clientCompany, billingInfo, onClose, onDone,
+  projectId, projectNo, clientName, clientCompany, billingInfo, draftInvoice, onClose, onDone, onDraftSaved,
 }: Props) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<Element | null>(null)
 
-  const [step, setStep] = useState<Step>('template')
-  const [invoiceType, setInvoiceType] = useState<InvoiceType>('product_simple')
+  const [invoiceId, setInvoiceId] = useState<string | null>(draftInvoice?.id ?? null)
+  const [step, setStep] = useState<Step>(draftInvoice ? 'form' : 'template')
+  const [invoiceType, setInvoiceType] = useState<InvoiceType>(draftInvoice?.invoice_type ?? 'product_simple')
   const [error, setError] = useState('')
   const [result, setResult] = useState<Invoice | null>(null)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [draftToast, setDraftToast] = useState('')
 
   // Header fields
-  const [invoiceNumber, setInvoiceNumber] = useState(`INV-${projectNo}-${todayStr()}`)
-  const [invoiceDate, setInvoiceDate] = useState(todayStr())
-  const [comment, setComment] = useState('')
-  const [clientNameField, setClientNameField] = useState(billingInfo?.client_name || clientName)
-  const [companyName, setCompanyName] = useState(billingInfo?.company_name || clientCompany)
-  const [clientGstin, setClientGstin] = useState(billingInfo?.client_gstin || 'N/A')
-  const [billingAddress, setBillingAddress] = useState(billingInfo?.billing_address || 'N/A')
-  const [shippingAddress, setShippingAddress] = useState(billingInfo?.shipping_address || 'N/A')
-  const [ewayBillNo, setEwayBillNo] = useState('N/A')
+  const [invoiceNumber, setInvoiceNumber] = useState(draftInvoice?.invoice_number ?? `INV-${projectNo}-${todayStr()}`)
+  const [invoiceDate, setInvoiceDate] = useState(draftInvoice?.date ?? todayStr())
+  const [comment, setComment] = useState(draftInvoice?.comment ?? '')
+  const [clientNameField, setClientNameField] = useState(draftInvoice?.client_name || billingInfo?.client_name || clientName)
+  const [companyName, setCompanyName] = useState(draftInvoice?.company_name || billingInfo?.company_name || clientCompany)
+  const [clientGstin, setClientGstin] = useState(draftInvoice?.client_gstin || billingInfo?.client_gstin || 'N/A')
+  const [billingAddress, setBillingAddress] = useState(draftInvoice?.billing_address || billingInfo?.billing_address || 'N/A')
+  const [shippingAddress, setShippingAddress] = useState(draftInvoice?.shipping_address || billingInfo?.shipping_address || 'N/A')
+  const [ewayBillNo, setEwayBillNo] = useState(draftInvoice?.eway_bill_no ?? 'N/A')
 
   // GST — derived from billing location choice
-  const [gstLocation, setGstLocation] = useState<'within' | 'outside'>('within')
+  const [gstLocation, setGstLocation] = useState<'within' | 'outside'>(
+    Number(draftInvoice?.igst_rate ?? 0) > 0 ? 'outside' : 'within'
+  )
   const gstRates = gstLocation === 'within'
     ? { sgst: '9', cgst: '9', igst: '0' }
     : { sgst: '0', cgst: '0', igst: '18' }
 
   // Type-specific
-  const [shippingCost, setShippingCost] = useState('0')
-  const [advanceRate, setAdvanceRate] = useState('0')
-  const [advanceReceived, setAdvanceReceived] = useState('0')
-  const [processingChargeRate, setProcessingChargeRate] = useState('0')
-  const [dispatchFromName, setDispatchFromName] = useState(billingInfo?.dispatch_from_name || '')
-  const [dispatchFromGstin, setDispatchFromGstin] = useState(billingInfo?.dispatch_from_gstin || '')
-  const [dispatchFromAddress, setDispatchFromAddress] = useState(billingInfo?.dispatch_from_address || '')
+  const [shippingCost, setShippingCost] = useState(draftInvoice?.shipping_cost ?? '0')
+  const [advanceRate, setAdvanceRate] = useState(draftInvoice?.advance_rate ?? '0')
+  const [advanceReceived, setAdvanceReceived] = useState(draftInvoice?.advance_received ?? '0')
+  const [processingChargeRate, setProcessingChargeRate] = useState(draftInvoice?.processing_charge_rate ?? '0')
+  const [dispatchFromName, setDispatchFromName] = useState(draftInvoice?.dispatch_from_name || billingInfo?.dispatch_from_name || '')
+  const [dispatchFromGstin, setDispatchFromGstin] = useState(draftInvoice?.dispatch_from_gstin || billingInfo?.dispatch_from_gstin || '')
+  const [dispatchFromAddress, setDispatchFromAddress] = useState(draftInvoice?.dispatch_from_address || billingInfo?.dispatch_from_address || '')
 
   // Line items
-  const [items, setItems] = useState<InvoiceItem[]>([BLANK_ITEM()])
+  const [items, setItems] = useState<InvoiceItem[]>(
+    draftInvoice?.items?.length ? draftInvoice.items : [BLANK_ITEM()]
+  )
 
   // Preview
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -170,8 +181,9 @@ export function GenerateInvoiceModal({
   const addServiceRow = () => setItems((prev) => [...prev, { ...BLANK_ITEM(), category: 'service', qty: 1 }])
   const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx))
 
-  const buildPayload = (): InvoiceCreatePayload => ({
+  const buildPayload = (status: InvoiceStatus): InvoiceCreatePayload => ({
     project: projectId,
+    status,
     invoice_type: invoiceType,
     invoice_number: invoiceNumber,
     date: invoiceDate,
@@ -201,7 +213,7 @@ export function GenerateInvoiceModal({
     }
     setError('')
     try {
-      const res = await crmApi.previewInvoice(buildPayload())
+      const res = await crmApi.previewInvoice(buildPayload('final'))
       const url = URL.createObjectURL(res.data as Blob)
       setPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return url })
       setStep('preview')
@@ -214,12 +226,34 @@ export function GenerateInvoiceModal({
     setError('')
     setStep('generating')
     try {
-      const inv = await crmApi.createInvoice(buildPayload())
+      const payload = buildPayload('final')
+      const inv = invoiceId
+        ? await crmApi.updateInvoice(invoiceId, payload)
+        : await crmApi.createInvoice(payload)
       setResult(inv.data)
       setStep('done')
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'Failed to generate invoice.')
       setStep('preview')
+    }
+  }
+
+  const handleSaveDraft = async () => {
+    setError('')
+    setSavingDraft(true)
+    try {
+      const payload = buildPayload('draft')
+      const inv = invoiceId
+        ? await crmApi.updateInvoice(invoiceId, payload)
+        : await crmApi.createInvoice(payload)
+      setInvoiceId(inv.data.id)
+      onDraftSaved(inv.data)
+      setDraftToast('Draft saved.')
+      setTimeout(() => setDraftToast(''), 3000)
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Failed to save draft.')
+    } finally {
+      setSavingDraft(false)
     }
   }
 
@@ -245,10 +279,10 @@ export function GenerateInvoiceModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 dark:border-white/10 shrink-0">
           <h2 id={titleId} className="text-lg font-semibold text-black dark:text-white">
             {step === 'template' && 'Select Invoice Type'}
-            {step === 'form' && 'Invoice Details'}
+            {step === 'form' && (draftInvoice ? 'Edit Draft Invoice' : 'Invoice Details')}
             {step === 'preview' && 'Preview Invoice'}
             {step === 'generating' && 'Generating Invoice…'}
-            {step === 'done' && 'Invoice Generated'}
+            {step === 'done' && (result?.status === 'draft' ? 'Draft Saved' : 'Invoice Generated')}
           </h2>
           <button
             onClick={onClose}
@@ -490,8 +524,17 @@ export function GenerateInvoiceModal({
           )}
           {step === 'form' && (
             <>
-              <button onClick={() => { setError(''); setStep('template') }} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-black dark:text-white">
-                ← Back
+              {!draftInvoice && (
+                <button onClick={() => { setError(''); setStep('template') }} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-black dark:text-white">
+                  ← Back
+                </button>
+              )}
+              <button
+                onClick={handleSaveDraft}
+                disabled={savingDraft}
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-black dark:text-white disabled:opacity-50"
+              >
+                {savingDraft ? 'Saving…' : 'Save as Draft'}
               </button>
               <button
                 onClick={handlePreview}
@@ -524,6 +567,16 @@ export function GenerateInvoiceModal({
           )}
         </div>
       </div>
+
+      {draftToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-[60] bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg"
+        >
+          ✓ {draftToast}
+        </div>
+      )}
     </div>
   )
 }
