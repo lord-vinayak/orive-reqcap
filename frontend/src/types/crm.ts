@@ -482,9 +482,12 @@ export interface InvoiceItem {
   category?: 'product' | 'service'
 }
 
+export type InvoiceStatus = 'draft' | 'final'
+
 export interface Invoice {
   id: string
   project: string
+  status: InvoiceStatus
   invoice_type: InvoiceType
   invoice_type_label: string
   invoice_number: string
@@ -572,6 +575,7 @@ export type BillingInfoPayload = Omit<BillingInfo, 'id' | 'created_at' | 'update
 
 export interface InvoiceCreatePayload {
   project: string
+  status: InvoiceStatus
   invoice_type: InvoiceType
   invoice_number: string
   date: string
