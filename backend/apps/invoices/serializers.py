@@ -11,7 +11,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = [
-            'id', 'project', 'invoice_type', 'invoice_type_label',
+            'id', 'project', 'status', 'invoice_type', 'invoice_type_label',
             'invoice_number', 'date', 'comment',
             'client_name', 'company_name', 'client_gstin',
             'billing_address', 'shipping_address', 'eway_bill_no',
@@ -28,7 +28,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return getattr(obj.created_by, 'name', None) or getattr(obj.created_by, 'email', None)
 
     def validate_items(self, value):
-        if not isinstance(value, list) or len(value) == 0:
+        if not isinstance(value, list):
+            raise serializers.ValidationError('items must be a list.')
+        is_draft = self.initial_data.get('status', getattr(self.instance, 'status', None)) == 'draft'
+        if not is_draft and len(value) == 0:
             raise serializers.ValidationError('items must be a non-empty list.')
         for idx, item in enumerate(value, start=1):
             if not isinstance(item, dict):
