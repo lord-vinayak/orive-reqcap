@@ -1,3 +1,5 @@
+from datetime import date as date_cls
+
 from django.http import HttpResponse
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
@@ -9,11 +11,42 @@ from .models import Invoice, BillingInfo
 from .serializers import InvoiceSerializer, BillingInfoSerializer
 from .pdf_export import build_invoice_pdf
 
+# Type prefix for invoice numbers — see next_number().
+TYPE_PREFIXES = {
+    'product_batch':  'ADV',
+    'product_simple': 'SAM',
+    'printing':       'PP',
+    'final':          'FIN',
+}
+
+
+def _fy_number(invoice_type, for_date):
+    """'{PREFIX}/{FY_START_YEAR}/{seq:04d}' — FY runs Apr 1 to Mar 31, sequence
+    is a count of existing invoices of that type in the same FY (+1)."""
+    fy_year = for_date.year if for_date.month >= 4 else for_date.year - 1
+    fy_start = date_cls(fy_year, 4, 1)
+    fy_end = date_cls(fy_year + 1, 3, 31)
+    count = Invoice.objects.filter(invoice_type=invoice_type, date__gte=fy_start, date__lte=fy_end).count()
+    return f'{TYPE_PREFIXES[invoice_type]}/{fy_year}/{count + 1:04d}'
+
 
 class InvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = InvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+
+    @action(detail=False, methods=['get'], url_path='next-number')
+    def next_number(self, request):
+        """Suggests the next FY-sequential invoice number for a type/date. Just a
+        suggestion — invoice_number stays a free-text, user-editable field."""
+        invoice_type = request.query_params.get('invoice_type')
+        if invoice_type not in TYPE_PREFIXES:
+            return Response({'detail': 'invalid invoice_type'}, status=400)
+        try:
+            for_date = date_cls.fromisoformat(request.query_params.get('date', '')) if request.query_params.get('date') else date_cls.today()
+        except ValueError:
+            return Response({'detail': 'invalid date'}, status=400)
+        return Response({'invoice_number': _fy_number(invoice_type, for_date)})
 
     @action(detail=False, methods=['post'])
     def preview(self, request):

@@ -6,7 +6,7 @@ import type {
   VendorProjectPayment, DropdownOption, ProjectPayment, PaymentVendorOption,
   StageStatusResponse, StageCompletion, TaskItem, TaskStatus,
   TaskComment, StandaloneTaskCreate, ResampleNote,
-  Invoice, InvoiceCreatePayload, VendorCategory,
+  Invoice, InvoiceCreatePayload, InvoiceType, VendorCategory,
   ServiceBaseRates, BillingInfo, BillingInfoPayload,
 } from '@/types/crm'
 
@@ -354,6 +354,9 @@ export const crmApi = {
 
   listInvoices: (params: { project?: string; client_phone?: string }) =>
     api.get<PaginatedResponse<Invoice>>('/invoices/', { params }),
+
+  nextInvoiceNumber: (params: { invoice_type: InvoiceType; date: string }) =>
+    api.get<{ invoice_number: string }>('/invoices/next-number/', { params }),
 
   createInvoice: (data: InvoiceCreatePayload) =>
     api.post<Invoice>('/invoices/', data),

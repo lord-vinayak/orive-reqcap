@@ -108,7 +108,7 @@ export function GenerateInvoiceModal({
   const [draftToast, setDraftToast] = useState('')
 
   // Header fields
-  const [invoiceNumber, setInvoiceNumber] = useState(draftInvoice?.invoice_number ?? `INV-${projectNo}-${todayStr()}`)
+  const [invoiceNumber, setInvoiceNumber] = useState(draftInvoice?.invoice_number ?? '')
   const [invoiceDate, setInvoiceDate] = useState(draftInvoice?.date ?? todayStr())
   const [comment, setComment] = useState(draftInvoice?.comment ?? '')
   const [clientNameField, setClientNameField] = useState(draftInvoice?.client_name || billingInfo?.client_name || clientName)
@@ -512,8 +512,14 @@ export function GenerateInvoiceModal({
                 Cancel
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setItems(buildInitialItems(invoiceType, billingInfo))
+                  try {
+                    const res = await crmApi.nextInvoiceNumber({ invoice_type: invoiceType, date: invoiceDate })
+                    setInvoiceNumber(res.data.invoice_number)
+                  } catch {
+                    // Suggestion is best-effort — the field stays editable either way.
+                  }
                   setStep('form')
                 }}
                 className="px-4 py-2 text-sm rounded-lg bg-yellow-500 text-white font-semibold hover:bg-yellow-600"
