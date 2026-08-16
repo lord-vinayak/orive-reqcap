@@ -23,7 +23,7 @@ function parseNumeric(val: unknown): number {
   return m ? parseFloat(m[0]) : NaN
 }
 
-/** Compute the four derived cost columns from a merged row data object. */
+/** Compute the derived cost columns from a merged row data object. */
 function computedCosts(data: Record<string, unknown>) {
   const perKg  = parseNumeric(data.per_kg_rate)
   const size   = parseNumeric(data.size)               // handles "100g" → 100
@@ -31,15 +31,16 @@ function computedCosts(data: Record<string, unknown>) {
   const pkg    = parseNumeric(data.tentative_packaging_cost)
   const label  = parseNumeric(data.label_cost)
   const mono   = parseNumeric(data.tentative_monocarton_cost)
+  const moq    = parseNumeric(data.moq)
 
-  const rawPerUnit = (!isNaN(perKg) && !isNaN(size))   ? (perKg / 1000) * size          : null
-  const estUnit    = (rawPerUnit !== null && !isNaN(mfg)) ? rawPerUnit + mfg               : null
-  const total      = (estUnit !== null && !isNaN(pkg) && !isNaN(label) && !isNaN(mono))
+  const rawPerUnit  = (!isNaN(perKg) && !isNaN(size))   ? (perKg / 1000) * size          : null
+  const estUnit     = (rawPerUnit !== null && !isNaN(mfg)) ? rawPerUnit + mfg               : null
+  const perUnitCost = (estUnit !== null && !isNaN(pkg) && !isNaN(label) && !isNaN(mono))
     ? estUnit + pkg + label + mono
     : null
-  const mrp        = total !== null ? total * 6 : null
+  const totalCost   = (perUnitCost !== null && !isNaN(moq)) ? perUnitCost * moq : null
 
-  return { rawPerUnit, estUnit, total, mrp }
+  return { rawPerUnit, estUnit, perUnitCost, totalCost }
 }
 
 /** Format a computed (derived) value — always 2 dp with locale thousands separator. */
@@ -172,7 +173,7 @@ export default function ProposalPage() {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `Proposal_${requirement?.client_data?.name || 'client'}_${new Date().toISOString().slice(0, 10)}.xlsx`
+    a.download = `Costing_${requirement?.client_data?.name || 'client'}_${new Date().toISOString().slice(0, 10)}.xlsx`
     a.click()
     window.URL.revokeObjectURL(url)
     await load()
@@ -527,8 +528,9 @@ const TABLE_COLUMNS: ColSpec[] = [
   { kind: 'edit', key: 'tentative_packaging_cost',  label: 'Pkg Cost',        numeric: true,  tentative: true },
   { kind: 'edit', key: 'label_cost',                label: 'Label Cost',      numeric: true,  tentative: true },
   { kind: 'edit', key: 'tentative_monocarton_cost', label: 'Monocarton',      numeric: true,  tentative: true },
+  { kind: 'calc', key: 'per_unit_cost',             label: 'Per Unit Cost',                    tentative: true },
+  { kind: 'edit', key: 'moq',                       label: 'MOQ',             numeric: true },
   { kind: 'calc', key: 'total_cost',                label: 'Total Cost',                       tentative: true },
-  { kind: 'calc', key: 'potential_mrp',             label: 'Potential MRP',                    tentative: true },
 ]
 
 function EditableItemsTable({
@@ -622,10 +624,10 @@ function EditableItemsTable({
             const merged = getMerged(it)
             const cv = computedCosts(merged)
             const calcValues: Record<string, number | null> = {
-              raw_per_unit:  cv.rawPerUnit,
-              est_unit:      cv.estUnit,
-              total_cost:    cv.total,
-              potential_mrp: cv.mrp,
+              raw_per_unit:   cv.rawPerUnit,
+              est_unit:       cv.estUnit,
+              per_unit_cost:  cv.perUnitCost,
+              total_cost:     cv.totalCost,
             }
             return (
               <tr key={it.id} className={idx % 2 === 1 ? 'bg-black/[0.02]' : ''}>
@@ -658,9 +660,13 @@ function EditableItemsTable({
                     const sizeSet  = !isNaN(parseNumeric(merged.size))
                     let hint = 'Auto-calculated'
                     if (val === null) {
-                      hint = col.key === 'raw_per_unit'
-                        ? (perKgSet ? 'Enter Size to calculate' : 'Enter RM Cost/kg and Size to calculate')
-                        : (sizeSet && perKgSet ? 'Waiting on upstream values' : 'Enter RM Cost/kg and Size to calculate')
+                      if (col.key === 'raw_per_unit') {
+                        hint = perKgSet ? 'Enter Size to calculate' : 'Enter RM Cost/kg and Size to calculate'
+                      } else if (col.key === 'total_cost') {
+                        hint = calcValues.per_unit_cost !== null ? 'Enter MOQ to calculate' : 'Waiting on upstream values'
+                      } else {
+                        hint = (sizeSet && perKgSet) ? 'Waiting on upstream values' : 'Enter RM Cost/kg and Size to calculate'
+                      }
                     }
                     return (
                       <td
@@ -704,6 +710,13 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
   const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
   const client = requirement.client_data
   const TOTAL_COLS = 19
+  const EXTRA_COSTS = [
+    { label: 'Batch Testing', rate: '₹4,500 / Product', tag: 'Mandatory' },
+    { label: 'Logo Creation', rate: '₹5,000 / Brand', tag: 'Optional' },
+    { label: 'Label & Monocarton Design', rate: '₹5,000 / Product', tag: 'Optional' },
+    { label: 'BIS Approved Content Creation', rate: '₹5,000 / Product', tag: 'Optional' },
+    { label: 'Derma Testing', rate: '₹15,000 / Product', tag: 'Optional' },
+  ]
   return (
     <section className="card overflow-x-auto">
       <p className="text-xs text-black/60 mb-3">Preview of the Excel that will be exported.</p>
@@ -747,8 +760,9 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Tentative Packaging Cost <span className="text-amber-400 font-semibold" aria-label="tentative">~</span></th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Label Cost <span className="text-amber-400 font-semibold" aria-label="tentative">~</span></th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Tentative Monocarton Cost <span className="text-amber-400 font-semibold" aria-label="tentative">~</span></th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Per Unit Cost <span className="text-amber-400 font-semibold" aria-label="tentative">~</span></th>
+              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">MOQ</th>
               <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Total Cost <span className="text-amber-400 font-semibold" aria-label="tentative">~</span></th>
-              <th scope="col" className="text-right px-3 py-2 whitespace-nowrap">Potential MRP <span className="text-amber-400 font-semibold" aria-label="tentative">~</span></th>
             </tr>
           </thead>
           <tbody>
@@ -774,8 +788,9 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
                   <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.tentative_packaging_cost)}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.label_cost)}</td>
                   <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{fmt(c.tentative_monocarton_cost)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-semibold">{fmtCalc(cv.total)}</td>
-                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-semibold">{fmtCalc(cv.mrp)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-semibold">{fmtCalc(cv.perUnitCost)}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right">{c.moq || '—'}</td>
+                  <td className="px-3 py-2 border-t border-black/5 text-xs text-right bg-amber-50/40 font-semibold">{fmtCalc(cv.totalCost)}</td>
                 </tr>
               )
             })}
@@ -785,6 +800,17 @@ function ProposalPreview({ proposal, requirement }: { proposal: Proposal; requir
       <p className="mt-2 text-xs text-black/50 italic">
         <span className="text-amber-600 font-semibold not-italic">~</span> Tentative figures
       </p>
+      <p className="mt-1 text-xs text-black/60">
+        GST @ 18% applicable on all of the above items. Shipment charges on actuals.
+      </p>
+      <div className="mt-2 text-xs text-black/60">
+        <span className="font-medium">Additional Costs:</span>{' '}
+        {EXTRA_COSTS.map((e, i) => (
+          <span key={e.label}>
+            {i > 0 && ' · '}{e.label} ({e.tag}) — {e.rate}
+          </span>
+        ))}
+      </div>
     </section>
   )
 }
