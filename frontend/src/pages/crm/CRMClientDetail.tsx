@@ -11,6 +11,7 @@ import { LeadStatusBadge } from '@/components/LeadStatusBadge'
 import { PipelineStatusBadge } from '@/components/PipelineStatusBadge'
 import ClientFilesSection from '@/components/crm/ClientFilesSection'
 import ClientNotesSection from '@/components/crm/ClientNotesSection'
+import ComposeEmailModal from '@/components/ComposeEmailModal'
 import type { LeadStatus } from '@/constants/clientStatus'
 import { useAuthStore } from '@/store/authStore'
 
@@ -45,6 +46,8 @@ export default function CRMClientDetail() {
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showCompose, setShowCompose] = useState(false)
+  const [emailToast, setEmailToast] = useState('')
 
   useEffect(() => {
     if (!phoneNo) return
@@ -141,6 +144,14 @@ export default function CRMClientDetail() {
             >
               View Requirements →
             </Link>
+            <button
+              type="button"
+              onClick={() => setShowCompose(true)}
+              className="btn-secondary text-sm"
+              aria-label={`Send email to ${client.name}`}
+            >
+              ✉ Send Email
+            </button>
           </div>
         </div>
 
@@ -267,6 +278,30 @@ export default function CRMClientDetail() {
         {/* ── Standalone client notes ── */}
         <ClientNotesSection clientPhone={client.phone_no} />
       </div>
+
+      {showCompose && (
+        <ComposeEmailModal
+          clientPhone={client.phone_no}
+          clientName={client.name}
+          clientEmail={client.email}
+          onClose={() => setShowCompose(false)}
+          onSent={() => {
+            setShowCompose(false)
+            setEmailToast(`Email sent to ${client.name}.`)
+            setTimeout(() => setEmailToast(''), 4000)
+          }}
+        />
+      )}
+
+      {emailToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded shadow-lg"
+        >
+          ✓ {emailToast}
+        </div>
+      )}
     </Layout>
   )
 }
