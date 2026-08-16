@@ -75,10 +75,10 @@ def _dec(val):
 
 
 def _compute_costs(m):
-    """Derive the four calculated cost columns from merged row data.
+    """Derive the calculated cost columns from merged row data.
 
-    Returns (raw_material_per_unit, estimated_unit_cost, total_cost, potential_mrp).
-    Any value that cannot be computed is returned as None.
+    Returns (raw_material_per_unit, estimated_unit_cost, per_unit_cost, total_cost).
+    total_cost = per_unit_cost * MOQ. Any value that cannot be computed is None.
     """
     def _n(k):
         v = m.get(k)
@@ -102,13 +102,14 @@ def _compute_costs(m):
     pkg = _n('tentative_packaging_cost')
     label = _n('label_cost')
     mono = _n('tentative_monocarton_cost')
+    moq = _n('moq')
 
     raw_per_unit = (per_kg / 1000 * size_val) if (per_kg is not None and size_val is not None) else None
     est_unit = (raw_per_unit + mfg) if (raw_per_unit is not None and mfg is not None) else None
-    total = (est_unit + (pkg or 0) + (label or 0) + (mono or 0)) if est_unit is not None else None
-    mrp = (total * 6) if total is not None else None
+    per_unit_cost = (est_unit + (pkg or 0) + (label or 0) + (mono or 0)) if est_unit is not None else None
+    total_cost = (per_unit_cost * moq) if (per_unit_cost is not None and moq is not None) else None
 
-    return raw_per_unit, est_unit, total, mrp
+    return raw_per_unit, est_unit, per_unit_cost, total_cost
 
 
 def build_proposal_xlsx(proposal):
@@ -171,8 +172,9 @@ def build_proposal_xlsx(proposal):
         ('Tentative Packaging Cost ~',        'tentative_packaging_cost'),
         ('Label Cost ~',                     'label_cost'),
         ('Tentative Monocarton Cost ~',      'tentative_monocarton_cost'),
-        ('Total Cost ~',                     '__total__'),
-        ('Potential MRP ~',                  '__mrp__'),
+        ('Per Unit Cost ~',                  '__per_unit_cost__'),
+        ('MOQ',                              'moq'),
+        ('Total Cost ~',                     '__total_cost__'),
     ]
 
     # Now that we know the column count, apply the banner merges dynamically
@@ -205,7 +207,7 @@ def build_proposal_xlsx(proposal):
         m = _merged(item)
         kb = ', '.join(str(m.get(k) or '') for k in ('kb_tag1', 'kb_tag2', 'kb_tag3')
                        if m.get(k))
-        raw_per_unit, est_unit, total_cost, potential_mrp = _compute_costs(m)
+        raw_per_unit, est_unit, per_unit_cost, total_cost = _compute_costs(m)
         values = [
             m.get('body_part') or '',
             m.get('product_type') or '',
@@ -223,8 +225,9 @@ def build_proposal_xlsx(proposal):
             _dec(m.get('tentative_packaging_cost')),
             _dec(m.get('label_cost')),
             _dec(m.get('tentative_monocarton_cost')),
+            per_unit_cost if per_unit_cost is not None else '',
+            _dec(m.get('moq')),
             total_cost if total_cost is not None else '',
-            potential_mrp if potential_mrp is not None else '',
         ]
         for i, val in enumerate(values, start=1):
             cell = ws.cell(row=header_row + idx, column=i, value=val)
@@ -235,12 +238,21 @@ def build_proposal_xlsx(proposal):
                 cell.fill = PatternFill('solid', fgColor=LIGHT_GREY)
 
     footnote_row = header_row + len(items) + 1
-    ws.merge_cells(f'A{footnote_row}:{last_col_letter}{footnote_row}')
-    fn_cell = ws.cell(row=footnote_row, column=1, value='~ Tentative figures — subject to revision')
-    fn_cell.font = Font(name='Aptos', italic=True, color='806600')
-    fn_cell.alignment = Alignment(horizontal='left', vertical='center')
+    footnotes = [
+        '~ Tentative figures — subject to revision',
+        'GST @ 18% applicable on all of the above items. Shipment charges on actuals.',
+        'Additional Costs — Mandatory: Batch Testing ₹4,500/Product. '
+        'Optional: Logo Creation ₹5,000/Brand · Label & Monocarton Design ₹5,000/Product · '
+        'BIS Approved Content Creation ₹5,000/Product · Derma Testing ₹15,000/Product.',
+    ]
+    for i, text in enumerate(footnotes):
+        r = footnote_row + i
+        ws.merge_cells(f'A{r}:{last_col_letter}{r}')
+        fn_cell = ws.cell(row=r, column=1, value=text)
+        fn_cell.font = Font(name='Aptos', italic=True, color='806600')
+        fn_cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
 
-    widths = [14, 16, 18, 26, 32, 12, 12, 10, 14, 22, 22, 18, 20, 22, 14, 22, 14, 14]
+    widths = [14, 16, 18, 26, 32, 12, 12, 10, 14, 22, 22, 18, 20, 22, 14, 22, 14, 10, 14]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
