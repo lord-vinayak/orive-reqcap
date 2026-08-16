@@ -122,6 +122,24 @@ export const clientService = {
     })).data
   },
 
+  /** Send a free-form email (no template) with an optional HTML body and file attachments. */
+  sendCustomEmail: async (
+    phoneNo: string,
+    subject: string,
+    htmlBody: string,
+    files: File[] = [],
+  ): Promise<WelcomeEmailResult> => {
+    const form = new FormData()
+    form.append('phone_nos', JSON.stringify([phoneNo]))
+    form.append('email_type', 'custom')
+    form.append('subject_override', subject)
+    form.append('html_body_override', htmlBody)
+    files.forEach((f) => form.append('files', f))
+    return (await api.post<WelcomeEmailResult>('/clients/send-welcome-email/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data
+  },
+
   /** Fetch email history for a client. */
   getEmailHistory: async (phone: string): Promise<EmailLog[]> =>
     (await api.get<EmailLog[]>(`/clients/${phone}/email-history/`)).data,
