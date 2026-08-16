@@ -370,7 +370,14 @@ class ProjectPaymentSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if self.instance and self.instance.is_settled:
-            raise serializers.ValidationError('Settled entries cannot be edited.')
+            # Settled entries may still have comments/invoice added — only block
+            # changes to the core financial facts of the transaction.
+            protected = ['payment_date', 'direction', 'sub_type', 'amount', 'vendor', 'manufacturer']
+            changed = [f for f in protected if f in attrs and attrs[f] != getattr(self.instance, f)]
+            if changed:
+                raise serializers.ValidationError(
+                    'Settled entries cannot have date/type/amount/vendor changed — only comments and invoice.'
+                )
         return attrs
 
 
