@@ -1328,6 +1328,11 @@ function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionM
     fd.append('payment_date', new Date().toISOString().slice(0, 10))
     fd.append('amount', p.amount)
     fd.append('sub_type', p.sub_type)
+    // ponytail: without this the new settled "paid" record has no vendor/manufacturer
+    // link, so it never shows up in this entity's transaction list — the exact bug
+    // that made settled payables look stuck (settling silently created an orphan row).
+    if (entity.kind === 'manufacturer') fd.append('manufacturer', entity.id)
+    else fd.append('vendor', entity.id)
     await crmApi.settleProjectPayment(p.id, fd)
     fetchPayments()
   }
@@ -1530,11 +1535,9 @@ function VendorTransactionModal({ entity, onClose, isAdmin }: VendorTransactionM
                             Settle
                           </button>
                         )}
-                        {!p.is_settled && (
-                          <button type="button" onClick={() => setFormState(p)} className="text-xs text-mustard hover:underline">
-                            Edit
-                          </button>
-                        )}
+                        <button type="button" onClick={() => setFormState(p)} className="text-xs text-mustard hover:underline">
+                          Edit
+                        </button>
                         {isAdmin && (
                           <button type="button" onClick={() => handleDelete(p.id)} disabled={deletingId === p.id}
                             className="text-xs text-red-500 hover:underline disabled:opacity-50">
