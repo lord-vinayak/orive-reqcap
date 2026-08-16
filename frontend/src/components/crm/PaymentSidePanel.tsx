@@ -680,7 +680,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
                           Settle →
                         </button>
                       )}
-                      {!p.is_settled && editingId !== p.id && (p.direction === 'paid' || p.direction === 'received') && (
+                      {editingId !== p.id && (p.direction === 'paid' || p.direction === 'received') && (
                         <button
                           type="button"
                           onClick={() => startEdit(p)}
@@ -690,7 +690,7 @@ export function PaymentSidePanel({ projectId, projectClientName: _clientName, on
                           Edit
                         </button>
                       )}
-                      {!p.is_settled && editingId !== p.id && (p.direction === 'payable' || p.direction === 'receivable') && (
+                      {editingId !== p.id && (p.direction === 'payable' || p.direction === 'receivable') && (
                         <button
                           type="button"
                           onClick={() => startEdit(p)}
