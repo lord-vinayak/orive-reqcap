@@ -553,6 +553,8 @@ export interface BillingInfoProduct {
   /** From the Client Costing item's catalog data — drives HSN classification. Optional: absent on billing info saved before this field existed. */
   body_part?: string
   category?: string
+  /** MOQ captured on the Client Costing line item — seeds the invoice Qty. */
+  moq?: number | string
 }
 
 export interface BillingInfo {

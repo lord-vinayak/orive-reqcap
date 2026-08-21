@@ -166,7 +166,7 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
   }
 
   const toggleProduct = (
-    proposalItemId: string, name: string, unitCost: number | string, bodyPart: string, category: string
+    proposalItemId: string, name: string, unitCost: number | string, bodyPart: string, category: string, moq: number | string
   ) => {
     setProducts((prev) => {
       if (prev.some((p) => p.proposal_item_id === proposalItemId)) {
@@ -174,7 +174,7 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
       }
       return [...prev, {
         proposal_item_id: proposalItemId, item_name: name, per_unit_cost: unitCost,
-        body_part: bodyPart, category,
+        body_part: bodyPart, category, moq,
       }]
     })
   }
@@ -344,13 +344,14 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
                       const cost = defaultUnitCost(catalogData)
                       const bodyPart = typeof catalogData.body_part === 'string' ? catalogData.body_part : ''
                       const category = typeof catalogData.product_type === 'string' ? catalogData.product_type : ''
+                      const moq = (typeof catalogData.moq === 'number' || typeof catalogData.moq === 'string') ? catalogData.moq : ''
                       const checked = products.some((p) => p.proposal_item_id === it.id)
                       return (
                         <label key={it.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer">
                           <input
                             type="checkbox"
                             checked={checked}
-                            onChange={() => toggleProduct(it.id, name, cost, bodyPart, category)}
+                            onChange={() => toggleProduct(it.id, name, cost, bodyPart, category, moq)}
                             className="h-4 w-4 accent-yellow-500"
                           />
                           <span className="flex-1 text-black dark:text-white">
