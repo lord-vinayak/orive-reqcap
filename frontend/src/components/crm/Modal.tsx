@@ -60,11 +60,11 @@ export function Modal({ title, onClose, children, size = 'md' }: ModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`relative bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full ${widthClass} my-8`}
+        className={`relative bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full ${widthClass} my-8 max-h-[90vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 dark:border-white/10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 dark:border-white/10 shrink-0">
           <h2 id={titleId} className="text-lg font-semibold text-black dark:text-white">
             {title}
           </h2>
@@ -78,7 +78,7 @@ export function Modal({ title, onClose, children, size = 'md' }: ModalProps) {
           </button>
         </div>
         {/* Body */}
-        <div className="px-6 py-5">{children}</div>
+        <div className="px-6 py-5 overflow-y-auto">{children}</div>
       </div>
     </div>
   )
