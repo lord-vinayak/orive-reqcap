@@ -21,6 +21,12 @@ function itemName(catalogData: Record<string, unknown>): string {
   return parts.length ? parts.join(' — ') : (typeof catalogData.body_part === 'string' ? catalogData.body_part : 'Product')
 }
 
+function keyBenefits(catalogData: Record<string, unknown>): string {
+  return [catalogData.kb_tag1, catalogData.kb_tag2, catalogData.kb_tag3]
+    .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+    .join(', ')
+}
+
 function defaultUnitCost(catalogData: Record<string, unknown>): number | string {
   const total = catalogData.total_cost
   if (typeof total === 'number') return total
@@ -334,6 +340,7 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
                     {(selectedProposal?.items ?? []).map((it) => {
                       const catalogData = it.catalog_data as unknown as Record<string, unknown>
                       const name = itemName(catalogData)
+                      const kb = keyBenefits(catalogData)
                       const cost = defaultUnitCost(catalogData)
                       const bodyPart = typeof catalogData.body_part === 'string' ? catalogData.body_part : ''
                       const category = typeof catalogData.product_type === 'string' ? catalogData.product_type : ''
@@ -346,7 +353,10 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
                             onChange={() => toggleProduct(it.id, name, cost, bodyPart, category)}
                             className="h-4 w-4 accent-yellow-500"
                           />
-                          <span className="flex-1 text-black dark:text-white">{name}</span>
+                          <span className="flex-1 text-black dark:text-white">
+                            {name}
+                            {kb && <span className="block text-xs text-gray-400 dark:text-slate-500">{kb}</span>}
+                          </span>
                         </label>
                       )
                     })}
@@ -362,9 +372,15 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
               <div className="mt-3">
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Selected products — per-unit cost (editable)</p>
                 <div className="space-y-1">
-                  {products.map((p) => (
+                  {products.map((p) => {
+                    const sourceItem = selectedProposal?.items.find((it) => it.id === p.proposal_item_id)
+                    const kb = sourceItem ? keyBenefits(sourceItem.catalog_data as unknown as Record<string, unknown>) : ''
+                    return (
                     <div key={p.proposal_item_id} className="flex items-center gap-2 text-sm">
-                      <span className="flex-1 text-black dark:text-white">{p.item_name}</span>
+                      <span className="flex-1 text-black dark:text-white">
+                        {p.item_name}
+                        {kb && <span className="block text-xs text-gray-400 dark:text-slate-500">{kb}</span>}
+                      </span>
                       <input
                         type="number"
                         value={p.per_unit_cost}
@@ -373,7 +389,8 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
                         className="w-28 border border-gray-200 dark:border-slate-600 rounded px-2 py-1 text-sm bg-white dark:bg-slate-700 text-black dark:text-white"
                       />
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
