@@ -126,6 +126,7 @@ function buildInitialItems(type: InvoiceType, billingInfo: BillingInfo | null): 
     hsn: classifyHsn(p.item_name, p.body_part, p.category),
     rate_per_item: p.per_unit_cost,
     qty: p.moq ?? 0,
+    size_ml: p.size_ml ?? 0,
     category: 'product',
   }))
   const serviceItems: InvoiceItem[] = billingInfo.services.map((s) => ({
