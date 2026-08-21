@@ -27,6 +27,12 @@ function keyBenefits(catalogData: Record<string, unknown>): string {
     .join(', ')
 }
 
+/** Extract the leading number from a size string like "100g" or "500ml" — unit stripped. */
+function parseSizeMl(catalogData: Record<string, unknown>): number | string {
+  const m = String(catalogData.size ?? '').match(/^[\d.]+/)
+  return m ? Number(m[0]) : ''
+}
+
 function defaultUnitCost(catalogData: Record<string, unknown>): number | string {
   const total = catalogData.total_cost
   if (typeof total === 'number') return total
@@ -166,7 +172,8 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
   }
 
   const toggleProduct = (
-    proposalItemId: string, name: string, unitCost: number | string, bodyPart: string, category: string, moq: number | string
+    proposalItemId: string, name: string, unitCost: number | string, bodyPart: string, category: string,
+    moq: number | string, sizeMl: number | string,
   ) => {
     setProducts((prev) => {
       if (prev.some((p) => p.proposal_item_id === proposalItemId)) {
@@ -174,7 +181,7 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
       }
       return [...prev, {
         proposal_item_id: proposalItemId, item_name: name, per_unit_cost: unitCost,
-        body_part: bodyPart, category, moq,
+        body_part: bodyPart, category, moq, size_ml: sizeMl,
       }]
     })
   }
@@ -345,13 +352,14 @@ export function BillingInfoModal({ projectId, clientPhone, requirementId, existi
                       const bodyPart = typeof catalogData.body_part === 'string' ? catalogData.body_part : ''
                       const category = typeof catalogData.product_type === 'string' ? catalogData.product_type : ''
                       const moq = (typeof catalogData.moq === 'number' || typeof catalogData.moq === 'string') ? catalogData.moq : ''
+                      const sizeMl = parseSizeMl(catalogData)
                       const checked = products.some((p) => p.proposal_item_id === it.id)
                       return (
                         <label key={it.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer">
                           <input
                             type="checkbox"
                             checked={checked}
-                            onChange={() => toggleProduct(it.id, name, cost, bodyPart, category, moq)}
+                            onChange={() => toggleProduct(it.id, name, cost, bodyPart, category, moq, sizeMl)}
                             className="h-4 w-4 accent-yellow-500"
                           />
                           <span className="flex-1 text-black dark:text-white">

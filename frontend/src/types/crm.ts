@@ -555,6 +555,8 @@ export interface BillingInfoProduct {
   category?: string
   /** MOQ captured on the Client Costing line item — seeds the invoice Qty. */
   moq?: number | string
+  /** Numeric size (ml/g, unit stripped) parsed from the Client Costing item's Size — seeds the invoice Size (ml). */
+  size_ml?: number | string
 }
 
 export interface BillingInfo {
