@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import { crmApi } from '@/services/crm'
 import { clientService } from '@/services'
-import type { Manufacturer, Vendor, InternalTeamMember, VendorType, ProjectPayment, VendorCategory, CRMProjectList, PaymentDirection, ServiceBaseRates, ServiceKey } from '@/types/crm'
+import type { Manufacturer, Vendor, InternalTeamMember, VendorType, ProjectPayment, VendorCategory, PaymentDirection, ServiceBaseRates, ServiceKey } from '@/types/crm'
 import { SERVICE_KEYS, SERVICE_LABELS } from '@/types/crm'
 import type { Client } from '@/types'
 import { useAuthStore } from '@/store/authStore'
@@ -1061,8 +1061,6 @@ function TxnForm({
   const [amount, setAmount] = useState(initial?.amount ?? '')
   const [paymentDate, setPaymentDate] = useState(initial?.payment_date ?? new Date().toISOString().slice(0, 10))
   const [comments, setComments] = useState(initial?.comments ?? '')
-  const [projectId, setProjectId] = useState(initial?.project ?? '')
-  const [projects, setProjects] = useState<CRMProjectList[]>([])
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -1076,27 +1074,9 @@ function TxnForm({
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    crmApi.listProjects().then((r) => {
-      setProjects(Array.isArray(r.data) ? r.data : (r.data as any).results ?? [])
-    })
-  }, [])
-
   const handleDirectionChange = (dir: PaymentDirection) => {
     setDirection(dir)
     setSubType(DEFAULT_SUB_TYPE[dir])
-  }
-
-  const handleProjectChange = (pid: string) => {
-    setProjectId(pid)
-    if (pid) {
-      const proj = projects.find((p) => p.id === pid)
-      if (proj) {
-        setSelectedClients((prev) =>
-          prev.some((c) => c.phone_no === proj.client) ? prev : [...prev, { phone_no: proj.client, name: proj.client_name } as Client],
-        )
-      }
-    }
   }
 
   const handleClientSearchChange = (value: string) => {
@@ -1131,7 +1111,6 @@ function TxnForm({
     fd.append('sub_type', subType)
     fd.append('amount', amount || '0')
     fd.append('comments', comments)
-    if (projectId) fd.append('project', projectId)
     selectedClients.forEach((c) => fd.append('clients', c.phone_no))
     if (entity.kind === 'manufacturer') fd.append('manufacturer', entity.id)
     else fd.append('vendor', entity.id)
@@ -1198,17 +1177,6 @@ function TxnForm({
         <select value={subType} onChange={(e) => setSubType(e.target.value)}
           className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" disabled={saving}>
           {subTypes.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-xs text-black/60 dark:text-slate-400 mb-1">
-          Link to Project <span className="text-black/30 dark:text-slate-500">(optional)</span>
-        </label>
-        <select value={projectId} onChange={(e) => handleProjectChange(e.target.value)}
-          className="w-full border border-black/20 dark:border-white/20 rounded px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard" disabled={saving}>
-          <option value="">— None —</option>
-          {projects.map((p) => <option key={p.id} value={p.id}>{p.project_no} — {p.client_name}</option>)}
         </select>
       </div>
 
