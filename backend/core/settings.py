@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'apps.batch_register',
     'apps.ingredient_inventory',
     'apps.packaging_inventory',
+    'apps.packaging_clients',
 ]
 
 MIDDLEWARE = [
