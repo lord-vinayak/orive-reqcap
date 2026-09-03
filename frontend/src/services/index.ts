@@ -1,7 +1,7 @@
 import { api } from './api'
 import type {
   Client, Requirement, RequirementProduct, Note, FileRecord, ClientFile, ClientNote,
-  CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, IngredientRecord, PackagingRecord,
+  CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, IngredientRecord, PackagingRecord, PackagingClient,
 } from '@/types'
 import type { LeadBucket, PipelineSnapshotKey } from '@/constants/clientStatus'
 
@@ -425,6 +425,44 @@ export const packagingRecordService = {
       const a = document.createElement('a')
       a.href = url
       a.download = 'packaging_inventory_template.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+    }),
+}
+
+export interface PackagingClientUploadRow {
+  row: number
+  client_name: string
+  warning?: string
+}
+
+export interface PackagingClientUploadResult {
+  created: PackagingClientUploadRow[]
+  skipped: []
+}
+
+export const packagingClientService = {
+  list: async (params: { q?: string; page?: number; page_size?: number } = {}) =>
+    (await api.get<{ count: number; next: string | null; previous: string | null; results: PackagingClient[] } | PackagingClient[]>('/packaging-clients/', { params })).data,
+  create: async (data: Partial<PackagingClient>) => (await api.post<PackagingClient>('/packaging-clients/', data)).data,
+  update: async (id: string, data: Partial<PackagingClient>) =>
+    (await api.patch<PackagingClient>(`/packaging-clients/${id}/`, data)).data,
+  remove: async (id: string) => api.delete(`/packaging-clients/${id}/`),
+
+  bulkUpload: async (file: File): Promise<PackagingClientUploadResult> => {
+    const form = new FormData()
+    form.append('file', file)
+    return (await api.post<PackagingClientUploadResult>('/packaging-clients/bulk-upload/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data
+  },
+
+  downloadTemplate: () =>
+    api.get('/packaging-clients/upload-template/', { responseType: 'blob' }).then((r) => {
+      const url = URL.createObjectURL(new Blob([r.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'packaging_clients_template.xlsx'
       a.click()
       URL.revokeObjectURL(url)
     }),

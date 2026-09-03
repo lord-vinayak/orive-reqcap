@@ -234,3 +234,21 @@ export interface PackagingRecord {
   created_at: string
   updated_at: string
 }
+
+export interface PackagingClient {
+  id: string
+  client_name: string
+  packaging_name: string
+  size: string
+  glass_pet: string
+  moq: string
+  cost_to_ss: string
+  cost_to_client: string
+  vendor_name: string
+  poc: string
+  contact_details: string
+  poc2: string
+  cd2: string
+  created_at: string
+  updated_at: string
+}
