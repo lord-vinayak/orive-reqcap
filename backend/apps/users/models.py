@@ -29,6 +29,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('poc_sales', 'POC-Sales'),
         ('poc_formulation', 'POC-Formulation'),
         ('poc_ops', 'POC-Ops'),
+        ('auditor', 'Auditor'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
