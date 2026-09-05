@@ -67,6 +67,7 @@ export default function AdminUsers() {
               <option value="poc_formulation">POC-Formulation</option>
               <option value="poc_ops">POC-Ops</option>
               <option value="admin">Admin</option>
+              <option value="auditor">Auditor</option>
             </select>
           </div>
           <div>
@@ -110,6 +111,7 @@ export default function AdminUsers() {
                       : u.role === 'poc_sales' ? 'POC-Sales'
                       : u.role === 'poc_formulation' ? 'POC-Formulation'
                       : u.role === 'poc_ops' ? 'POC-Ops'
+                      : u.role === 'auditor' ? 'Auditor'
                       : u.role}
                   </span>
                 </td>

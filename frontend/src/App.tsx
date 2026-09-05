@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { ScrollToTop } from '@/components/ScrollToTop'
+import ReadOnlyToastHost from '@/components/ReadOnlyToastHost'
 import Login from '@/pages/Login'
 import Home from '@/pages/Home'
 import RequirementsLanding from '@/pages/RequirementsLanding'
@@ -35,6 +36,7 @@ export default function App() {
       {/* Stable live region — announced by Layout on every route change */}
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only" id="page-announcer" />
       <ScrollToTop />
+      <ReadOnlyToastHost />
       <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="/login" element={<Login />} />

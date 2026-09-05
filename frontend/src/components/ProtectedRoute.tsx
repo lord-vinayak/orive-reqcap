@@ -9,6 +9,6 @@ interface Props {
 export default function ProtectedRoute({ children, adminOnly = false }: Props) {
   const { user, accessToken } = useAuthStore()
   if (!accessToken || !user) return <Navigate to="/login" replace />
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/home" replace />
+  if (adminOnly && user.role !== 'admin' && user.role !== 'auditor') return <Navigate to="/home" replace />
   return <>{children}</>
 }
