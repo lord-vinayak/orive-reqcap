@@ -277,6 +277,19 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
     }
 
 
+def _ensure_order_phase(project: CRMProject) -> None:
+    """
+    Completing an order-phase stage commits the project to the order phase,
+    regardless of whether the sample phase finished first — keeps `phase`/
+    `order_booked` bucketing (dashboard segments, phase filters) consistent
+    even when stages are completed out of order.
+    """
+    if not project.order_booked:
+        project.order_booked = True
+        project.phase = 'order'
+        project.save(update_fields=['order_booked', 'phase', 'updated_at'])
+
+
 # Each "X Pending" pipeline card = stage_key is complete but `next` isn't yet.
 # `loop` stages live inside the resample cycle and need the cycle suffix applied.
 PENDING_STAGE_DEFS = {
@@ -447,6 +460,8 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         sc.save(update_fields=update_fields)
 
         if is_complete:
+            if stage_key in ALL_ORDER_STAGE_KEYS:
+                _ensure_order_phase(project)
             project.project_stage = stage_key
             project.save(update_fields=['project_stage', 'updated_at'])
 
@@ -469,8 +484,7 @@ class CRMProjectViewSet(viewsets.ModelViewSet):
         if not section:
             return Response({'detail': f'Unknown section_key: {section_key}'}, status=400)
 
-        if not project.order_booked:
-            return Response({'detail': 'Order must be booked before marking section stages complete.'}, status=400)
+        _ensure_order_phase(project)
 
         stage_keys = [s['key'] for s in section['stages']]
         now = timezone.now()
