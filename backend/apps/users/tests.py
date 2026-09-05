@@ -16,3 +16,50 @@ class AuditorRoleChoiceTests(TestCase):
             password="pass1234", role="auditor",
         )
         self.assertEqual(user.role, "auditor")
+
+
+from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
+
+
+def _auth_headers(user):
+    token = RefreshToken.for_user(user)
+    return {"HTTP_AUTHORIZATION": f"Bearer {token.access_token}"}
+
+
+class AuditorWriteBlockMiddlewareTests(TestCase):
+    def setUp(self):
+        self.auditor = User.objects.create_user(
+            email="auditor2@example.com", name="Auditor Two",
+            password="pass1234", role="auditor",
+        )
+        self.admin = User.objects.create_user(
+            email="admin2@example.com", name="Admin Two",
+            password="pass1234", role="admin",
+        )
+        self.api = APIClient()
+
+    def test_auditor_cannot_create_a_client(self):
+        headers = _auth_headers(self.auditor)
+        res = self.api.post(
+            "/api/clients/",
+            {"phone_no": "9000000001", "name": "Blocked Client"},
+            format="json",
+            **headers,
+        )
+        self.assertEqual(res.status_code, 403)
+
+    def test_auditor_can_still_read(self):
+        headers = _auth_headers(self.auditor)
+        res = self.api.get("/api/clients/", **headers)
+        self.assertEqual(res.status_code, 200)
+
+    def test_non_auditor_can_still_write(self):
+        headers = _auth_headers(self.admin)
+        res = self.api.post(
+            "/api/clients/",
+            {"phone_no": "9000000002", "name": "Allowed Client"},
+            format="json",
+            **headers,
+        )
+        self.assertEqual(res.status_code, 201)
