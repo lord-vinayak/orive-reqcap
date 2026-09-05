@@ -20,38 +20,20 @@ import { EmailHistoryPanel } from '@/components/crm/EmailHistoryPanel'
 import { getPipelineLeadStatus, PIPELINE_LEAD_STATUS_LABEL } from '@/constants/clientStatus'
 import type { LeadStatus } from '@/constants/clientStatus'
 
-// Flip is_complete for the target stage then re-walk the list recomputing
-// is_locked = !previous.is_complete — mirrors the backend _stage_info chain.
-function recomputeLocks(stages: StageStatusItem[], key: string, complete: boolean, firstUnlocked: boolean): StageStatusItem[] {
-  let prev = firstUnlocked
-  return stages.map((s) => {
-    const isComplete = s.key === key ? complete : s.is_complete
-    const updated = { ...s, is_complete: isComplete, is_locked: !prev }
-    prev = isComplete
-    return updated
-  })
+// Any stage can be completed in any order — just flip is_complete on the
+// target stage, wherever it appears. No lock chain to recompute.
+function patchStageIn(stages: StageStatusItem[], key: string, complete: boolean): StageStatusItem[] {
+  return stages.map((s) => (s.key === key ? { ...s, is_complete: complete } : s))
 }
 
 function patchStage(status: StageStatusResponse, key: string, complete: boolean): StageStatusResponse {
   const sp = status.sample_phase
-  const preLoop = recomputeLocks(sp.pre_loop, key, complete, true)
-  const preLoopComplete = preLoop.every((s) => s.is_complete)
+  const preLoop = patchStageIn(sp.pre_loop, key, complete)
+  const loopCycles = sp.loop_cycles.map((lc) => ({ ...lc, stages: patchStageIn(lc.stages, key, complete) }))
+  const postApproval = patchStageIn(sp.post_approval, key, complete)
 
-  const loopCycles = sp.loop_cycles.map((lc) => {
-    const stages = recomputeLocks(lc.stages, key, complete, preLoopComplete)
-    return { ...lc, stages }
-  })
-
-  // post_approval unlocks only after sample is approved (last stage of active cycle)
-  const activeCycle = loopCycles.find((lc) => lc.is_active)
-  const approvalComplete = activeCycle
-    ? (activeCycle.stages.find((s) => s.key.startsWith('sample_approved'))?.is_complete ?? false)
-    : false
-  const postApproval = recomputeLocks(sp.post_approval, key, complete, approvalComplete)
-
-  const orderLocked = !status.order_booked
   const sections = status.order_phase.sections.map((sec) => {
-    const stages = recomputeLocks(sec.stages, key, complete, !orderLocked)
+    const stages = patchStageIn(sec.stages, key, complete)
     const is_section_complete = stages.every((s) => s.is_complete)
     return { ...sec, stages, is_section_complete }
   })
@@ -88,6 +70,7 @@ export default function CRMProjectDetail() {
   const [emailHistoryOpen, setEmailHistoryOpen] = useState(false)
   const pendingStages = useRef(0)
   const [savingStageKeys, setSavingStageKeys] = useState<Set<string>>(new Set())
+  const phaseInitialized = useRef(false)
 
   const fetchProject = () => {
     if (!id) return
@@ -101,7 +84,14 @@ export default function CRMProjectDetail() {
     return crmApi.getStageStatus(id)
       .then((r) => {
         setStageStatus(r.data)
-        setActivePhase(r.data.phase)
+        // Only snap the tab to the project's phase on first load — now that any
+        // stage in either phase can be completed anytime, re-syncing on every
+        // refetch would yank the user to the Order tab mid-edit as soon as the
+        // project auto-flips to phase='order'.
+        if (!phaseInitialized.current) {
+          phaseInitialized.current = true
+          setActivePhase(r.data.phase)
+        }
       })
   }
 
@@ -123,6 +113,7 @@ export default function CRMProjectDetail() {
 
   useEffect(() => {
     if (!id) return
+    phaseInitialized.current = false
     Promise.all([fetchProject(), fetchStageStatus(), fetchPayments()])
       .finally(() => setLoading(false))
     fetchBillingInfo()
@@ -453,7 +444,7 @@ export default function CRMProjectDetail() {
               </div>
               <div>
                 <p className="text-xs text-black/50 dark:text-slate-300 mb-1">
-                  {stageStatus?.order_phase.locked ? '🔒 ' : ''}Order Phase ({progress.order_done}/{progress.order_total})
+                  Order Phase ({progress.order_done}/{progress.order_total})
                 </p>
                 <ProgressBar
                   value={Math.round((progress.order_done / progress.order_total) * 100)}
@@ -467,30 +458,23 @@ export default function CRMProjectDetail() {
         {/* ── Phase tabs ── */}
         {stageStatus && (
           <nav aria-label="Project phase" role="tablist" className="flex border-b border-black/10 dark:border-white/10">
-            {(['sample', 'order'] as const).map((phase) => {
-              const isLocked = phase === 'order' && stageStatus.order_phase.locked
-              return (
-                <button
-                  key={phase}
-                  id={`phase-tab-${phase}`}
-                  role="tab"
-                  aria-selected={activePhase === phase}
-                  aria-controls={`phase-panel-${phase}`}
-                  onClick={() => !isLocked && setActivePhase(phase)}
-                  disabled={isLocked}
-                  className={`px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors focus-visible:ring-2 focus-visible:ring-mustard ${
-                    activePhase === phase
-                      ? 'border-mustard text-mustard'
-                      : isLocked
-                      ? 'border-transparent text-black/30 dark:text-slate-600 cursor-not-allowed'
-                      : 'border-transparent text-black/60 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-black/20'
-                  }`}
-                >
-                  {phase === 'sample' ? 'Sample Phase' : 'Order Phase'}
-                  {phase === 'order' && !isLocked && ' ✓'}
-                </button>
-              )
-            })}
+            {(['sample', 'order'] as const).map((phase) => (
+              <button
+                key={phase}
+                id={`phase-tab-${phase}`}
+                role="tab"
+                aria-selected={activePhase === phase}
+                aria-controls={`phase-panel-${phase}`}
+                onClick={() => setActivePhase(phase)}
+                className={`px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors focus-visible:ring-2 focus-visible:ring-mustard ${
+                  activePhase === phase
+                    ? 'border-mustard text-mustard'
+                    : 'border-transparent text-black/60 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-black/20'
+                }`}
+              >
+                {phase === 'sample' ? 'Sample Phase' : 'Order Phase'}
+              </button>
+            ))}
           </nav>
         )}
 

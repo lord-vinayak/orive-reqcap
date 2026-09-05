@@ -24,7 +24,7 @@ export function SamplePhaseView({
   onCompleteStage, onApproveSample, onSetOrderGate, saving, savingStageKeys,
   teamMembers = [], onAssign, onUpload, files = [],
 }: Props) {
-  const { sample_phase, order_booking_steps, order_booked, sample_phase_complete, sample_rejected, resample_cycle, max_cycles, resample_notes } = stageStatus
+  const { sample_phase, order_booking_steps, order_booked, sample_rejected, resample_cycle, max_cycles, resample_notes } = stageStatus
 
   return (
     <div className="space-y-6">
@@ -130,17 +130,16 @@ export function SamplePhaseView({
         />
       )}
 
-      {/* Order gate */}
-      {sample_phase_complete && (
-        <OrderGate
-          steps={order_booking_steps}
-          orderBooked={order_booked}
-          onSave={onSetOrderGate}
-          saving={saving}
-          files={files}
-          onUpload={onUpload}
-        />
-      )}
+      {/* Order gate — no longer waits on sample_phase_complete; the order can be
+          booked at any point, independent of how far the sample phase has gotten. */}
+      <OrderGate
+        steps={order_booking_steps}
+        orderBooked={order_booked}
+        onSave={onSetOrderGate}
+        saving={saving}
+        files={files}
+        onUpload={onUpload}
+      />
     </div>
   )
 }
@@ -388,7 +387,7 @@ function OrderGate({
     >
       <h3 className="font-semibold text-black dark:text-white">Order Booking</h3>
       <p className="text-sm text-black/60 dark:text-slate-400">
-        Sample has been approved. Complete the steps below to unlock the production phase.
+        Complete the steps below to book the order and unlock the production phase.
       </p>
 
       <div className="space-y-2">
