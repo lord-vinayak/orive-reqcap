@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '@/store/authStore'
+import { emitToast } from '@/lib/toastBus'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -9,9 +10,14 @@ export const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  const { accessToken, user } = useAuthStore.getState()
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
+  }
+  const method = (config.method || 'get').toLowerCase()
+  if (user?.role === 'auditor' && method !== 'get') {
+    emitToast('Auditor accounts are read-only — changes are not saved.')
+    return Promise.reject({ __auditorBlocked: true, config })
   }
   return config
 })
@@ -22,6 +28,8 @@ api.interceptors.response.use(
   (r) => r,
   async (error) => {
     const original = error.config
+    // __auditorBlocked rejections (see request interceptor) have no error.response,
+    // so this check naturally skips them and falls through to the final reject.
     if (error.response?.status === 401 && !original?._retry) {
       original._retry = true
       const refreshToken = useAuthStore.getState().refreshToken
