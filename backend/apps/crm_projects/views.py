@@ -150,7 +150,10 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
     `completion_map`: {stage_key: StageCompletion} for all rows belonging to this project.
     """
 
-    def _stage_info(key: str, display: str, prev_complete: bool, extra: dict = None) -> dict:
+    def _stage_info(key: str, display: str, extra: dict = None) -> dict:
+        # ponytail: stages used to lock behind `not prev_complete`; any stage can now
+        # be completed in any order, so is_locked is always False (kept in the payload
+        # for frontend compatibility rather than ripping the field out everywhere).
         sc = completion_map.get(key)
         is_complete = sc.is_complete if sc else False
         return {
@@ -158,7 +161,7 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
             'display': display,
             **(extra or {}),
             'is_complete': is_complete,
-            'is_locked': not prev_complete,
+            'is_locked': False,
             'completed_at': sc.completed_at.isoformat() if sc and sc.completed_at else None,
             'completed_by_name': (
                 getattr(sc.completed_by, 'name', None) or
@@ -172,71 +175,51 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
     cycle = project.resample_cycle
 
     # -- Sample pre-loop --
-    pre_loop = []
-    prev = True  # first stage is never locked
-    for s in SAMPLE_PRE_LOOP:
-        info = _stage_info(s['key'], s['display'], prev)
-        pre_loop.append(info)
-        prev = info['is_complete']
-
-    pre_loop_complete = all(s['is_complete'] for s in pre_loop)
+    pre_loop = [_stage_info(s['key'], s['display']) for s in SAMPLE_PRE_LOOP]
 
     # -- Resample loop cycles --
     loop_cycles = []
-    global_prev = pre_loop_complete  # carries across cycles in terms of availability
-
     for c in range(1, cycle + 1):
         stages = []
-        cycle_prev = global_prev  # first stage of this cycle locked if pre-loop not done
         is_active = (c == cycle)
         for s in RESAMPLE_LOOP_BASE:
             key = get_loop_key(s['key'], c)
             extra = {'is_approval_gate': True} if s.get('is_approval_gate') else {}
-            info = _stage_info(key, s['display'], cycle_prev, extra)
+            info = _stage_info(key, s['display'], extra)
             info['rag_status'] = _compute_rag(s['key'], c, completion_map)
             stages.append(info)
-            cycle_prev = info['is_complete']
         loop_cycles.append({'cycle': c, 'is_active': is_active, 'stages': stages})
 
     # Current cycle's approval gate
     approval_key = get_loop_key('sample_approved', cycle)
     approval_complete = completion_map.get(approval_key) and completion_map[approval_key].is_complete
 
-    # All loop stages in current cycle done (including approval)
-    current_cycle_stages = next(lc for lc in loop_cycles if lc['is_active'])['stages']
-    current_cycle_complete = all(s['is_complete'] for s in current_cycle_stages)
-
     # -- Post-approval --
+    # Still gated behind the approval decision (a business outcome, not a plain
+    # completion order) — the sample-approve/reject workflow is unaffected by
+    # the free-form stage completion change.
     show_post_approval = approval_complete  # only show after sample approved = Yes
-    post_prev = approval_complete
-    post_approval = []
-    for s in SAMPLE_POST_APPROVAL:
-        info = _stage_info(s['key'], s['display'], post_prev)
-        post_approval.append(info)
-        post_prev = info['is_complete']
+    post_approval = [_stage_info(s['key'], s['display']) for s in SAMPLE_POST_APPROVAL]
 
     post_approval_complete = all(s['is_complete'] for s in post_approval) if show_post_approval else False
     sample_phase_complete = post_approval_complete  # sample phase done when post-approval done
 
     # -- Order phase sections --
-    # Sections unlock in parallel once order is booked; only the overall
-    # order_booked gate remains. Stages within each section are still sequential.
-    order_locked = not project.order_booked
+    # Any stage in any section can be completed at any time (see complete_stage /
+    # complete_section — they auto-flip phase/order_booked so dashboard bucketing
+    # stays consistent even if order stages get ticked before the sample phase).
     order_sections = []
-
     for sec in ORDER_PHASE_SECTIONS:
-        stage_prev = not order_locked  # first stage in each section: unlocked iff order booked
         sec_stages = []
         for s in sec['stages']:
-            info = _stage_info(s['key'], s['display'], stage_prev)
+            info = _stage_info(s['key'], s['display'])
             info['rag_status'] = _compute_rag(s['key'], 1, completion_map)
             sec_stages.append(info)
-            stage_prev = info['is_complete']
         is_section_complete = all(s['is_complete'] for s in sec_stages)
         order_sections.append({
             'key': sec['key'],
             'display': sec['display'],
-            'is_locked': order_locked,
+            'is_locked': False,
             'is_section_complete': is_section_complete,
             'stages': sec_stages,
         })
@@ -281,7 +264,7 @@ def _build_stage_status(project: CRMProject, completion_map: dict) -> dict:
             'show_post_approval': show_post_approval,
         },
         'order_phase': {
-            'locked': order_locked,
+            'locked': False,
             'sections': order_sections,
         },
         'progress': {
