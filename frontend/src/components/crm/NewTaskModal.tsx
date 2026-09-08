@@ -98,6 +98,7 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
     setClientSearch('')
     setClientDropdownOpen(false)
     setClientResults([])
+    setProjectId('') // ponytail: project list is scoped to the client, so a stale pick from another client can't survive
   }
 
   const clearClient = () => {
@@ -106,20 +107,17 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
     setClientResults([])
   }
 
-  // When a project is selected, auto-fill client from that project
+  const clearClientAndProject = () => {
+    clearClient()
+    setProjectId('')
+  }
+
+  const visibleProjects = selectedClient
+    ? projects.filter((p) => p.client === selectedClient.phone_no)
+    : projects
+
   const handleProjectChange = (pid: string) => {
     setProjectId(pid)
-    if (pid) {
-      const proj = projects.find((p) => p.id === pid)
-      if (proj) {
-        // Build a minimal Client-like object so the display shows name
-        setSelectedClient({ phone_no: proj.client, name: proj.client_name } as Client)
-        setClientSearch('')
-        setClientDropdownOpen(false)
-      }
-    } else {
-      clearClient()
-    }
   }
 
   const handleSubmit = async () => {
@@ -210,24 +208,6 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
           </select>
         </div>
 
-        {/* Link to project (optional) */}
-        <div>
-          <label htmlFor="nt-project" className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
-            Link to Project <span className="text-black/30 dark:text-slate-600 font-normal">(optional)</span>
-          </label>
-          <select
-            id="nt-project"
-            value={projectId}
-            onChange={(e) => handleProjectChange(e.target.value)}
-            className="w-full text-sm border border-black/20 dark:border-white/20 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard"
-          >
-            <option value="">— None —</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.project_no} — {p.client_name}</option>
-            ))}
-          </select>
-        </div>
-
         {/* Client searchable combobox */}
         <div ref={clientRef} className="relative">
           <label htmlFor="nt-client-search" className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
@@ -243,7 +223,7 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
               </div>
               <button
                 type="button"
-                onClick={clearClient}
+                onClick={clearClientAndProject}
                 aria-label="Clear selected client"
                 className="text-black/30 dark:text-slate-600 hover:text-black dark:hover:text-white transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-mustard rounded"
               >
@@ -300,6 +280,28 @@ export default function NewTaskModal({ onClose, onCreated }: Props) {
                 </ul>
               )}
             </div>
+          )}
+        </div>
+
+        {/* Link to project (optional) — scoped to selected client */}
+        <div>
+          <label htmlFor="nt-project" className="block text-xs font-semibold text-black/60 dark:text-slate-400 mb-1">
+            Link to Project <span className="text-black/30 dark:text-slate-600 font-normal">(optional)</span>
+          </label>
+          <select
+            id="nt-project"
+            value={projectId}
+            onChange={(e) => handleProjectChange(e.target.value)}
+            disabled={!selectedClient}
+            className="w-full text-sm border border-black/20 dark:border-white/20 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-mustard disabled:opacity-40"
+          >
+            <option value="">— None —</option>
+            {visibleProjects.map((p) => (
+              <option key={p.id} value={p.id}>{p.project_no} — {p.client_name}</option>
+            ))}
+          </select>
+          {!selectedClient && (
+            <p className="text-xs text-black/30 dark:text-slate-600 mt-1">Select a client to see their projects.</p>
           )}
         </div>
 
