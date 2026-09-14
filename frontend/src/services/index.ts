@@ -2,6 +2,7 @@ import { api } from './api'
 import type {
   Client, Requirement, RequirementProduct, Note, FileRecord, ClientFile, ClientNote,
   CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, BatchRecordFile, IngredientRecord, PackagingRecord, PackagingClient, PackagingClientFile,
+  SampleTrackerRecord, SampleTrackerFile,
 } from '@/types'
 import type { LeadBucket, PipelineSnapshotKey } from '@/constants/clientStatus'
 
@@ -490,6 +491,56 @@ export const packagingClientService = {
     return data
   },
   deleteFile: async (id: string, fileId: string) => api.delete(`/packaging-clients/${id}/files/${fileId}/`),
+}
+
+export interface SampleTrackerUploadRow {
+  row: number
+  client_name: string
+  warning?: string
+}
+
+export interface SampleTrackerUploadResult {
+  created: SampleTrackerUploadRow[]
+  skipped: []
+}
+
+export const sampleTrackerService = {
+  list: async (params: { q?: string; page?: number; page_size?: number } = {}) =>
+    (await api.get<{ count: number; next: string | null; previous: string | null; results: SampleTrackerRecord[] } | SampleTrackerRecord[]>('/sample-tracker/', { params })).data,
+  create: async (data: Partial<SampleTrackerRecord>) => (await api.post<SampleTrackerRecord>('/sample-tracker/', data)).data,
+  update: async (id: string, data: Partial<SampleTrackerRecord>) =>
+    (await api.patch<SampleTrackerRecord>(`/sample-tracker/${id}/`, data)).data,
+  remove: async (id: string) => api.delete(`/sample-tracker/${id}/`),
+
+  bulkUpload: async (file: File): Promise<SampleTrackerUploadResult> => {
+    const form = new FormData()
+    form.append('file', file)
+    return (await api.post<SampleTrackerUploadResult>('/sample-tracker/bulk-upload/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data
+  },
+
+  downloadTemplate: () =>
+    api.get('/sample-tracker/upload-template/', { responseType: 'blob' }).then((r) => {
+      const url = URL.createObjectURL(new Blob([r.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'sample_tracker_template.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+    }),
+
+  listFiles: async (id: string) =>
+    (await api.get<SampleTrackerFile[]>(`/sample-tracker/${id}/files/`)).data,
+  uploadFile: async (id: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const { data } = await api.post<SampleTrackerFile>(`/sample-tracker/${id}/files/`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  },
+  deleteFile: async (id: string, fileId: string) => api.delete(`/sample-tracker/${id}/files/${fileId}/`),
 }
 
 export const ingredientRecordService = {

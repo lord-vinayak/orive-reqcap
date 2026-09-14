@@ -202,6 +202,31 @@ export interface BatchRecord {
   updated_at: string
 }
 
+export interface SampleTrackerRecord {
+  id: string
+  date: string | null
+  client_name: string
+  product_type: string
+  product_details: string
+  sample_attempt_count: number | null
+  sample_no: string
+  sample_approved: string
+  feedback: string
+  created_at: string
+  updated_at: string
+}
+
+export interface SampleTrackerFile {
+  id: string
+  sample_tracker_record: string
+  drive_file_id: string
+  drive_url: string
+  filename: string
+  uploaded_by: string | null
+  uploaded_by_name: string | null
+  uploaded_at: string
+}
+
 export interface BatchRecordFile {
   id: string
   batch_record: string
