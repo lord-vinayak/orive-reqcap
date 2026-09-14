@@ -241,7 +241,8 @@ export interface PackagingClient {
   packaging_name: string
   size: string
   glass_pet: string
-  moq: string
+  client_moq: string
+  vendor_moq: string
   cost_to_ss: string
   cost_to_client: string
   vendor_name: string
@@ -251,4 +252,15 @@ export interface PackagingClient {
   cd2: string
   created_at: string
   updated_at: string
+}
+
+export interface PackagingClientFile {
+  id: string
+  packaging_client: string
+  drive_file_id: string
+  drive_url: string
+  filename: string
+  uploaded_by: string | null
+  uploaded_by_name: string | null
+  uploaded_at: string
 }

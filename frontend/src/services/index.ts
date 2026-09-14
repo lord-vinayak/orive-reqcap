@@ -1,7 +1,7 @@
 import { api } from './api'
 import type {
   Client, Requirement, RequirementProduct, Note, FileRecord, ClientFile, ClientNote,
-  CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, IngredientRecord, PackagingRecord, PackagingClient,
+  CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, IngredientRecord, PackagingRecord, PackagingClient, PackagingClientFile,
 } from '@/types'
 import type { LeadBucket, PipelineSnapshotKey } from '@/constants/clientStatus'
 
@@ -466,6 +466,18 @@ export const packagingClientService = {
       a.click()
       URL.revokeObjectURL(url)
     }),
+
+  listFiles: async (id: string) =>
+    (await api.get<PackagingClientFile[]>(`/packaging-clients/${id}/files/`)).data,
+  uploadFile: async (id: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const { data } = await api.post<PackagingClientFile>(`/packaging-clients/${id}/files/`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  },
+  deleteFile: async (id: string, fileId: string) => api.delete(`/packaging-clients/${id}/files/${fileId}/`),
 }
 
 export const ingredientRecordService = {
