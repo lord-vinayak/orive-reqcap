@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import Layout from '@/components/Layout'
+import DocumentsCell from '@/components/DocumentsCell'
 import { useAuthStore } from '@/store/authStore'
 import { batchRecordService } from '@/services'
 import type { BatchUploadResult } from '@/services'
@@ -12,7 +13,7 @@ type DraftRow = Partial<BatchRecord>
 const BLANK_DRAFT: DraftRow = {
   client_name: '', brand_name: '', product_type: '', product_name: '',
   packaging_type: '', pack_size: '', moq: null, batch_number: '',
-  manufacturing_date: null, expiry_date: null,
+  document_no: '', ctri_no: '', manufacturing_date: null, expiry_date: null,
 }
 
 function fmtDate(d: string | null) {
@@ -47,8 +48,11 @@ function RowEditor({
       <td className="px-2 py-2"><input aria-label="Pack size" className={inputCls} value={draft.pack_size ?? ''} onChange={set('pack_size')} /></td>
       <td className="px-2 py-2"><input aria-label="Order quantity / MOQ in units" type="number" min={0} className={inputCls} value={draft.moq ?? ''} onChange={set('moq')} /></td>
       <td className="px-2 py-2"><input aria-label="Batch number" className={inputCls} value={draft.batch_number ?? ''} onChange={set('batch_number')} /></td>
+      <td className="px-2 py-2"><input aria-label="Document no" className={inputCls} value={draft.document_no ?? ''} onChange={set('document_no')} /></td>
+      <td className="px-2 py-2"><input aria-label="CTRI no" className={inputCls} value={draft.ctri_no ?? ''} onChange={set('ctri_no')} /></td>
       <td className="px-2 py-2"><input aria-label="Manufacturing date" type="date" className={inputCls} value={draft.manufacturing_date ?? ''} onChange={set('manufacturing_date')} /></td>
       <td className="px-2 py-2"><input aria-label="Expiry date" type="date" className={inputCls} value={draft.expiry_date ?? ''} onChange={set('expiry_date')} /></td>
+      <td className="px-2 py-2 text-xs text-black/40 dark:text-slate-500 align-top">Save row to attach documents</td>
       <td className="px-2 py-2 whitespace-nowrap">
         <button type="button" onClick={onSave} disabled={saving} className="text-xs font-semibold text-mustard-700 hover:underline disabled:opacity-50 mr-2">
           {saving ? 'Saving…' : 'Save'}
@@ -245,7 +249,7 @@ export default function BatchRegister() {
   }
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE))
-  const headers = ['Sr No.', 'Client Name', 'Brand Name', 'Product Type', 'Product Name', 'Packaging Type', 'Pack Size', 'Order Quantity - MOQ in units', 'Batch Number', 'Manufacturing Date', 'Expiry Date', 'Actions']
+  const headers = ['Sr No.', 'Client Name', 'Brand Name', 'Product Type', 'Product Name', 'Packaging Type', 'Pack Size', 'Order Quantity - MOQ in units', 'Batch Number', 'Document No', 'CTRI No', 'Manufacturing Date', 'Expiry Date', 'Documents', 'Actions']
 
   return (
     <Layout title="Batch Register">
@@ -319,8 +323,19 @@ export default function BatchRegister() {
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.pack_size || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 tabular-nums">{r.moq ?? '—'}</td>
                         <td className="px-3 py-2 font-mono text-black dark:text-white">{r.batch_number}</td>
+                        <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.document_no || '—'}</td>
+                        <td className="px-3 py-2 text-black/70 dark:text-slate-300">{r.ctri_no || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 whitespace-nowrap">{fmtDate(r.manufacturing_date)}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 whitespace-nowrap">{fmtDate(r.expiry_date)}</td>
+                        <td className="px-3 py-2 align-top">
+                          <DocumentsCell
+                            entityId={r.id}
+                            isAdmin={isAdmin}
+                            listFiles={batchRecordService.listFiles}
+                            uploadFile={batchRecordService.uploadFile}
+                            deleteFile={batchRecordService.deleteFile}
+                          />
+                        </td>
                         <td className="px-3 py-2 whitespace-nowrap">
                           <button type="button" onClick={() => startEdit(r)} className="text-xs font-semibold text-mustard-700 hover:underline mr-3">
                             Edit
