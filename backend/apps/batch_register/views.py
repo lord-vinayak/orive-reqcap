@@ -4,19 +4,24 @@ from datetime import date, datetime
 import openpyxl
 from django.db.models import Q
 from django.http import HttpResponse
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import BatchRecord
-from .serializers import BatchRecordSerializer
+from apps.files.drive_service import upload_file, delete_file
+from .models import BatchRecord, BatchRecordFile
+from .serializers import BatchRecordSerializer, BatchRecordFileSerializer
 
 TEMPLATE_COLUMNS = [
     'client_name', 'brand_name', 'product_type', 'product_name',
-    'packaging_type', 'pack_size', 'moq', 'batch_number',
+    'packaging_type', 'pack_size', 'moq', 'batch_number', 'document_no', 'ctri_no',
     'manufacturing_date', 'expiry_date',
 ]
+
+MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 _DATE_FORMATS = [
     '%Y-%m-%d', '%d-%m-%Y', '%d/%m/%Y', '%m/%d/%Y',
@@ -79,7 +84,7 @@ class BatchRecordViewSet(viewsets.ModelViewSet):
             cell.font = header_font
             cell.fill = header_fill
 
-        widths = [22, 22, 18, 26, 18, 12, 14, 16, 18, 14]
+        widths = [22, 22, 18, 26, 18, 12, 14, 16, 16, 16, 18, 14]
         for col_idx, width in enumerate(widths, start=1):
             ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
@@ -97,8 +102,10 @@ class BatchRecordViewSet(viewsets.ModelViewSet):
         ws.cell(row=3, column=6, value='30ml')
         ws.cell(row=3, column=7, value=1000)
         ws.cell(row=3, column=8, value='B2026001')
-        ws.cell(row=3, column=9, value='2026-06-01')
-        ws.cell(row=3, column=10, value='2028-06-01')
+        ws.cell(row=3, column=9, value='DOC-2026-001')
+        ws.cell(row=3, column=10, value='CTRI-2026-001')
+        ws.cell(row=3, column=11, value='2026-06-01')
+        ws.cell(row=3, column=12, value='2028-06-01')
 
         buf = io.BytesIO()
         wb.save(buf)
@@ -197,6 +204,8 @@ class BatchRecordViewSet(viewsets.ModelViewSet):
                 pack_size=cell(row_data, 'pack_size') or '',
                 moq=int_or_none(row_data, 'moq'),
                 batch_number=batch_number,
+                document_no=cell(row_data, 'document_no') or '',
+                ctri_no=cell(row_data, 'ctri_no') or '',
                 manufacturing_date=mfg_date,
                 expiry_date=exp_date,
                 created_by=request.user,
@@ -214,3 +223,55 @@ class BatchRecordViewSet(viewsets.ModelViewSet):
         BatchRecord.objects.bulk_create(to_create)
         wb.close()
         return Response({'created': created, 'skipped': skipped}, status=200)
+
+
+class BatchRecordFilesViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def list(self, request, batch_record_id=None):
+        files = BatchRecordFile.objects.filter(batch_record_id=batch_record_id).select_related('uploaded_by')
+        return Response(BatchRecordFileSerializer(files, many=True).data)
+
+    def create(self, request, batch_record_id=None):
+        try:
+            record = BatchRecord.objects.get(pk=batch_record_id)
+        except BatchRecord.DoesNotExist:
+            raise NotFound('Batch record not found')
+
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({'detail': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+        if file_obj.size > MAX_UPLOAD_SIZE_BYTES:
+            return Response({'detail': 'File exceeds the 10 MB upload limit.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            result = upload_file(
+                file_bytes=file_obj.read(),
+                filename=file_obj.name,
+                mimetype=file_obj.content_type or 'application/octet-stream',
+                client_name=record.client_name or 'Batch Register',
+                subfolder='Batch Register',
+            )
+        except Exception as e:
+            return Response({'detail': f'Drive upload failed: {e}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        file_record = BatchRecordFile.objects.create(
+            batch_record=record,
+            drive_file_id=result['drive_file_id'],
+            drive_url=result['drive_url'],
+            filename=file_obj.name,
+            uploaded_by=request.user,
+        )
+        return Response(BatchRecordFileSerializer(file_record).data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, pk=None, batch_record_id=None):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admin can delete files.'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            file_record = BatchRecordFile.objects.get(pk=pk, batch_record_id=batch_record_id)
+        except BatchRecordFile.DoesNotExist:
+            raise NotFound()
+        delete_file(file_record.drive_file_id)
+        file_record.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

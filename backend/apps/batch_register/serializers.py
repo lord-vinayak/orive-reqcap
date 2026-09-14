@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BatchRecord
+from .models import BatchRecord, BatchRecordFile
 
 
 class BatchRecordSerializer(serializers.ModelSerializer):
@@ -7,7 +7,7 @@ class BatchRecordSerializer(serializers.ModelSerializer):
         model = BatchRecord
         fields = [
             'id', 'client_name', 'brand_name', 'product_type', 'product_name',
-            'packaging_type', 'pack_size', 'moq', 'batch_number',
+            'packaging_type', 'pack_size', 'moq', 'batch_number', 'document_no', 'ctri_no',
             'manufacturing_date', 'expiry_date', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -23,3 +23,15 @@ class BatchRecordSerializer(serializers.ModelSerializer):
         if not batch_number:
             raise serializers.ValidationError({'batch_number': 'Batch number is required.'})
         return attrs
+
+
+class BatchRecordFileSerializer(serializers.ModelSerializer):
+    uploaded_by_name = serializers.CharField(source='uploaded_by.name', read_only=True)
+
+    class Meta:
+        model = BatchRecordFile
+        fields = [
+            'id', 'batch_record', 'drive_file_id', 'drive_url',
+            'filename', 'uploaded_by', 'uploaded_by_name', 'uploaded_at',
+        ]
+        read_only_fields = ['id', 'drive_file_id', 'drive_url', 'uploaded_by', 'uploaded_at']
