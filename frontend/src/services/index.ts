@@ -2,7 +2,7 @@ import { api } from './api'
 import type {
   Client, Requirement, RequirementProduct, Note, FileRecord, ClientFile, ClientNote,
   CatalogItem, Proposal, ProposalItem, User, ProposalDocument, BatchRecord, BatchRecordFile, IngredientRecord, PackagingRecord, PackagingClient, PackagingClientFile,
-  SampleTrackerRecord, SampleTrackerFile,
+  SampleTrackerRecord, SampleTrackerFile, BMRTrackerRecord, BMRTrackerFile,
 } from '@/types'
 import type { LeadBucket, PipelineSnapshotKey } from '@/constants/clientStatus'
 
@@ -541,6 +541,56 @@ export const sampleTrackerService = {
     return data
   },
   deleteFile: async (id: string, fileId: string) => api.delete(`/sample-tracker/${id}/files/${fileId}/`),
+}
+
+export interface BMRTrackerUploadRow {
+  row: number
+  client_name: string
+  warning?: string
+}
+
+export interface BMRTrackerUploadResult {
+  created: BMRTrackerUploadRow[]
+  skipped: []
+}
+
+export const bmrTrackerService = {
+  list: async (params: { q?: string; page?: number; page_size?: number } = {}) =>
+    (await api.get<{ count: number; next: string | null; previous: string | null; results: BMRTrackerRecord[] } | BMRTrackerRecord[]>('/bmr-tracker/', { params })).data,
+  create: async (data: Partial<BMRTrackerRecord>) => (await api.post<BMRTrackerRecord>('/bmr-tracker/', data)).data,
+  update: async (id: string, data: Partial<BMRTrackerRecord>) =>
+    (await api.patch<BMRTrackerRecord>(`/bmr-tracker/${id}/`, data)).data,
+  remove: async (id: string) => api.delete(`/bmr-tracker/${id}/`),
+
+  bulkUpload: async (file: File): Promise<BMRTrackerUploadResult> => {
+    const form = new FormData()
+    form.append('file', file)
+    return (await api.post<BMRTrackerUploadResult>('/bmr-tracker/bulk-upload/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data
+  },
+
+  downloadTemplate: () =>
+    api.get('/bmr-tracker/upload-template/', { responseType: 'blob' }).then((r) => {
+      const url = URL.createObjectURL(new Blob([r.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'bmr_tracker_template.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+    }),
+
+  listFiles: async (id: string) =>
+    (await api.get<BMRTrackerFile[]>(`/bmr-tracker/${id}/files/`)).data,
+  uploadFile: async (id: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const { data } = await api.post<BMRTrackerFile>(`/bmr-tracker/${id}/files/`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  },
+  deleteFile: async (id: string, fileId: string) => api.delete(`/bmr-tracker/${id}/files/${fileId}/`),
 }
 
 export const ingredientRecordService = {

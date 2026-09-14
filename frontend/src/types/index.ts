@@ -202,6 +202,27 @@ export interface BatchRecord {
   updated_at: string
 }
 
+export interface BMRTrackerRecord {
+  id: string
+  date: string | null
+  client_name: string
+  product: string
+  batch_no: string
+  created_at: string
+  updated_at: string
+}
+
+export interface BMRTrackerFile {
+  id: string
+  bmr_tracker_record: string
+  drive_file_id: string
+  drive_url: string
+  filename: string
+  uploaded_by: string | null
+  uploaded_by_name: string | null
+  uploaded_at: string
+}
+
 export interface SampleTrackerRecord {
   id: string
   date: string | null
