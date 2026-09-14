@@ -194,10 +194,23 @@ export interface BatchRecord {
   pack_size: string
   moq: number | null
   batch_number: string
+  document_no: string
+  ctri_no: string
   manufacturing_date: string | null
   expiry_date: string | null
   created_at: string
   updated_at: string
+}
+
+export interface BatchRecordFile {
+  id: string
+  batch_record: string
+  drive_file_id: string
+  drive_url: string
+  filename: string
+  uploaded_by: string | null
+  uploaded_by_name: string | null
+  uploaded_at: string
 }
 
 export interface IngredientRecord {
