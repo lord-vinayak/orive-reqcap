@@ -136,7 +136,7 @@ function DocsCell({ clientId, isAdmin }: { clientId: string; isAdmin: boolean })
         {open ? 'Hide' : 'Documents'}{files ? ` (${files.length})` : ''}
       </button>
       {open && (
-        <div className="space-y-1">
+        <div className="space-y-1" aria-live="polite">
           {files && files.length > 0 && (
             <ul className="space-y-0.5">
               {files.map((f) => (
