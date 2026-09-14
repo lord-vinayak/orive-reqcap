@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
-import { FilePlus2, FileSearch, FolderKanban, LayoutDashboard, ClipboardList, PackageSearch, FlaskConical, Box, Users, TestTube2 } from "lucide-react";
+import { FilePlus2, FileSearch, FolderKanban, LayoutDashboard, ClipboardList, PackageSearch, FlaskConical, Box, Users, TestTube2, FileStack } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 
 interface NavCardProps {
@@ -188,6 +188,25 @@ export default function Home() {
               <div className="text-lg font-semibold text-black dark:text-slate-100 mb-0.5" aria-hidden="true">Sample Tracker</div>
               <div className="text-sm text-black/60 dark:text-slate-300" aria-hidden="true">
                 Track sample attempts, approval status, and feedback per client.
+              </div>
+            </div>
+          </div>
+
+          <div
+            onClick={() => navigate("/bmr-tracker")}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/bmr-tracker"); } }}
+            role="button"
+            tabIndex={0}
+            className="card text-left hover:border-mustard transition-colors group cursor-pointer flex items-center gap-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard"
+            aria-label="Go to BMR Tracker — record batch manufacturing records and attach BMR documents per batch"
+          >
+            <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center shrink-0 group-hover:bg-mustard transition-colors" aria-hidden="true">
+              <span className="text-2xl text-mustard-700"><FileStack /></span>
+            </div>
+            <div>
+              <div className="text-lg font-semibold text-black dark:text-slate-100 mb-0.5" aria-hidden="true">BMR Tracker</div>
+              <div className="text-sm text-black/60 dark:text-slate-300" aria-hidden="true">
+                Record batch manufacturing records and attach BMR documents per batch.
               </div>
             </div>
           </div>

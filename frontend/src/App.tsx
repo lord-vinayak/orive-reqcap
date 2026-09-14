@@ -30,6 +30,7 @@ import IngredientInventory from '@/pages/IngredientInventory'
 import PackagingInventory from '@/pages/PackagingInventory'
 import PackagingClientList from '@/pages/PackagingClientList'
 import SampleTracker from '@/pages/SampleTracker'
+import BMRTracker from '@/pages/BMRTracker'
 
 export default function App() {
   return (
@@ -72,6 +73,7 @@ export default function App() {
       <Route path="/packaging-inventory" element={<ProtectedRoute><PackagingInventory /></ProtectedRoute>} />
       <Route path="/packaging-clients" element={<ProtectedRoute><PackagingClientList /></ProtectedRoute>} />
       <Route path="/sample-tracker" element={<ProtectedRoute><SampleTracker /></ProtectedRoute>} />
+      <Route path="/bmr-tracker" element={<ProtectedRoute><BMRTracker /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
