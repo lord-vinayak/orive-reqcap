@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import Layout from '@/components/Layout'
+import DocumentsCell from '@/components/DocumentsCell'
 import { useAuthStore } from '@/store/authStore'
 import { packagingClientService } from '@/services'
 import type { PackagingClientUploadResult } from '@/services'
-import type { PackagingClient, PackagingClientFile } from '@/types'
+import type { PackagingClient } from '@/types'
 
 const PAGE_SIZE = 50
 
@@ -86,81 +87,6 @@ function RowEditor({
         </button>
       </td>
     </tr>
-  )
-}
-
-// ── Documents cell — per-row attach/list/delete ──────────────────────────────
-
-function DocsCell({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
-  const inputId = useId()
-  const [open, setOpen] = useState(false)
-  const [files, setFiles] = useState<PackagingClientFile[] | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState('')
-
-  // ponytail: fetched lazily on expand, not on row mount — avoids one request per row on page load
-  const load = () => {
-    packagingClientService.listFiles(clientId).then(setFiles)
-  }
-
-  const handleToggle = () => {
-    setOpen((o) => !o)
-    if (files === null) load()
-  }
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setUploading(true)
-    setError('')
-    try {
-      await packagingClientService.uploadFile(clientId, file)
-      load()
-    } catch {
-      setError('Upload failed.')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const handleDelete = async (fileId: string) => {
-    if (!window.confirm('Delete this document? This cannot be undone.')) return
-    await packagingClientService.deleteFile(clientId, fileId)
-    setFiles((prev) => (prev ?? []).filter((f) => f.id !== fileId))
-  }
-
-  return (
-    <div className="min-w-[140px] space-y-1">
-      <button type="button" onClick={handleToggle} className="text-xs font-semibold text-mustard-700 hover:underline">
-        {open ? 'Hide' : 'Documents'}{files ? ` (${files.length})` : ''}
-      </button>
-      {open && (
-        <div className="space-y-1" aria-live="polite">
-          {files && files.length > 0 && (
-            <ul className="space-y-0.5">
-              {files.map((f) => (
-                <li key={f.id} className="flex items-center gap-1 text-xs">
-                  <a href={f.drive_url} target="_blank" rel="noopener noreferrer" className="text-mustard-700 hover:underline truncate max-w-[110px]" title={f.filename}>
-                    {f.filename}
-                  </a>
-                  {isAdmin && (
-                    <button type="button" onClick={() => handleDelete(f.id)} className="text-red-600 dark:text-red-400 hover:underline shrink-0" aria-label={`Delete ${f.filename}`}>
-                      ✕
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-          <label htmlFor={inputId} className="text-xs font-semibold text-mustard-700 hover:underline cursor-pointer inline-block">
-            {uploading ? 'Uploading…' : '+ Attach'}
-          </label>
-          <input id={inputId} type="file" className="sr-only" onChange={handleUpload} disabled={uploading} />
-          {error && <div role="alert" className="text-xs text-red-600 dark:text-red-400">{error}</div>}
-        </div>
-      )}
-    </div>
   )
 }
 
@@ -415,7 +341,13 @@ export default function PackagingClientList() {
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top whitespace-pre-wrap">{r.poc2 || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top whitespace-pre-wrap">{r.cd2 || '—'}</td>
                         <td className="px-3 py-2 align-top">
-                          <DocsCell clientId={r.id} isAdmin={isAdmin} />
+                          <DocumentsCell
+                            entityId={r.id}
+                            isAdmin={isAdmin}
+                            listFiles={packagingClientService.listFiles}
+                            uploadFile={packagingClientService.uploadFile}
+                            deleteFile={packagingClientService.deleteFile}
+                          />
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap align-top">
                           <button type="button" onClick={() => startEdit(r)} className="text-xs font-semibold text-mustard-700 hover:underline mr-3">
