@@ -3,18 +3,23 @@ import io
 import openpyxl
 from django.db.models import Q
 from django.http import HttpResponse
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import PackagingClientRecord
-from .serializers import PackagingClientRecordSerializer
+from apps.files.drive_service import upload_file, delete_file
+from .models import PackagingClientRecord, PackagingClientFile
+from .serializers import PackagingClientRecordSerializer, PackagingClientFileSerializer
 
 TEMPLATE_COLUMNS = [
-    'client_name', 'packaging_name', 'size', 'glass_pet', 'moq', 'cost_to_ss',
+    'client_name', 'packaging_name', 'size', 'glass_pet', 'client_moq', 'vendor_moq', 'cost_to_ss',
     'cost_to_client', 'vendor_name', 'poc', 'contact_details', 'poc2', 'cd2',
 ]
+
+MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 class PackagingClientRecordViewSet(viewsets.ModelViewSet):
@@ -56,7 +61,7 @@ class PackagingClientRecordViewSet(viewsets.ModelViewSet):
             cell.font = header_font
             cell.fill = header_fill
 
-        widths = [18, 22, 12, 12, 10, 14, 14, 22, 16, 18, 16, 18]
+        widths = [18, 22, 12, 12, 10, 10, 14, 14, 22, 16, 18, 16, 18]
         for col_idx, width in enumerate(widths, start=1):
             ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
@@ -65,7 +70,8 @@ class PackagingClientRecordViewSet(viewsets.ModelViewSet):
             'packaging_name': 'PP Airless Bottle',
             'size': '50ml',
             'glass_pet': 'Pet',
-            'moq': '1100',
+            'client_moq': '1100',
+            'vendor_moq': '1000',
             'cost_to_ss': '29rs',
             'cost_to_client': '35rs',
             'vendor_name': 'Indian Harness',
@@ -136,7 +142,8 @@ class PackagingClientRecordViewSet(viewsets.ModelViewSet):
                 packaging_name=cell(row_data, 'packaging_name') or '',
                 size=cell(row_data, 'size') or '',
                 glass_pet=cell(row_data, 'glass_pet') or '',
-                moq=cell(row_data, 'moq') or '',
+                client_moq=cell(row_data, 'client_moq') or '',
+                vendor_moq=cell(row_data, 'vendor_moq') or '',
                 cost_to_ss=cell(row_data, 'cost_to_ss') or '',
                 cost_to_client=cell(row_data, 'cost_to_client') or '',
                 vendor_name=cell(row_data, 'vendor_name') or '',
@@ -151,3 +158,55 @@ class PackagingClientRecordViewSet(viewsets.ModelViewSet):
         PackagingClientRecord.objects.bulk_create(to_create)
         wb.close()
         return Response({'created': created, 'skipped': []}, status=200)
+
+
+class PackagingClientFilesViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def list(self, request, packaging_client_id=None):
+        files = PackagingClientFile.objects.filter(packaging_client_id=packaging_client_id).select_related('uploaded_by')
+        return Response(PackagingClientFileSerializer(files, many=True).data)
+
+    def create(self, request, packaging_client_id=None):
+        try:
+            record = PackagingClientRecord.objects.get(pk=packaging_client_id)
+        except PackagingClientRecord.DoesNotExist:
+            raise NotFound('Packaging client not found')
+
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({'detail': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+        if file_obj.size > MAX_UPLOAD_SIZE_BYTES:
+            return Response({'detail': 'File exceeds the 10 MB upload limit.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            result = upload_file(
+                file_bytes=file_obj.read(),
+                filename=file_obj.name,
+                mimetype=file_obj.content_type or 'application/octet-stream',
+                client_name=record.client_name or 'Packaging Clients',
+                subfolder='Packaging Clients',
+            )
+        except Exception as e:
+            return Response({'detail': f'Drive upload failed: {e}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        file_record = PackagingClientFile.objects.create(
+            packaging_client=record,
+            drive_file_id=result['drive_file_id'],
+            drive_url=result['drive_url'],
+            filename=file_obj.name,
+            uploaded_by=request.user,
+        )
+        return Response(PackagingClientFileSerializer(file_record).data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, pk=None, packaging_client_id=None):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admin can delete files.'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            file_record = PackagingClientFile.objects.get(pk=pk, packaging_client_id=packaging_client_id)
+        except PackagingClientFile.DoesNotExist:
+            raise NotFound()
+        delete_file(file_record.drive_file_id)
+        file_record.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

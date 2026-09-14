@@ -11,7 +11,8 @@ class PackagingClientRecord(models.Model):
     packaging_name = models.TextField(blank=True, default='')
     size = models.TextField(blank=True, default='')
     glass_pet = models.TextField(blank=True, default='', verbose_name='Glass/Pet')
-    moq = models.TextField(blank=True, default='', verbose_name='MOQ')
+    client_moq = models.TextField(blank=True, default='', verbose_name='Client MOQ')
+    vendor_moq = models.TextField(blank=True, default='', verbose_name='Vendor MOQ')
     cost_to_ss = models.TextField(blank=True, default='', verbose_name='Cost To SS')
     cost_to_client = models.TextField(blank=True, default='')
     vendor_name = models.TextField(blank=True, default='')
@@ -35,3 +36,25 @@ class PackagingClientRecord(models.Model):
 
     def __str__(self):
         return f'{self.client_name} | {self.packaging_name}'
+
+
+class PackagingClientFile(models.Model):
+    """A document attached to a packaging client row (stored on Google Drive)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    packaging_client = models.ForeignKey(
+        PackagingClientRecord, on_delete=models.CASCADE, related_name='files',
+    )
+    drive_file_id = models.CharField(max_length=255)
+    drive_url = models.URLField()
+    filename = models.CharField(max_length=255)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name='packaging_client_files_uploaded',
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return self.filename
