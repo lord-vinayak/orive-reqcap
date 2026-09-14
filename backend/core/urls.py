@@ -26,4 +26,5 @@ urlpatterns = [
     path('api/ingredient-records/', include('apps.ingredient_inventory.urls')),
     path('api/packaging-records/', include('apps.packaging_inventory.urls')),
     path('api/packaging-clients/', include('apps.packaging_clients.urls')),
+    path('api/sample-tracker/', include('apps.sample_tracker.urls')),
 ]

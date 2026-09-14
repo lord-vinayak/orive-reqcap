@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'apps.ingredient_inventory',
     'apps.packaging_inventory',
     'apps.packaging_clients',
+    'apps.sample_tracker',
 ]
 
 MIDDLEWARE = [
