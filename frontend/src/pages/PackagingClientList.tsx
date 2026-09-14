@@ -3,14 +3,14 @@ import Layout from '@/components/Layout'
 import { useAuthStore } from '@/store/authStore'
 import { packagingClientService } from '@/services'
 import type { PackagingClientUploadResult } from '@/services'
-import type { PackagingClient } from '@/types'
+import type { PackagingClient, PackagingClientFile } from '@/types'
 
 const PAGE_SIZE = 50
 
 type DraftRow = Partial<PackagingClient>
 
 const BLANK_DRAFT: DraftRow = {
-  client_name: '', packaging_name: '', size: '', glass_pet: '', moq: '',
+  client_name: '', packaging_name: '', size: '', glass_pet: '', client_moq: '', vendor_moq: '',
   cost_to_ss: '', cost_to_client: '', vendor_name: '', poc: '', contact_details: '',
   poc2: '', cd2: '',
 }
@@ -67,7 +67,8 @@ function RowEditor({
       <td className="px-2 py-2">{renderField('packaging_name', 'Packaging name')}</td>
       <td className="px-2 py-2">{renderField('size', 'Size')}</td>
       <td className="px-2 py-2">{renderField('glass_pet', 'Glass/Pet')}</td>
-      <td className="px-2 py-2">{renderField('moq', 'MOQ')}</td>
+      <td className="px-2 py-2">{renderField('client_moq', 'Client MOQ')}</td>
+      <td className="px-2 py-2">{renderField('vendor_moq', 'Vendor MOQ')}</td>
       <td className="px-2 py-2">{renderField('cost_to_ss', 'Cost to SS')}</td>
       <td className="px-2 py-2">{renderField('cost_to_client', 'Cost to client')}</td>
       <td className="px-2 py-2">{renderField('vendor_name', 'Vendor name')}</td>
@@ -75,6 +76,7 @@ function RowEditor({
       <td className="px-2 py-2">{renderField('contact_details', 'Contact details')}</td>
       <td className="px-2 py-2">{renderField('poc2', 'POC2')}</td>
       <td className="px-2 py-2">{renderField('cd2', 'CD2')}</td>
+      <td className="px-2 py-2 text-xs text-black/40 dark:text-slate-500 align-top">Save row to attach documents</td>
       <td className="px-2 py-2 whitespace-nowrap align-top">
         <button type="button" onClick={onSave} disabled={saving} className="text-xs font-semibold text-mustard-700 hover:underline disabled:opacity-50 mr-2">
           {saving ? 'Saving…' : 'Save'}
@@ -84,6 +86,81 @@ function RowEditor({
         </button>
       </td>
     </tr>
+  )
+}
+
+// ── Documents cell — per-row attach/list/delete ──────────────────────────────
+
+function DocsCell({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
+  const inputId = useId()
+  const [open, setOpen] = useState(false)
+  const [files, setFiles] = useState<PackagingClientFile[] | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+
+  // ponytail: fetched lazily on expand, not on row mount — avoids one request per row on page load
+  const load = () => {
+    packagingClientService.listFiles(clientId).then(setFiles)
+  }
+
+  const handleToggle = () => {
+    setOpen((o) => !o)
+    if (files === null) load()
+  }
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploading(true)
+    setError('')
+    try {
+      await packagingClientService.uploadFile(clientId, file)
+      load()
+    } catch {
+      setError('Upload failed.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDelete = async (fileId: string) => {
+    if (!window.confirm('Delete this document? This cannot be undone.')) return
+    await packagingClientService.deleteFile(clientId, fileId)
+    setFiles((prev) => (prev ?? []).filter((f) => f.id !== fileId))
+  }
+
+  return (
+    <div className="min-w-[140px] space-y-1">
+      <button type="button" onClick={handleToggle} className="text-xs font-semibold text-mustard-700 hover:underline">
+        {open ? 'Hide' : 'Documents'}{files ? ` (${files.length})` : ''}
+      </button>
+      {open && (
+        <div className="space-y-1">
+          {files && files.length > 0 && (
+            <ul className="space-y-0.5">
+              {files.map((f) => (
+                <li key={f.id} className="flex items-center gap-1 text-xs">
+                  <a href={f.drive_url} target="_blank" rel="noopener noreferrer" className="text-mustard-700 hover:underline truncate max-w-[110px]" title={f.filename}>
+                    {f.filename}
+                  </a>
+                  {isAdmin && (
+                    <button type="button" onClick={() => handleDelete(f.id)} className="text-red-600 dark:text-red-400 hover:underline shrink-0" aria-label={`Delete ${f.filename}`}>
+                      ✕
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <label htmlFor={inputId} className="text-xs font-semibold text-mustard-700 hover:underline cursor-pointer inline-block">
+            {uploading ? 'Uploading…' : '+ Attach'}
+          </label>
+          <input id={inputId} type="file" className="sr-only" onChange={handleUpload} disabled={uploading} />
+          {error && <div role="alert" className="text-xs text-red-600 dark:text-red-400">{error}</div>}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -256,8 +333,8 @@ export default function PackagingClientList() {
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE))
   const headers = [
-    'Count', 'Client Name', 'Packaging Name', 'Size', 'Glass/Pet', 'MOQ',
-    'Cost To SS', 'Cost to Client', 'Vendor Name', 'POC', 'Contact Details', 'POC2', 'CD2', 'Actions',
+    'Count', 'Client Name', 'Packaging Name', 'Size', 'Glass/Pet', 'Client MOQ', 'Vendor MOQ',
+    'Cost To SS', 'Cost to Client', 'Vendor Name', 'POC', 'Contact Details', 'POC2', 'CD2', 'Documents', 'Actions',
   ]
 
   return (
@@ -328,7 +405,8 @@ export default function PackagingClientList() {
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top">{r.packaging_name || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top">{r.size || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top">{r.glass_pet || '—'}</td>
-                        <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top">{r.moq || '—'}</td>
+                        <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top">{r.client_moq || '—'}</td>
+                        <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top">{r.vendor_moq || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top whitespace-pre-wrap">{r.cost_to_ss || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top">{r.cost_to_client || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top whitespace-pre-wrap">{r.vendor_name || '—'}</td>
@@ -336,6 +414,9 @@ export default function PackagingClientList() {
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top whitespace-pre-wrap">{r.contact_details || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top whitespace-pre-wrap">{r.poc2 || '—'}</td>
                         <td className="px-3 py-2 text-black/70 dark:text-slate-300 align-top whitespace-pre-wrap">{r.cd2 || '—'}</td>
+                        <td className="px-3 py-2 align-top">
+                          <DocsCell clientId={r.id} isAdmin={isAdmin} />
+                        </td>
                         <td className="px-3 py-2 whitespace-nowrap align-top">
                           <button type="button" onClick={() => startEdit(r)} className="text-xs font-semibold text-mustard-700 hover:underline mr-3">
                             Edit
