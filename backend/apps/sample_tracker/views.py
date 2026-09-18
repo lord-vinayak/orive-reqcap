@@ -73,7 +73,7 @@ class SampleTrackerRecordViewSet(viewsets.ModelViewSet):
     def download_template(self, request):
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = 'Sample Tracker'
+        ws.title = 'Final Formula Tracker'
 
         header_font = openpyxl.styles.Font(bold=True)
         header_fill = openpyxl.styles.PatternFill('solid', fgColor='FFF3CD')
@@ -112,7 +112,7 @@ class SampleTrackerRecordViewSet(viewsets.ModelViewSet):
             buf.read(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
-        response['Content-Disposition'] = 'attachment; filename="sample_tracker_template.xlsx"'
+        response['Content-Disposition'] = 'attachment; filename="final_formula_tracker_template.xlsx"'
         return response
 
     # ------------------------------------------------------------------

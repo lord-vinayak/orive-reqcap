@@ -91,7 +91,7 @@ function ImportSection({ onImported }: { onImported: () => void }) {
   return (
     <details className="border border-black/10 dark:border-white/10 rounded-lg">
       <summary className="cursor-pointer px-4 py-3 font-medium text-sm text-black dark:text-white select-none">
-        Import old sample tracker data from Excel
+        Import old final formula tracker data from Excel
       </summary>
       <div className="px-4 pb-4 pt-1 space-y-3">
         <p className="text-sm text-black/60 dark:text-slate-300">
@@ -169,7 +169,7 @@ export default function SampleTracker() {
           setRows(data.results); setCount(data.count)
         }
       })
-      .catch(() => setError('Failed to load sample tracker records.'))
+      .catch(() => setError('Failed to load final formula tracker records.'))
       .finally(() => setLoading(false))
   }
 
@@ -217,7 +217,7 @@ export default function SampleTracker() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this sample tracker record? This cannot be undone.')) return
+    if (!window.confirm('Delete this final formula tracker record? This cannot be undone.')) return
     try {
       await sampleTrackerService.remove(id)
       setRows((prev) => prev.filter((r) => r.id !== id))
@@ -234,10 +234,10 @@ export default function SampleTracker() {
   ]
 
   return (
-    <Layout title="Sample Tracker">
+    <Layout title="Final Formula Tracker">
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <h1 className="text-2xl font-bold text-black dark:text-white">Sample Tracker</h1>
+          <h1 className="text-2xl font-bold text-black dark:text-white">Final Formula Tracker</h1>
           <button
             type="button"
             onClick={() => { setAdding(true); setAddDraft(BLANK_DRAFT) }}
@@ -250,7 +250,7 @@ export default function SampleTracker() {
 
         <ImportSection onImported={() => fetchRows()} />
 
-        <form onSubmit={handleSearch} role="search" aria-label="Search sample tracker records">
+        <form onSubmit={handleSearch} role="search" aria-label="Search final formula tracker records">
           <div className="flex gap-2">
             <label htmlFor={searchId} className="sr-only">Search by client, product type, or sample number</label>
             <input
@@ -276,7 +276,7 @@ export default function SampleTracker() {
           <div role="status" aria-live="polite" className="text-sm text-black/60 dark:text-slate-400">Loading…</div>
         ) : (
           <div className="overflow-x-auto rounded border border-black/10 dark:border-white/10">
-            <table className="w-full text-sm" aria-label="Sample tracker">
+            <table className="w-full text-sm" aria-label="Final formula tracker">
               <thead>
                 <tr className="bg-black/5 dark:bg-white/5 text-left">
                   {headers.map((h) => (
@@ -289,7 +289,7 @@ export default function SampleTracker() {
                   <RowEditor draft={addDraft} setDraft={setAddDraft} onSave={handleAddSave} onCancel={() => setAdding(false)} saving={saving} />
                 )}
                 {rows.length === 0 && !adding ? (
-                  <tr><td colSpan={headers.length} className="px-3 py-6 text-center text-black/50 dark:text-slate-400">No sample tracker records found.</td></tr>
+                  <tr><td colSpan={headers.length} className="px-3 py-6 text-center text-black/50 dark:text-slate-400">No final formula tracker records found.</td></tr>
                 ) : (
                   rows.map((r, i) =>
                     editingId === r.id ? (
@@ -336,7 +336,7 @@ export default function SampleTracker() {
         {count > PAGE_SIZE && (
           <div className="flex items-center justify-between text-sm">
             <span className="text-black/60 dark:text-slate-400" role="status" aria-live="polite">
-              Page {page} of {totalPages} · {count} sample tracker records
+              Page {page} of {totalPages} · {count} final formula tracker records
             </span>
             <div className="flex gap-2">
               <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1 || loading}

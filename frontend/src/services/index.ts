@@ -525,7 +525,7 @@ export const sampleTrackerService = {
       const url = URL.createObjectURL(new Blob([r.data]))
       const a = document.createElement('a')
       a.href = url
-      a.download = 'sample_tracker_template.xlsx'
+      a.download = 'final_formula_tracker_template.xlsx'
       a.click()
       URL.revokeObjectURL(url)
     }),

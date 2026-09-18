@@ -174,18 +174,18 @@ export default function Home() {
           </div>
 
           <div
-            onClick={() => navigate("/sample-tracker")}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/sample-tracker"); } }}
+            onClick={() => navigate("/final-formula-tracker")}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/final-formula-tracker"); } }}
             role="button"
             tabIndex={0}
             className="card text-left hover:border-mustard transition-colors group cursor-pointer flex items-center gap-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-mustard"
-            aria-label="Go to Sample Tracker — track sample attempts, approval status, and feedback per client"
+            aria-label="Go to Final Formula Tracker — track sample attempts, approval status, and feedback per client"
           >
             <div className="w-12 h-12 bg-mustard-50 dark:bg-mustard-100 rounded flex items-center justify-center shrink-0 group-hover:bg-mustard transition-colors" aria-hidden="true">
               <span className="text-2xl text-mustard-700"><TestTube2 /></span>
             </div>
             <div>
-              <div className="text-lg font-semibold text-black dark:text-slate-100 mb-0.5" aria-hidden="true">Sample Tracker</div>
+              <div className="text-lg font-semibold text-black dark:text-slate-100 mb-0.5" aria-hidden="true">Final Formula Tracker</div>
               <div className="text-sm text-black/60 dark:text-slate-300" aria-hidden="true">
                 Track sample attempts, approval status, and feedback per client.
               </div>

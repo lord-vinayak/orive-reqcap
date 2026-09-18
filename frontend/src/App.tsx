@@ -72,7 +72,8 @@ export default function App() {
       <Route path="/ingredient-inventory" element={<ProtectedRoute><IngredientInventory /></ProtectedRoute>} />
       <Route path="/packaging-inventory" element={<ProtectedRoute><PackagingInventory /></ProtectedRoute>} />
       <Route path="/packaging-clients" element={<ProtectedRoute><PackagingClientList /></ProtectedRoute>} />
-      <Route path="/sample-tracker" element={<ProtectedRoute><SampleTracker /></ProtectedRoute>} />
+      <Route path="/sample-tracker" element={<Navigate to="/final-formula-tracker" replace />} />
+      <Route path="/final-formula-tracker" element={<ProtectedRoute><SampleTracker /></ProtectedRoute>} />
       <Route path="/bmr-tracker" element={<ProtectedRoute><BMRTracker /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/home" replace />} />
